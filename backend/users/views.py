@@ -1,6 +1,7 @@
 from rest_framework import generics,status
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
+from django.http import Http404
 from .models import CustomUser  
 from .serializers import CustomUserSerializer  
 from rest_framework.permissions import IsAdminUser, IsAuthenticated  
@@ -87,7 +88,10 @@ class UserRegisterAPIView(APIView):
         - request: La solicitud HTTP con los datos del cliente.
         - document: Número de documento del usuario que se desea activar.
         """
-        user = get_object_or_404(CustomUser, document=document)
+        try:
+            user = get_object_or_404(CustomUser, document=document)
+        except Http404:
+            raise Http404(f"Check the data or user {document} does not exist ")    
         user.isRegistered = True
         user.is_active = True
         user.save()
