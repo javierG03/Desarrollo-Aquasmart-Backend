@@ -59,7 +59,7 @@ class LoginHistorySerializer(serializers.ModelSerializer):
         model = LoginHistory
         fields = ['timestamp', 'user']  
 
-class RecuperarContraseñaSerializer(serializers.Serializer):
+class RecoverPasswordSerializer(serializers.Serializer):
     """
     Serializer para la recuperación de contraseña mediante OTP.
     Recibe el documento del usuario y envía un OTP al correo registrado.
@@ -85,13 +85,13 @@ class RecuperarContraseñaSerializer(serializers.Serializer):
         otp_generado = nuevo_otp.generateOTP()
 
         try:
-            self.enviar_correo_recuperacion(user.email, otp_generado)
+            self.send_email_recover(user.email, otp_generado)
         except Exception as e:
             raise serializers.ValidationError(f"Error al enviar el correo: {str(e)}")
 
         return {'otp': otp_generado, 'message': 'Se ha enviado un correo con el OTP para recuperar la contraseña.'}
 
-    def enviar_correo_recuperacion(self, email, token):
+    def send_email_recover(self, email, token):
         """
         Envía un correo con el OTP de recuperación de contraseña.
         """
