@@ -6,7 +6,7 @@ from django.contrib.auth.signals import user_logged_in
 from rest_framework_simplejwt.tokens import RefreshToken
 from drf_spectacular.utils import extend_schema, OpenApiExample
 from .models import CustomUser
-from .serializers import  RecuperarContraseñaSerializer
+from .serializers import  RecoverPasswordSerializer
 from .doc_serializers import LoginSerializer, LoginResponseSerializer
 
 class LoginView(APIView):
@@ -96,7 +96,7 @@ class LoginView(APIView):
         return super().get_permissions()
 
 
-class RecuperarContraseñaView(APIView):
+class RecoverPasswordView(APIView):
     """
     Vista para la recuperación de contraseña mediante OTP.
 
@@ -111,7 +111,7 @@ class RecuperarContraseñaView(APIView):
     @extend_schema(
         summary="Recuperar contraseña",
         description="Se enviará un código OTP por SMS o correo para recuperar la contraseña.",
-        request=RecuperarContraseñaSerializer,
+        request=RecoverPasswordSerializer,
         responses={
             200: {"description": "Correo enviado correctamente", "example": {"detail": "OTP enviado."}},
             400: {"description": "Error en la solicitud", "example": {"document": ["Este campo es obligatorio."]}},
@@ -128,7 +128,7 @@ class RecuperarContraseñaView(APIView):
             - 200: Se ha enviado el OTP correctamente al correo registrado.
             - 400: Error en la solicitud, por ejemplo, si falta el documento en la petición.
         """
-        serializer = RecuperarContraseñaSerializer(data=request.data)
+        serializer = RecoverPasswordSerializer(data=request.data)
         if serializer.is_valid():
             data = serializer.save()
             return Response(data, status=status.HTTP_200_OK)
