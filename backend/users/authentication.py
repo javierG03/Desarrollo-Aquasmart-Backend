@@ -6,7 +6,8 @@ from django.contrib.auth.signals import user_logged_in
 from rest_framework_simplejwt.tokens import RefreshToken
 from drf_spectacular.utils import extend_schema, OpenApiExample
 from .models import CustomUser
-from .serializers import LoginSerializer, LoginResponseSerializer, RecuperarContraseñaSerializer
+from .serializers import  RecuperarContraseñaSerializer
+from .doc_serializers import LoginSerializer, LoginResponseSerializer
 
 class LoginView(APIView):
     """
