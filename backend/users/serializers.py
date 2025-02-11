@@ -36,8 +36,9 @@ class CustomUserSerializer(serializers.ModelSerializer):
         fields = [
             'document', 'first_name', 'last_name', 'email', 
             'document_type', 'person_type', 'phone', 'address',
-            'password'
-        ]       
+            'password','isRegistered', 'is_active',
+        ]
+        read_only_fields = ('isRegistered', 'is_active')       
 
     def create(self, validated_data):
         """
