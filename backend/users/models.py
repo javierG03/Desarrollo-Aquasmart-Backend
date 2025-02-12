@@ -64,12 +64,13 @@ class Otp(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE,to_field='document', related_name='otp')
     otp = models.CharField(max_length=6, unique=True)
     creation_time = models.DateTimeField(default=timezone.now)
-    
+    is_validated = models.BooleanField(default=False)
     def generateOTP(self):
         """Genera un otp de recuperación único de 6 caracteres."""
         caracteres = string.digits  # dígitos
         self.otp = ''.join(secrets.choice(caracteres) for _ in range(6))  # Selecciona 6 caracteres aleatorios
         self.creation_time = datetime.now()  # Guarda la fecha y hora de creación
+        self.is_validated = False
         self.save()
         return self.otp
     

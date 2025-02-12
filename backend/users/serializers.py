@@ -3,6 +3,8 @@ from django.contrib.auth.hashers import make_password
 from django.shortcuts import get_object_or_404
 from django.core.mail import send_mail
 from .models import DocumentType, PersonType, CustomUser, LoginHistory, Otp
+from django.contrib.auth.hashers import make_password, check_password
+from django.contrib.auth.password_validation import validate_password
 
 class DocumentTypeSerializer(serializers.ModelSerializer):
     """
@@ -99,3 +101,79 @@ class RecoverPasswordSerializer(serializers.Serializer):
         mensaje = f"Su OTP de recuperación es: {token}. Úselo para restablecer su contraseña."
         remitente = "noreply@example.com"
         send_mail(asunto, mensaje, remitente, [email])
+
+class ValidateOtpSerializer(serializers.Serializer):
+    document = serializers.CharField(max_length=12)
+    otp = serializers.CharField(max_length=6)
+
+    def validate(self, data):
+        document = data.get('document')
+        otp = data.get('otp')
+
+        # Verificar si el usuario existe
+        try:
+            user = CustomUser.objects.get(document=document)
+        except CustomUser.DoesNotExist:
+            raise serializers.ValidationError("Usuario no encontrado con este documento.")
+
+        # Verificar si el OTP es válido
+        try:
+            otp_instance = Otp.objects.get(user=user, otp=otp, is_validated=False)
+        except Otp.DoesNotExist:
+            raise serializers.ValidationError("OTP inválido o ya ha sido utilizado.")
+
+        # Verificar si el OTP no ha expirado
+        if not otp_instance.validateOTP():
+            raise serializers.ValidationError("El OTP ha expirado.")
+
+        # Marcar el OTP como validado
+        otp_instance.is_validated = True
+        otp_instance.save()
+
+        return data     
+
+class ResetPasswordSerializer(serializers.Serializer):
+    document = serializers.CharField(max_length=12)
+    new_password = serializers.CharField(write_only=True)
+
+    def validate(self, data):
+        document = data.get('document')
+        new_password = data.get('new_password')
+
+        # Verificar si el usuario existe
+        try:
+            user = CustomUser.objects.get(document=document)
+        except CustomUser.DoesNotExist:
+            raise serializers.ValidationError({"document": "Usuario no encontrado con este documento."})
+
+        # Verificar si existe un OTP validado para este usuario
+        try:
+            otp_instance = Otp.objects.get(user=user, is_validated=True)
+        except Otp.DoesNotExist:
+            raise serializers.ValidationError({"otp": "No hay un OTP validado para este usuario."})
+
+        # Validar que la nueva contraseña no sea la misma que la actual
+        if check_password(new_password, user.password):
+            raise serializers.ValidationError({"new_password": "No puedes usar la misma contraseña actual."})
+
+        # Validar la contraseña con las reglas de Django
+        try:
+            validate_password(new_password, user=user)
+        except serializers.ValidationError as e:
+            raise serializers.ValidationError({"new_password": e.messages})
+
+        return data
+
+    def save(self):
+        """Actualiza la contraseña del usuario y elimina el OTP validado."""
+        document = self.validated_data['document']
+        new_password = self.validated_data['new_password']
+
+        user = CustomUser.objects.get(document=document)
+        user.password = make_password(new_password)  # Encripta la nueva contraseña
+        user.save()
+
+        # Eliminar todos los OTP validados del usuario
+        Otp.objects.filter(user=user, is_validated=True).delete()
+
+        return user

@@ -6,7 +6,7 @@ from django.contrib.auth.signals import user_logged_in
 from rest_framework_simplejwt.tokens import RefreshToken
 from drf_spectacular.utils import extend_schema, OpenApiExample
 from .models import CustomUser
-from .serializers import  RecoverPasswordSerializer
+from .serializers import  RecoverPasswordSerializer, ValidateOtpSerializer, ResetPasswordSerializer
 from .doc_serializers import LoginSerializer, LoginResponseSerializer
 
 class LoginView(APIView):
@@ -143,3 +143,38 @@ class RecoverPasswordView(APIView):
         if self.request.method == 'POST':
             return []
         return super().get_permissions()
+
+class ValidateOtpView(APIView):
+    def post(self, request):
+        serializer = ValidateOtpSerializer(data=request.data)
+        if serializer.is_valid():
+            return Response({"message": "OTP validado correctamente."}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def get_permissions(self):
+        """
+        Define los permisos de la vista.
+
+        Para el método POST, no se requiere autenticación.
+        """
+        if self.request.method == 'POST':
+            return []
+        return super().get_permissions()
+
+    
+class ResetPasswordView(APIView):
+    def post(self, request):
+        serializer = ResetPasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Contraseña restablecida correctamente."}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def get_permissions(self):
+        """
+        Define los permisos de la vista.
+
+        Para el método POST, no se requiere autenticación.
+        """
+        if self.request.method == 'POST':
+            return []
+        return super().get_permissions()
+    
