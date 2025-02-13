@@ -59,6 +59,10 @@ class CustomUser(AbstractUser):
     
     def __str__(self):
         return f"{self.document} - {self.first_name} {self.last_name}"    
+    
+    class Meta:
+        app_label = 'users' 
+        
 """Clase que maneja la cracion y validacion de codigo de un solo uso"""    
 class Otp(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE,to_field='document', related_name='otp')
