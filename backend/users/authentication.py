@@ -1,5 +1,6 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
 from rest_framework import status
 from django.utils import timezone
 from django.contrib.auth.signals import user_logged_in
@@ -10,6 +11,7 @@ from .serializers import  RecoverPasswordSerializer, ValidateOtpSerializer, Rese
 from .doc_serializers import LoginSerializer, LoginResponseSerializer
 
 class LoginView(APIView):
+    permission_classes = [AllowAny]
     """
     Vista para el inicio de sesión de usuarios.
 
@@ -85,18 +87,11 @@ class LoginView(APIView):
         except CustomUser.DoesNotExist:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
 
-    def get_permissions(self):
-        """
-        Define los permisos de la vista.
-
-        Para el método POST, no se requiere autenticación.
-        """
-        if self.request.method == 'POST':
-            return []
-        return super().get_permissions()
+   
 
 
 class RecoverPasswordView(APIView):
+    permission_classes = [AllowAny]
     """
     Vista para la recuperación de contraseña mediante OTP.
 
@@ -134,47 +129,90 @@ class RecoverPasswordView(APIView):
             return Response(data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def get_permissions(self):
-        """
-        Define los permisos de la vista.
-
-        Para el método POST, no se requiere autenticación.
-        """
-        if self.request.method == 'POST':
-            return []
-        return super().get_permissions()
+  
 
 class ValidateOtpView(APIView):
+    permission_classes = [AllowAny]
+    """
+    Vista para validar un código OTP.
+
+    Permite a los usuarios enviar un OTP asociado a su documento para verificar su identidad.
+    No requiere autenticación para el método `POST`.
+
+    Métodos:
+    - `POST`: Recibe un `document` y un `otp` para validarlo.
+    """
+
+    @extend_schema(
+        request=ValidateOtpSerializer,
+        responses={
+            200: {"message": "OTP validado correctamente.","example": {"message": "OTP validado correctamente."}},
+            400: {"message": "Errores de validación."}
+        },
+        description="Valida un OTP asociado a un documento.",
+        summary="Validar OTP",
+    )
     def post(self, request):
+        """
+        Procesa la validación de un OTP.
+
+        Recibe un documento y un OTP en el cuerpo de la solicitud. Si el OTP es válido,
+        devuelve un mensaje de éxito; de lo contrario, devuelve errores de validación.
+
+        Parámetros:
+        - `request.data` (dict): Debe contener `document` y `otp`.
+
+        Retorno:
+        - `200 OK`: Si el OTP es válido.
+        - `400 BAD REQUEST`: Si hay errores en la validación.
+        """
         serializer = ValidateOtpSerializer(data=request.data)
         if serializer.is_valid():
             return Response({"message": "OTP validado correctamente."}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    def get_permissions(self):
-        """
-        Define los permisos de la vista.
-
-        Para el método POST, no se requiere autenticación.
-        """
-        if self.request.method == 'POST':
-            return []
-        return super().get_permissions()
 
     
+    
 class ResetPasswordView(APIView):
+    permission_classes = [AllowAny]
+    """
+    Vista para restablecer la contraseña de un usuario.
+
+    Permite a los usuarios restablecer su contraseña proporcionando su documento 
+    y habiendo validado un OTP previamente. No requiere autenticación para `POST`.
+
+    Métodos:
+    - `POST`: Recibe un `document` y una `new_password` para cambiar la contraseña.
+    """
+
+    @extend_schema(
+        request=ResetPasswordSerializer,
+        responses={
+            200: {"message": "Contraseña restablecida correctamente."},
+            400: {"message": "Errores de validación."}
+        },
+        description="Restablece la contraseña de un usuario si ha validado un OTP.",
+        summary="Restablecer contraseña",
+    )
     def post(self, request):
+        """
+        Procesa el restablecimiento de la contraseña.
+
+        Recibe un documento y una nueva contraseña en el cuerpo de la solicitud. 
+        Si el OTP fue validado previamente, la contraseña se actualiza.
+
+        Parámetros:
+        - `request.data` (dict): Debe contener `document` y `new_password`.
+
+        Retorno:
+        - `200 OK`: Si la contraseña fue cambiada con éxito.
+        - `400 BAD REQUEST`: Si hay errores en la validación.
+        """
         serializer = ResetPasswordSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response({"message": "Contraseña restablecida correctamente."}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    def get_permissions(self):
-        """
-        Define los permisos de la vista.
 
-        Para el método POST, no se requiere autenticación.
-        """
-        if self.request.method == 'POST':
-            return []
-        return super().get_permissions()
+    
     
