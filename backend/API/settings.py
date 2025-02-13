@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
     'drf_spectacular',
     'rest_framework',
     'users',
@@ -59,6 +60,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -175,3 +177,12 @@ SIMPLE_JWT = {
 }
 
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+# Configurar los dominios permitidos
+CORS_ALLOWED_ORIGINS = [
+    "https://tu-frontend.com",
+    "http://localhost:3000",  # Para desarrollo con React
+]
+
+# También puedes permitir todas las solicitudes (NO recomendado en producción)
+CORS_ALLOW_ALL_ORIGINS = True  # O usar CORS_ALLOWED_ORIGINS para mayor control
