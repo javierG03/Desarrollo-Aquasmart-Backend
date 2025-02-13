@@ -78,7 +78,7 @@ class Otp(models.Model):
         """Verifica si el otp sigue siendo válido (no ha expirado)."""
         return (timezone.now() - self.creation_time) <= timezone.timedelta(minutes=15)
     def __str__(self):
-        return f"OTP {self.otp} para {self.usuario.first_name}"
+        return f"OTP {self.otp} para {self.user.first_name}"
     
     class Meta:
         verbose_name = "OTP"
