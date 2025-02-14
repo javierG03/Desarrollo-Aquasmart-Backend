@@ -1,0 +1,13 @@
+venv
+env
+.env
+.venv
+__pycache__
+db.sqlite3
+.vscodeextensions
+.gitignore
+backend/pytest.ini
+.gitignore
+backend/report.html
+backend/assets/style.css
+.gitignore
