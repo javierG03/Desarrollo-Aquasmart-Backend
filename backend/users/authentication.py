@@ -2,37 +2,33 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework import status
-from django.utils import timezone
-from django.contrib.auth.signals import user_logged_in
-from rest_framework_simplejwt.tokens import RefreshToken
 from drf_spectacular.utils import extend_schema, OpenApiExample
-from .models import CustomUser
-from .serializers import  RecoverPasswordSerializer, ValidateOtpSerializer, ResetPasswordSerializer
-from .doc_serializers import LoginSerializer, LoginResponseSerializer
+from .models import Otp
+from .serializers import  GenerateOtpSerializer, ValidateOtpSerializer, ResetPasswordSerializer, LoginSerializer, RefreshTokenSerializer
+from rest_framework.exceptions import ValidationError, NotFound
 
 class LoginView(APIView):
-    permission_classes = [AllowAny]
     """
     Vista para el inicio de sesión de usuarios.
 
-    Permite a los usuarios autenticarse mediante su documento y contraseña.
-    Si las credenciales son correctas y el usuario está activo, se devuelve un token de acceso.
+    Permite a los usuarios autenticarse proporcionando sus credenciales.
+    Devuelve un token de acceso en caso de éxito.
+
+    Permisos:
+    - `AllowAny`: No requiere autenticación para acceder.
 
     Métodos:
-        - `post(request)`: Autentica al usuario y devuelve un token JWT.
-        - `get_permissions()`: Define permisos para la vista.
+    - `POST`: Recibe las credenciales del usuario y devuelve el token de autenticación.
     """
+    permission_classes = [AllowAny]
 
     @extend_schema(
-        summary="Inicio de sesión",
-        description="Autentica un usuario con su documento y contraseña, y devuelve un token de acceso.",
         request=LoginSerializer,
         responses={
-            200: LoginResponseSerializer,
-            400: {"description": "Campos requeridos", "example": {"detail": "Username and password are required."}},
-            403: {"description": "Usuario inactivo", "example": {"detail": "Your account is inactive. Please contact support."}},
-            401: {"description": "Credenciales incorrectas", "example": {"detail": "Invalid credentials."}},
-            404: {"description": "Usuario no encontrado", "example": {"detail": "Not found."}},
+            200: LoginSerializer,
+            400: {"error": "Detalles del error de validación.", "example": {"error": "Detalles del error de validación."}},
+            404: {"error": "Usuario no encontrado.","example": {"error": "Usuario no encontrado."}},
+            500: {"error": "Unexpected error.", "detail": "Detalles del error interno.","example": {"error": "Unexpected error.", "detail": "Detalles del error interno."}}
         },
         examples=[
             OpenApiExample(
@@ -40,57 +36,46 @@ class LoginView(APIView):
                 value={"document": "123456789", "password": "mypassword"},
                 request_only=True
             )
-        ]
+        ],
+        description="Autentica a un usuario con sus credenciales y devuelve un token de acceso.",
+        summary="Inicio de sesión",
     )
     def post(self, request, *args, **kwargs):
         """
-        Maneja la autenticación de usuarios.
+        Procesa el inicio de sesión del usuario.
+
+        Recibe un conjunto de credenciales en el cuerpo de la solicitud y, si son válidas, 
+        devuelve un token de acceso.
 
         Parámetros:
-            - `document` (str): Número de documento del usuario.
-            - `password` (str): Contraseña del usuario.
+        - `request.data` (dict): Debe contener las credenciales necesarias.
 
-        Respuestas:
-            - 200: Retorna los tokens de acceso y refresco si las credenciales son correctas.
-            - 400: Faltan el documento o la contraseña en la solicitud.
-            - 403: La cuenta del usuario está inactiva.
-            - 401: Credenciales incorrectas.
-            - 404: Usuario no encontrado.
+        Retorno:
+        - `200 OK`: Si la autenticación es exitosa.
+        - `400 BAD REQUEST`: Si hay errores de validación en las credenciales.
+        - `404 NOT FOUND`: Si el usuario no existe.
+        - `500 INTERNAL SERVER ERROR`: Si ocurre un error inesperado.
         """
-        document = request.data.get('document')
-        password = request.data.get('password')
-
-        if not document or not password:
-            return Response({"detail": "Username and password are required."}, status=status.HTTP_400_BAD_REQUEST)
-
         try:
-            user = CustomUser.objects.get(document=document)
+            serializer = LoginSerializer(data=request.data)
+            if serializer.is_valid(raise_exception=True):
+                data = serializer.validated_data
+                document = data.get('document')
+                print(document)
+                otp_instance = Otp.objects.filter(user=document).first()
+                otp_instance.is_login = True
+                otp_instance.save()
+                return Response(serializer.validated_data, status=status.HTTP_200_OK)
 
-            # Verificar si el usuario está activo
-            if not user.is_active:
-                return Response({"detail": "Your account is inactive. Please contact support."}, status=status.HTTP_403_FORBIDDEN)
-
-            # Validar la contraseña
-            if user.check_password(password):
-                refresh = RefreshToken.for_user(user)
-                user.last_login = timezone.now()
-                user.save()
-                user_logged_in.send(sender=user.__class__, request=request, user=user)
-
-                return Response({
-                    "refresh": str(refresh),
-                    "access": str(refresh.access_token),
-                }, status=status.HTTP_200_OK)
-            else:
-                return Response({"detail": "Invalid credentials."}, status=status.HTTP_401_UNAUTHORIZED)
-
-        except CustomUser.DoesNotExist:
-            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
-
-   
+        except ValidationError as e:
+            return Response({"error": e.detail}, status=status.HTTP_400_BAD_REQUEST)
+        except NotFound as e:
+            return Response({"error": e.detail}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": "Unexpected error.", "detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
 
 
-class RecoverPasswordView(APIView):
+class GenerateOtpView(APIView):
     permission_classes = [AllowAny]
     """
     Vista para la recuperación de contraseña mediante OTP.
@@ -106,7 +91,7 @@ class RecoverPasswordView(APIView):
     @extend_schema(
         summary="Recuperar contraseña",
         description="Se enviará un código OTP por SMS o correo para recuperar la contraseña.",
-        request=RecoverPasswordSerializer,
+        request=GenerateOtpSerializer,
         responses={
             200: {"description": "Correo enviado correctamente", "example": {"detail": "OTP enviado."}},
             400: {"description": "Error en la solicitud", "example": {"document": ["Este campo es obligatorio."]}},
@@ -123,7 +108,7 @@ class RecoverPasswordView(APIView):
             - 200: Se ha enviado el OTP correctamente al correo registrado.
             - 400: Error en la solicitud, por ejemplo, si falta el documento en la petición.
         """
-        serializer = RecoverPasswordSerializer(data=request.data)
+        serializer = GenerateOtpSerializer(data=request.data)
         if serializer.is_valid():
             data = serializer.save()
             return Response(data, status=status.HTTP_200_OK)
@@ -166,9 +151,9 @@ class ValidateOtpView(APIView):
         - `200 OK`: Si el OTP es válido.
         - `400 BAD REQUEST`: Si hay errores en la validación.
         """
-        serializer = ValidateOtpSerializer(data=request.data)
+        serializer = ValidateOtpSerializer(data=request.data, context={"request": request})
         if serializer.is_valid():
-            return Response({"message": "OTP validado correctamente."}, status=status.HTTP_200_OK)
+            return Response(serializer.validated_data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     
@@ -214,5 +199,36 @@ class ResetPasswordView(APIView):
             return Response({"message": "Contraseña restablecida correctamente."}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+class RefreshTokenView(APIView):
+    permission_classes = [AllowAny]
+    """
+    Vista para la renovación del token de acceso.
+
+    Permite a los usuarios obtener un nuevo `access token` 
+    a partir de un `refresh token` válido.
+    """
+
+    @extend_schema(
+        request=RefreshTokenSerializer,
+        responses={200: RefreshTokenSerializer, 400: {"detail": "Token inválido o expirado."}},
+        description="Renueva el token de acceso utilizando un refresh token válido.",
+        summary="Refresh token",
+    )
+    def post(self, request):
+        """
+        Maneja la solicitud POST para la renovación del token de acceso.
+
+        Parámetros:
+        - `request` (Request): Contiene el `refresh token` en el cuerpo de la solicitud.
+
+        Retorno:
+        - `Response`: Devuelve un nuevo `access token` si el refresh token es válido.
+        - Código 200: Token renovado exitosamente.
+        - Código 400: Token inválido o expirado.
+        """
+        serializer = RefreshTokenSerializer(data=request.data)
+        if serializer.is_valid():
+            return Response(serializer.validated_data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     

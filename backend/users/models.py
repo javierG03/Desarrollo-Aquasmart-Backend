@@ -50,7 +50,7 @@ class CustomUser(AbstractUser):
     person_type = models.ForeignKey('PersonType',on_delete= models.CASCADE, related_name="person_type", null=True, db_index=True)
     phone = models.CharField(max_length=20, db_index=True)
     address = models.CharField(max_length=200, db_index=True)
-    isRegistered = models.BooleanField(default=False,help_text='permite ver si el usuario paso el pre registro', db_index=True)
+    is_registered = models.BooleanField(default=False,help_text='permite ver si el usuario paso el pre registro', db_index=True)
     username = None
     
     USERNAME_FIELD = 'document'
@@ -65,6 +65,7 @@ class Otp(models.Model):
     otp = models.CharField(max_length=6, unique=True)
     creation_time = models.DateTimeField(default=timezone.now)
     is_validated = models.BooleanField(default=False)
+    is_login = models.BooleanField(default=False)
     def generateOTP(self):
         """Genera un otp de recuperación único de 6 caracteres."""
         caracteres = string.digits  # dígitos
@@ -74,7 +75,7 @@ class Otp(models.Model):
         self.save()
         return self.otp
     
-    def validateOTP(self):
+    def validate_life_otp(self):
         """Verifica si el otp sigue siendo válido (no ha expirado)."""
         return (timezone.now() - self.creation_time) <= timezone.timedelta(minutes=15)
     def __str__(self):
