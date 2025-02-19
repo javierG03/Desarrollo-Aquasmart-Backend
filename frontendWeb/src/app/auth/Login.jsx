@@ -6,7 +6,9 @@ import { useNavigate } from 'react-router-dom';
 const Login = () => {
     const [document, setDocument] = useState('');
     const [password, setPassword] = useState('');
+    const [otp, setOtp] = useState('');
     const [error, setError] = useState('');
+    const [otpError, setOtpError] = useState('');
     const [showModal, setShowModal] = useState(false);
     const [showTokenForm, setShowTokenForm] = useState(false);
     const navigate = useNavigate(); // Para redirigir
@@ -14,7 +16,6 @@ const Login = () => {
     // Función para manejar el login
     const handleLogin = async (e) => {
         e.preventDefault();
-         // Muestra el modal de "TOKEN ENVIADO"
 
         try {
             const response = await axios.post('https://4q190rbc-8000.use.devtunnels.ms/api/users/login', {
@@ -22,20 +23,39 @@ const Login = () => {
                 password
             });
 
-            // Si el login es exitoso, guarda el token
-            localStorage.setItem('token', response.data.token);
-            setShowModal(true);
-
+            setShowModal(true); // Mostrar modal de "TOKEN ENVIADO"
         } catch (err) {
-            setError('¡Campos vacíos, por favor completarlos!');
+            setError('¡Campos vacíos o credenciales incorrectas!');
             console.error(err);
         }
     };
 
     // Manejar la confirmación del modal para mostrar el formulario de token
     const handleConfirm = () => {
-        setShowModal(false);  // Ocultar modal
+        setShowModal(false);
         setShowTokenForm(true);
+    };
+
+    // Manejar el envío del token
+    const handleTokenSubmit = async () => {
+        try {
+            const response = await axios.post('https://4q190rbc-8000.use.devtunnels.ms/api/users/validate-otp', {
+                document,
+                otp
+            });
+
+
+            if (response.data.access) {
+                localStorage.setItem('token', response.data.access);
+                localStorage.setItem('refresh', response.data.refresh);
+                navigate('/');
+            } else {
+                setOtpError('El token ingresado es incorrecto.');
+            }
+        } catch (err) {
+            setOtpError('Error al validar el token, intenta nuevamente.');
+            console.error(err);
+        }
     };
 
     return (
@@ -86,20 +106,36 @@ const Login = () => {
 
                     {/* Input de Token */}
                     <div className="flex justify-center gap-2 mt-4">
+                        {otpError && (
+                            <span className='w-[80%] text-md text-center py-1 mb-2 bg-[#FFA7A9] rounded-lg text-gray-600'>
+                                {otpError}
+                            </span>
+                        )}
                         {[...Array(6)].map((_, i) => (
-                            <input key={i} type="text" maxLength="1" className="w-12 h-12 text-center border border-gray-400 rounded-md" />
+                            <input
+                                key={i}
+                                type="string"
+                                maxLength="1"
+                                className="w-12 h-12 text-center border border-gray-400 rounded-md"
+                                value={otp[i] || ''}
+                                onChange={(e) => {
+                                    let newOtp = otp.split('');
+                                    newOtp[i] = e.target.value;
+                                    setOtp(newOtp.join(''));
+                                }}
+                            />
                         ))}
                     </div>
 
-                    {/* Tiempo Restante */}
+
+
                     <p className="text-center text-gray-600 mt-2">14:35 restantes</p>
 
-                    {/* Botones */}
                     <div className="flex justify-center gap-4 mt-4">
                         <button className="bg-[#365486] text-white px-4 py-2 rounded-lg hover:bg-[#344663]">
                             SOLICITAR NUEVO TOKEN
                         </button>
-                        <button onClick={() => navigate('/')} className="bg-[#365486] text-white px-4 py-2 rounded-lg hover:bg-[#344663]">
+                        <button onClick={handleTokenSubmit} className="bg-[#365486] text-white px-4 py-2 rounded-lg hover:bg-[#344663]">
                             ENVIAR
                         </button>
                     </div>
