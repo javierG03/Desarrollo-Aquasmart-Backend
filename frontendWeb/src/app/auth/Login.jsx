@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import InputItem from '../../components/InputItem';
 import { useNavigate } from 'react-router-dom';
@@ -11,7 +11,9 @@ const Login = () => {
     const [otpError, setOtpError] = useState('');
     const [showModal, setShowModal] = useState(false);
     const [showTokenForm, setShowTokenForm] = useState(false);
-    const navigate = useNavigate(); // Para redirigir
+    const [timeLeft, setTimeLeft] = useState(0);
+    const [isDisabled, setIsDisabled] = useState(false);
+    const navigate = useNavigate();
 
     // Función para manejar el login
     const handleLogin = async (e) => {
@@ -23,7 +25,7 @@ const Login = () => {
                 password
             });
 
-            setShowModal(true); // Mostrar modal de "TOKEN ENVIADO"
+            setShowModal(true);
         } catch (err) {
             setError('¡Campos vacíos o credenciales incorrectas!');
             console.error(err);
@@ -34,6 +36,33 @@ const Login = () => {
     const handleConfirm = () => {
         setShowModal(false);
         setShowTokenForm(true);
+        startTimer();
+    };
+
+    // Iniciar el temporizador de 15 minutos
+    const startTimer = () => {
+        setTimeLeft(900);
+        setIsDisabled(true);
+    };
+
+    // Manejar la cuenta regresiva
+    useEffect(() => {
+        if (timeLeft > 0) {
+            const timer = setInterval(() => {
+                setTimeLeft((prev) => prev - 1);
+            }, 1000);
+
+            return () => clearInterval(timer);
+        } else {
+            setIsDisabled(false);
+        }
+    }, [timeLeft]);
+
+    // Formatear tiempo en MM:SS
+    const formatTime = (seconds) => {
+        const minutes = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${minutes}:${secs < 10 ? "0" : ""}${secs}`;
     };
 
     // Manejar el envío del token
@@ -43,7 +72,6 @@ const Login = () => {
                 document,
                 otp
             });
-
 
             if (response.data.access) {
                 localStorage.setItem('token', response.data.access);
@@ -99,12 +127,10 @@ const Login = () => {
                     </form>
                 </div>
             ) : (
-                // FORMULARIO DE TOKEN
                 <div className="bg-white p-8 rounded-lg shadow-lg w-[400px] border border-blue-400">
                     <h2 className="text-2xl font-bold text-center">INGRESO DE TOKEN</h2>
                     <p className="text-center mt-2">Introduce el token que fue enviado por SMS a tu teléfono.</p>
 
-                    {/* Input de Token */}
                     <div className="flex justify-center gap-2 mt-4">
                         {otpError && (
                             <span className='w-[80%] text-md text-center py-1 mb-2 bg-[#FFA7A9] rounded-lg text-gray-600'>
@@ -127,12 +153,17 @@ const Login = () => {
                         ))}
                     </div>
 
-
-
-                    <p className="text-center text-gray-600 mt-2">14:35 restantes</p>
+                    <p className="text-center text-gray-600 mt-2">
+                        {timeLeft > 0 ? `Tiempo restante: ${formatTime(timeLeft)}` : "Puedes solicitar un nuevo token"}
+                    </p>
 
                     <div className="flex justify-center gap-4 mt-4">
-                        <button className="bg-[#365486] text-white px-4 py-2 rounded-lg hover:bg-[#344663]">
+                        <button
+                            onClick={startTimer}
+                            disabled={isDisabled}
+                            className={`px-4 py-2 rounded-lg text-white font-semibold transition-all duration-300 ${isDisabled ? "bg-gray-400 cursor-not-allowed" : "bg-[#365486] hover:bg-[#344663]"
+                                }`}
+                        >
                             SOLICITAR NUEVO TOKEN
                         </button>
                         <button onClick={handleTokenSubmit} className="bg-[#365486] text-white px-4 py-2 rounded-lg hover:bg-[#344663]">
@@ -142,17 +173,14 @@ const Login = () => {
                 </div>
             )}
 
-            {/* MODAL */}
             {showModal && (
                 <div className="fixed inset-0 flex items-center justify-center bg-opacity-50 backdrop-blur-sm">
                     <div className="bg-white p-6 rounded-lg shadow-lg text-center w-[90%] sm:w-[400px]">
                         <h2 className="text-xl font-bold mb-4">TOKEN ENVIADO</h2>
                         <p>Se ha enviado un token de 6 caracteres a tu número de teléfono registrado.</p>
-                        <div className="mt-4 flex flex-col gap-2">
-                            <button onClick={handleConfirm} className="bg-[#365486] text-white px-4 py-2 rounded-lg hover:bg-[#344663]">
-                                CONFIRMAR
-                            </button>
-                        </div>
+                        <button onClick={handleConfirm} className="bg-[#365486] text-white px-4 py-2 rounded-lg hover:bg-[#344663]">
+                            CONFIRMAR
+                        </button>
                     </div>
                 </div>
             )}
