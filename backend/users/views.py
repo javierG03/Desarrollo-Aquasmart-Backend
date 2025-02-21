@@ -1,12 +1,12 @@
 from rest_framework import generics,status
 from rest_framework.views import APIView
-from django.shortcuts import get_object_or_404
-from django.http import Http404
-from .models import CustomUser  
-from .serializers import CustomUserSerializer  
+from .models import CustomUser, DocumentType, PersonType  
+from .serializers import CustomUserSerializer, DocumentTypeSerializer, PersonTypeSerializer 
 from rest_framework.permissions import IsAdminUser, IsAuthenticated  
 from drf_spectacular.utils import extend_schema, extend_schema_view,OpenApiParameter
 from rest_framework.response import Response
+from .validate import validate_user
+
 @extend_schema_view(
     post=extend_schema(
         summary="Crear un nuevo usuario",
@@ -29,7 +29,41 @@ class CustomUserCreateView(generics.CreateAPIView):
     serializer_class = CustomUserSerializer
     permission_classes = []  # Sin restricciones de acceso (puede ser cambiado según necesidad)
     
+@extend_schema_view(
+    post =extend_schema(
+        summary="Crear un nuevo Tipo de documento",
+        request=DocumentTypeSerializer,
+        responses={201: DocumentTypeSerializer, 403: {"detail": "No tienes permiso para realizar esta acción."}},
+        description="Crea un nuevo tipo de documento en el sistema. Requiere permisos de administrador."
+))
+class DocumentTypeView(generics.CreateAPIView):
+    """
+    Vista para la creación de tipos de documento.
+
+    Solo los usuarios administradores autenticados pueden acceder a esta vista.
+    """
+
+    queryset = DocumentType.objects.all()
+    serializer_class = DocumentTypeSerializer
+    permission_classes = [IsAdminUser, IsAuthenticated]
     
+@extend_schema_view(
+    post =extend_schema(
+    summary="Crear un nuevo Tipo de persona",
+    request=PersonTypeSerializer,
+    responses={201: PersonTypeSerializer, 403: {"detail": "No tienes permiso para realizar esta acción."}},
+    description="Crea un nuevo tipo de persona en el sistema. Requiere permisos de administrador."
+))
+class PersonTypeView(generics.CreateAPIView):
+    """
+    Vista para la creación de tipos de persona.
+
+    Solo los usuarios administradores autenticados pueden acceder a esta vista.
+    """
+
+    queryset = PersonType.objects.all()
+    serializer_class = PersonTypeSerializer
+    permission_classes = [IsAdminUser, IsAuthenticated]
 @extend_schema_view(
     get=extend_schema(
         summary="Listar todos los usuarios",
@@ -52,47 +86,57 @@ class CustomUserListView(generics.ListAPIView):
     permission_classes = [IsAdminUser, IsAuthenticated]  # Solo administradores autenticados pueden acceder
 
 
+@extend_schema(
+    summary="Activar usuario",
+    description="Activa un usuario desactivado en el sistema. Solo accesible para administradores autenticados.",
+    parameters=[
+        OpenApiParameter(
+            name="document",
+            description="Número de documento del usuario a activar",
+            required=True,
+            type=str,
+            location=OpenApiParameter.PATH
+        )
+    ],
+    responses={
+        200: {"description": "Usuario activado correctamente.","example":{"status":"User activated"}},
+        400: {"description": "El usuario ya está registrado o activado.","example":{"status":"The user is registered or activated."}},
+        404: {"description": "Usuario no encontrado.","example":{"error":"User not found."}},
+    }
+)
 class UserRegisterAPIView(APIView):
     """
-    API para la activación de usuarios.
+    API para activar usuarios en el sistema.
 
-    Permite que un administrador active un usuario estableciendo los campos `isRegistered` 
-    e `is_active` en `True`.
+    Solo los administradores autenticados pueden acceder a esta vista.
     """
 
     permission_classes = [IsAuthenticated, IsAdminUser]
 
-    @extend_schema(
-        summary="Activar un usuario",
-        description="Activa un usuario cambiando los campos `isRegistered` y `is_active` a `True`. "
-                    "Solo accesible para administradores autenticados.",
-        parameters=[
-            OpenApiParameter(
-                name="document",
-                type=str,
-                location=OpenApiParameter.PATH,
-                required=True,
-                description="Número de documento del usuario a activar"
-            )
-        ],
-        responses={
-            200: {"description": "Usuario activado con éxito", "example": {"status": "User activated"}},
-            404: {"description": "Usuario no encontrado", "example": {"detail": "Not found."}}
-        }
-    )
     def patch(self, request, document):
         """
-        Activa un usuario en el sistema.
+        Activa un usuario con el número de documento proporcionado.
 
-        Parámetros:
-        - request: La solicitud HTTP con los datos del cliente.
-        - document: Número de documento del usuario que se desea activar.
-        """
-        try:
-            user = get_object_or_404(CustomUser, document=document)
-        except Http404:
-            raise Http404(f"Check the data or user {document} does not exist ")    
-        user.isRegistered = True
+        Args:
+            request: Objeto de la solicitud.
+            document (str): Documento del usuario a activar.
+
+        Returns:
+            Response: Estado de la activación del usuario.
+        """        
+        user = validate_user(document)
+        # Verificar si la validacion de usuario no sea None
+        if user is None:
+            return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+        # Verificar si ya está registrado
+        if user.is_registered:
+            return Response({'status': 'The user is registered'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Verificar si ya está activo
+        if user.is_active:
+            return Response({'status': 'The user is activated'}, status=status.HTTP_400_BAD_REQUEST)   
+        user.is_registered = True
         user.is_active = True
         user.save()
         return Response({'status': 'User activated'}, status=status.HTTP_200_OK)
+
