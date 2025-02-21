@@ -109,10 +109,17 @@ class GenerateOtpView(APIView):
             - 400: Error en la solicitud, por ejemplo, si falta el documento en la petición.
         """
         serializer = GenerateOtpSerializer(data=request.data)
-        if serializer.is_valid():
-            data = serializer.save()
-            return Response(data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            if serializer.is_valid():
+                data = serializer.save()
+                return Response(data, status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except ValidationError as e:
+            return Response({"error": e.detail}, status=status.HTTP_400_BAD_REQUEST)
+        except NotFound as e:
+            return Response({"error": e.detail}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": "Unexpected error.", "detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
   
 

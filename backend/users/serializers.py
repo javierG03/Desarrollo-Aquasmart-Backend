@@ -124,57 +124,69 @@ class GenerateOtpSerializer(serializers.Serializer):
     """
 
     document = serializers.CharField(max_length=12, help_text="Número de documento del usuario.")
+    phone = serializers.CharField(max_length=20)
 
-    def validate_document(self, document):
+    def validate(self, attrs):
         """
-        Valida la existencia del usuario asociado al documento.
+        Valida la existencia del usuario asociado al documento y teléfono.
 
         Parámetros:
-        - `document` (str): Número de documento del usuario.
+        - `attrs` (dict): Contiene `document` y `phone`.
 
         Retorno:
-        - `CustomUser`: Instancia del usuario si es encontrado.
+        - `attrs`: Si la validación es correcta.
 
         Excepciones:
-        - `serializers.ValidationError`: Si el usuario no existe.
+        - `serializers.ValidationError`: Si el usuario no existe o el teléfono no coincide.
         """
+        document = attrs.get('document')
+        phone = attrs.get('phone')
+        print(document, phone)
+        # Validar la existencia del usuario
         user = validate_user(document)
-        return user
+        
+        if user is None:
+            raise NotFound("No se encontró un usuario con este documento.")
+            
+            
+        print(user)
+
+        # Validar que el teléfono coincida con el registrado en el usuario
+        if user.phone != phone:
+            raise serializers.ValidationError({"error": "El número de teléfono no coincide con el registrado."})
+
+        attrs['user'] = user  # Guardamos el usuario validado en attrs para usarlo en `create`
+        return attrs
 
     def create(self, validated_data):
         """
-        Genera un nuevo OTP para el usuario y lo envía por correo electrónico.
-
-        - Elimina OTPs previos asociados al usuario.
-        - Crea un nuevo OTP.
-        - Envía el OTP al correo del usuario.
+        Genera un nuevo OTP para el usuario y lo envía por correo o SMS.
 
         Parámetros:
-        - `validated_data` (dict): Contiene `document` con la información del usuario.
+        - `validated_data` (dict): Contiene `user` con la instancia validada.
 
         Retorno:
         - `dict`: Contiene el OTP generado y un mensaje de confirmación.
-
-        Excepciones:
-        - `serializers.ValidationError`: Si hay un error al enviar el correo.
         """
-        user = validated_data['document']  # El método `validate_document` ya retornó el usuario.
+        user = validated_data['user']  # Ahora viene de `validate`
 
         # Eliminar OTPs previos y generar uno nuevo
         Otp.objects.filter(user=user).delete()
         nuevo_otp = Otp.objects.create(user=user)
         otp_generado = nuevo_otp.generateOTP()
 
-        # Simulación de envío de correo (en desarrollo, el mensaje se imprime en consola)
+        # Enviar OTP al teléfono o correo
         try:
             send_email_recover(user.email, otp_generado)
+            #send_sms_recover(user.phone, otp_generado)  # Si implementas SMS
         except Exception as e:
-            raise serializers.ValidationError(f"Error al enviar el correo: {str(e)}")
+            raise serializers.ValidationError(f"Error al enviar el OTP: {str(e)}")
 
         return {
             'otp': otp_generado,
-            'message': 'Se ha enviado un correo con el OTP para recuperar la contraseña.'
-        }  
+            'message': 'Se ha enviado el OTP para recuperar la contraseña.',
+        }
+
 
 class ValidateOtpSerializer(serializers.Serializer):
     """
