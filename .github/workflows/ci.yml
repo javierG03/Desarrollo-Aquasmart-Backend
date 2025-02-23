@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  backend:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/test_db
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r Desarrollo-Aquasmart-Backend/backend/requirements.txt
+
+      - name: Run migrations
+        run: |
+          source venv/bin/activate
+          cd Desarrollo-Aquasmart-Backend/backend
+          python manage.py migrate
+
+      - name: Run tests
+        run: |
+          source venv/bin/activate
+          cd Desarrollo-Aquasmart-Backend/backend
+          pytest
+
+  frontend:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16'
+
+      - name: Install dependencies
+        run: |
+          cd Desarrollo-Aquasmart-Backend/frontendWeb
+          npm install
+
+      - name: Run tests
+        run: |
+          cd Desarrollo-Aquasmart-Backend/frontendWeb
+          npm run test
