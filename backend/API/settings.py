@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
     'drf_spectacular',
     'rest_framework',
     'users',
@@ -59,6 +60,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -163,7 +165,8 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
-    ],
+    ]
+    
 }
 SIMPLE_JWT = {
     'USER_ID_FIELD': 'document',  # Cambia 'document' por el nombre del campo identificador en tu modelo
@@ -171,7 +174,23 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True,
+    'BLACKLIST_AFTER_ROTATION': False,
 }
 
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+# Configurar los dominios permitidos
+CORS_ALLOWED_ORIGINS = [
+    "https://tu-frontend.com",
+    "http://localhost:5173",  # Para desarrollo con React
+]
+
+# También puedes permitir todas las solicitudes (NO recomendado en producción)
+CORS_ALLOW_ALL_ORIGINS = True  # O usar CORS_ALLOWED_ORIGINS para mayor control
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "AQUASMART",
+    "DESCRIPTION": "API creada para la gestion de sistemas de reigo en colombia",
+    "VERSION": "0.1.0",  # Aquí defines la versión
+    "SERVE_INCLUDE_SCHEMA": False,
+}
