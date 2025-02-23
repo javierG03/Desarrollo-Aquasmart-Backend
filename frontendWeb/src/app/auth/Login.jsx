@@ -20,7 +20,7 @@ const Login = () => {
         e.preventDefault();
 
         try {
-            const response = await axios.post('https://4q190rbc-8000.use.devtunnels.ms/api/users/login', {
+            const response = await axios.post('http://127.0.0.1:8000/api/users/login', {
                 document,
                 password
             });
@@ -68,7 +68,7 @@ const Login = () => {
     // Manejar el envío del token
     const handleTokenSubmit = async () => {
         try {
-            const response = await axios.post('https://4q190rbc-8000.use.devtunnels.ms/api/users/validate-otp', {
+            const response = await axios.post('http://127.0.0.1:8000/api/users/validate-otp', {
                 document,
                 otp
             });

@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - main
+      - testing/mod-1-front
   pull_request:
     branches:
       - main
+      - testing/mod-1-front
 
 jobs:
   backend:
