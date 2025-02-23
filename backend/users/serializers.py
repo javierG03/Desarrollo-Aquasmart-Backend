@@ -92,7 +92,7 @@ class LoginSerializer(serializers.Serializer):
             raise serializers.ValidationError({"detail": "Invalid credentials."})
 
         # Generar OTP
-        otp_serializer = GenerateOtpSerializer(data={"document": document})
+        otp_serializer = GenerateOtpLoginSerializer(data={"document": document})
         if otp_serializer.is_valid(raise_exception=True):
             otp_data = otp_serializer.save()  # `save()` devuelve el diccionario con el OTP y mensaje
             
@@ -107,8 +107,66 @@ class LoginSerializer(serializers.Serializer):
         data.pop("password", None)
         
         return data  # Retornamos todo el diccionario validado
+
+class GenerateOtpLoginSerializer(serializers.Serializer): 
+    
+    """
+    Serializer para la generación de un OTP (One-Time Password) en la pantalla de inicio de sesión.
+    """    
+    document = serializers.CharField(max_length=12, help_text="Número de documento del usuario.")
+
+    def validate_document(self, document):
+        """
+        Valida la existencia del usuario asociado al documento.
+
+        Parámetros:
+        - `document` (str): Número de documento del usuario.
+
+        Retorno:
+        - `CustomUser`: Instancia del usuario si es encontrado.
+
+        Excepciones:
+        - `serializers.ValidationError`: Si el usuario no existe.
+        """
+        user = validate_user(document)
+        return user
+
+    def create(self, validated_data):
+        """
+        Genera un nuevo OTP para el usuario y lo envía por correo electrónico.
+
+        - Elimina OTPs previos asociados al usuario.
+        - Crea un nuevo OTP.
+        - Envía el OTP al correo del usuario.
+
+        Parámetros:
+        - `validated_data` (dict): Contiene `document` con la información del usuario.
+
+        Retorno:
+        - `dict`: Contiene el OTP generado y un mensaje de confirmación.
+
+        Excepciones:
+        - `serializers.ValidationError`: Si hay un error al enviar el correo.
+        """
+        user = validated_data['document']  # El método `validate_document` ya retornó el usuario.
+
+        # Eliminar OTPs previos y generar uno nuevo
+        Otp.objects.filter(user=user).delete()
+        nuevo_otp = Otp.objects.create(user=user)
+        otp_generado = nuevo_otp.generateOTP()
+
+        # Simulación de envío de correo (en desarrollo, el mensaje se imprime en consola)
+        try:
+            send_email_recover(user.email, otp_generado)
+        except Exception as e:
+            raise serializers.ValidationError(f"Error al enviar el correo: {str(e)}")
+
+        return {
+            'otp': otp_generado,
+            'message': 'Se ha enviado un correo con el OTP para recuperar la contraseña.'
+        }     
         
-class GenerateOtpSerializer(serializers.Serializer):
+class GenerateOtpPasswordRecoverySerializer(serializers.Serializer):
     """
     Serializador para la generación de un OTP (One-Time Password).
 
