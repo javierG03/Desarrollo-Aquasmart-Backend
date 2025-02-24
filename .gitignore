@@ -11,3 +11,4 @@ backend/pytest.ini
 backend/report.html
 backend/assets/style.css
 .gitignore
+backend/API/__pycache__/settings.cpython-312.pyc
