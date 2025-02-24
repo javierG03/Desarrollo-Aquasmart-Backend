@@ -1,6 +1,10 @@
 import pytest
-from django.contrib.auth.hashers import check_password
 from users.serializers import CustomUserSerializer, RecoverPasswordSerializer, ValidateOtpSerializer, ResetPasswordSerializer
+
+# Add your tests here
+
+from django.contrib.auth.hashers import check_password
+
 from users.models import CustomUser, DocumentType, PersonType, Otp
 
 @pytest.mark.django_db
