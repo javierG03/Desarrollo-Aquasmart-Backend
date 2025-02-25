@@ -1,3 +1,4 @@
+    
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
 from API.sendmsn import send_email_recover
@@ -165,6 +166,20 @@ class GenerateOtpLoginSerializer(serializers.Serializer):
             'otp': otp_generado,
             'message': 'Se ha enviado un correo con el OTP para recuperar la contraseña.'
         }     
+    
+
+class RecoverPasswordSerializer(serializers.Serializer):
+    document = serializers.CharField(max_length=12, required=True)
+
+    def create(self, validated_data):
+        user = validate_user(validated_data['document'])
+        if not user:
+            raise NotFound({'details': 'User not found'})
+
+        otp_serializer = GenerateOtpPasswordRecoverySerializer(data={"document": validated_data['document']})
+        if otp_serializer.is_valid(raise_exception=True):
+            otp_data = otp_serializer.save()
+            return otp_data
         
 class GenerateOtpPasswordRecoverySerializer(serializers.Serializer):
     """
