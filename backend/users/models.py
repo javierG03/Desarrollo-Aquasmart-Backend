@@ -1,6 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
-from django.utils import timezone
+from django.utils.timezone import now, timedelta
 from datetime import datetime
 import secrets
 import string
@@ -104,11 +104,11 @@ class Otp(models.Model):
 
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, to_field='document', related_name='otp', verbose_name="Usuario")
     otp = models.CharField(max_length=6, unique=True, verbose_name="Código OTP")
-    creation_time = models.DateTimeField(default=timezone.now, verbose_name="Fecha de Creación")
+    creation_time = models.DateTimeField(default=now, verbose_name="Fecha de Creación")
     is_validated = models.BooleanField(default=False, verbose_name="Validado")
     is_login = models.BooleanField(default=False, verbose_name="Para Inicio de Sesión")
 
-    def generateOTP(self):
+    def generate_otp(self):
         """
         Genera un código OTP de 6 dígitos y lo almacena en la base de datos.
 
@@ -129,7 +129,7 @@ class Otp(models.Model):
         Returns:
             bool: True si el OTP es válido, False si ha expirado.
         """
-        return (timezone.now() - self.creation_time) <= timezone.timedelta(minutes=15)
+        return (now() - self.creation_time) <= timedelta(minutes=15)
 
     def __str__(self):
         return f"OTP {self.otp} para {self.user.first_name}"
@@ -166,7 +166,7 @@ class LoginHistory(models.Model):
     """
 
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='login_history', verbose_name="Usuario")
-    timestamp = models.DateTimeField(default=timezone.now, verbose_name="Fecha y Hora de Inicio de Sesión")
+    timestamp = models.DateTimeField(default=now, verbose_name="Fecha y Hora de Inicio de Sesión")
 
     def __str__(self):
         return f"{self.user.document} - {self.timestamp}"
@@ -175,3 +175,49 @@ class LoginHistory(models.Model):
         verbose_name = "Historial de Inicio de Sesión"
         verbose_name_plural = "Historiales de Inicio de Sesión"         
 
+class LoginRestriction(models.Model):
+    user = models.ForeignKey(
+        CustomUser, 
+        on_delete=models.CASCADE, 
+        to_field='document', 
+        related_name='login_restriction', 
+        verbose_name="user"
+    )
+    attempts = models.IntegerField(default=0)
+    blocked_until = models.DateTimeField(null=True, blank=True)
+    last_attempt_time = models.DateTimeField(null=True, blank=True)
+    
+    def register_attempt(self):
+        """Registra un intento fallido de inicio de sesión"""
+        if self.is_blocked():
+            return "User is blocked until {}".format(self.blocked_until)
+        
+        self.attempts += 1
+        self.last_attempt_time = now()
+        
+        if self.attempts == 4:
+            message = "Último intento antes de ser bloqueado."
+        elif self.attempts >= 5:
+            self.block_user()
+            message = "Usuario bloqueado por 24 horas."
+        else:
+            message = "Intento fallido registrado."
+        
+        self.save()
+        return message
+    
+    def block_user(self):
+        """Bloquea al usuario por 24 horas"""
+        self.blocked_until = now() + timedelta(hours=24)
+        self.attempts = 0  # Reiniciar intentos
+        self.save()
+    
+    def is_blocked(self):
+        """Verifica si el usuario está bloqueado"""
+        if self.blocked_until and now() < self.blocked_until:
+            return True
+        if self.blocked_until and now() >= self.blocked_until:
+            self.blocked_until = None
+            self.attempts = 0
+            self.save()
+        return False

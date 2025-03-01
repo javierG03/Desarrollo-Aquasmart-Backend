@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
-from API.sendmsn import send_email_recover
+from API.sendmsn import send_sms_recover
 from .models import DocumentType, PersonType, CustomUser, LoginHistory, Otp
 from django.contrib.auth.hashers import make_password, check_password
 from django.contrib.auth.password_validation import validate_password
@@ -9,6 +9,7 @@ from .validate import validate_user,validate_otp
 from rest_framework.exceptions import NotFound
 from django.contrib.auth.signals import user_logged_in
 from django.utils import timezone
+from .models import LoginRestriction
 
 
 class DocumentTypeSerializer(serializers.ModelSerializer):
@@ -70,15 +71,13 @@ class LoginHistorySerializer(serializers.ModelSerializer):
 class LoginSerializer(serializers.Serializer):
     document = serializers.CharField(max_length=12, required=True)
     password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
-    
+
     def validate(self, data):
         document = data.get('document')
         password = data.get('password')               
 
-        
         user = validate_user(document)
-          
-        
+
         if not user: 
             raise NotFound({'details': 'User not found'})
 
@@ -88,25 +87,43 @@ class LoginSerializer(serializers.Serializer):
         if not user.is_registered:
             raise serializers.ValidationError({"detail": "User is waiting to pass pre-registration. Please contact support for more information."})
 
+        # Buscar registro de intentos (si existe)
+        login_restriction = LoginRestriction.objects.filter(user=user).first()
+
+        # Verificar si el usuario está bloqueado
+        if login_restriction and login_restriction.is_blocked():
+            raise serializers.ValidationError({"detail": f"Too many failed attempts. Try again after {login_restriction.blocked_until}."})
+
+        # Validar la contraseña
         if not user.check_password(password):
-            raise serializers.ValidationError({"detail": "Invalid credentials."})
+            if not login_restriction:
+                # Crear el registro solo en caso de intento fallido
+                login_restriction = LoginRestriction.objects.create(user=user)
+
+            message = login_restriction.register_attempt()
+            raise serializers.ValidationError({"detail": message})
+
+        # Si el login es exitoso, reiniciar intentos (si existía el registro)
+        if login_restriction:
+            login_restriction.attempts = 0
+            login_restriction.last_attempt_time = timezone.now()
+            login_restriction.save()
 
         # Generar OTP
         otp_serializer = GenerateOtpLoginSerializer(data={"document": document})
         if otp_serializer.is_valid(raise_exception=True):
-            otp_data = otp_serializer.save()  # `save()` devuelve el diccionario con el OTP y mensaje
+            otp_data = otp_serializer.save()
             
-            # Agregar la información del usuario y OTP a `data`
-            data["user_document"] = user.document  # Guardamos el usuario validado
+            # Agregar información del usuario y OTP
+            data["user_document"] = user.document
             data["otp"] = otp_data["otp"]
             data["message"] = otp_data["message"]
-            
-            
+
         data.pop("otp", None)    
         data.pop("user_document", None)    
         data.pop("password", None)
-        
-        return data  # Retornamos todo el diccionario validado
+
+        return data
 
 class GenerateOtpLoginSerializer(serializers.Serializer): 
     
@@ -153,11 +170,11 @@ class GenerateOtpLoginSerializer(serializers.Serializer):
         # Eliminar OTPs previos y generar uno nuevo
         Otp.objects.filter(user=user).delete()
         nuevo_otp = Otp.objects.create(user=user)
-        otp_generado = nuevo_otp.generateOTP()
+        otp_generado = nuevo_otp.generate_otp()
 
         # Simulación de envío de correo (en desarrollo, el mensaje se imprime en consola)
         try:
-            send_email_recover(user.email, otp_generado)
+            send_sms_recover(user.email, otp_generado)
         except Exception as e:
             raise serializers.ValidationError(f"Error al enviar el correo: {str(e)}")
 
@@ -231,11 +248,11 @@ class GenerateOtpPasswordRecoverySerializer(serializers.Serializer):
         # Eliminar OTPs previos y generar uno nuevo
         Otp.objects.filter(user=user).delete()
         nuevo_otp = Otp.objects.create(user=user)
-        otp_generado = nuevo_otp.generateOTP()
+        otp_generado = nuevo_otp.generate_otp()
 
         # Enviar OTP al teléfono o correo
         try:
-            send_email_recover(user.email, otp_generado)
+            send_sms_recover(user.email, otp_generado)
             #send_sms_recover(user.phone, otp_generado)  # Si implementas SMS
         except Exception as e:
             raise serializers.ValidationError(f"Error al enviar el OTP: {str(e)}")
