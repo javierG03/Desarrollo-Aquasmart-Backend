@@ -36,7 +36,7 @@ def test_custom_user_serializer_create():
 def test_recover_password_serializer():
     user = CustomUser.objects.create(document='12345678', email='john.doe@example.com')
 
-    data = {'document': '12345678'}
+    data = {'document': '12345678', 'phone': '123456789'}
     serializer = RecoverPasswordSerializer(data=data)
     assert serializer.is_valid(), serializer.errors
 

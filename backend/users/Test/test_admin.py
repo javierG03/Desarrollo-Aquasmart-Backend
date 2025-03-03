@@ -18,7 +18,9 @@ def test_admin_registration():
 def test_admin_list_display():
     """ Verifica que CustomUserAdmin tenga los campos correctos en list_display """
     admin_instance = CustomUserAdmin(CustomUser, site)
-    expected_fields = ('document', 'document_type', 'person_type', 'first_name', 'last_name', 'email', 'is_staff', 'is_active', 'date_joined', 'last_login', 'display_groups')
+    expected_fields =('document', 'document_type', 'person_type', 'first_name', 'last_name', 
+                'email', 'is_staff', 'is_active', 'is_registered', 'date_joined', 
+                'last_login', 'display_groups')
     assert admin_instance.list_display == expected_fields
 
 @pytest.mark.django_db

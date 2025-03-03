@@ -13,12 +13,13 @@ from users.models import CustomUser
 def test_admin_login(client):
     """ Prueba que un usuario admin pueda acceder al panel de administración """
     admin_user = CustomUser.objects.create_superuser(
-        document="admin123",
-        first_name="Admin",
-        last_name="User",
-        email="admin@example.com",
-        phone="1234567890",
-        password="password123"
+    document="admin123",
+    first_name="Admin",
+    last_name="User",
+    address="Calle 123",
+    email="admin@example.com",
+    phone="1234567890",
+    password="password123"
     )
     
     assert admin_user.is_staff is True  

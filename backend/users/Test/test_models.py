@@ -43,7 +43,7 @@ def test_generate_otp(db):
     assert len(otp_instance.otp) == 6
     assert otp_instance.otp.isdigit()
 
-def test_validate_otp(db):
+def test_validate_life_otp(db):
     user = CustomUser.objects.create_user(
         document="555666777",
         first_name="Ana",
@@ -55,9 +55,9 @@ def test_validate_otp(db):
     )
     otp_instance = Otp.objects.create(user=user)
     otp_instance.generateOTP()
-    assert otp_instance.validateOTP() is True
+    assert otp_instance.validate_life_otp() is True
     otp_instance.creation_time = timezone.now() - timezone.timedelta(minutes=16)
-    assert otp_instance.validateOTP() is False
+    assert otp_instance.validate_life_otp() is False
 
 def test_login_history_creation(db):
     user = CustomUser.objects.create_user(

@@ -39,7 +39,7 @@ class TestCustomUserModel:
         assert user.last_name == "Perdomo"
         assert user.email == "oscar@example.com"
         assert user.phone == "1234567890"
-        assert user.isRegistered is False
+        assert user.is_registered is False
         assert user.check_password("password123") is True
 
 @pytest.mark.django_db
