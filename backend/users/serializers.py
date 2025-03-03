@@ -471,3 +471,12 @@ class RefreshTokenSerializer(serializers.Serializer):
         except Exception:
             raise serializers.ValidationError("Token inválido o expirado.")   
         
+        
+class UserProfileSerializer(serializers.ModelSerializer):
+    document_type_name = serializers.CharField(source='document_type.typeName', read_only=True)
+    person_type_name = serializers.CharField(source='person_type.typeName', read_only=True)
+    print(document_type_name)
+
+    class Meta:
+        model = CustomUser
+        fields = ['email', 'document', 'document_type_name', 'first_name', 'last_name', 'phone', 'address', 'person_type_name']       
