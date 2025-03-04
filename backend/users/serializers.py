@@ -10,6 +10,7 @@ from rest_framework.exceptions import NotFound
 from django.contrib.auth.signals import user_logged_in
 from django.utils import timezone
 from .models import LoginRestriction
+from rest_framework.authtoken.models import Token
 
 
 class DocumentTypeSerializer(serializers.ModelSerializer):
@@ -320,8 +321,8 @@ class ValidateOtpSerializer(serializers.Serializer):
         response_data = {}
 
         if otp_instance.is_login:
-            # Generar tokens JWT para autenticación
-            refresh = RefreshToken.for_user(user)
+            # Generar tokens JWT para autenticación            
+            token, created = Token.objects.get_or_create(user=user)
             user.last_login = timezone.now()
             user.save()
 
@@ -329,8 +330,8 @@ class ValidateOtpSerializer(serializers.Serializer):
             request = self.context.get('request')                                
             user_logged_in.send(sender=user.__class__, request=request, user=user)    
 
-            response_data['access'] = str(refresh.access_token)
-            response_data['refresh'] = str(refresh)
+            response_data['token'] = str(token.key)
+            
 
             # Eliminar OTP de inicio de sesión usados
             Otp.objects.filter(user=user, is_login=True).delete()
