@@ -199,16 +199,16 @@ class LoginRestriction(models.Model):
             message = "Último intento antes de ser bloqueado."
         elif self.attempts >= 5:
             self.block_user()
-            message = "Usuario bloqueado por 24 horas."
+            message = "Usuario bloqueado por 30 minutos."
         else:
-            message = "Intento fallido registrado."
+            message = "Credenciales inválidas."
         
         self.save()
         return message
     
     def block_user(self):
         """Bloquea al usuario por 24 horas"""
-        self.blocked_until = now() + timedelta(hours=24)
+        self.blocked_until = now() + timedelta(hours=0.5)
         self.attempts = 0  # Reiniciar intentos
         self.save()
     
