@@ -46,7 +46,7 @@ jobs:
         run: |
           python -m venv venv
           source venv/bin/activate
-          pip install -r Desarrollo-Aquasmart-Backend/backend/requirements.txt
+          pip install -r Desarrollo-Aquasmart-Backend\backend\requirements.txt
 
       - name: Run migrations
         run: |
