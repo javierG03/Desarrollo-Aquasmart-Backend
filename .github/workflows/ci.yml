@@ -58,7 +58,7 @@ jobs:
       - name: Run tests
         run: |
           source venv/bin/activate
-          cd Desarrollo-Aquasmart-Backend/backend
+          cd backend
           pytest
 
   frontend:
@@ -77,7 +77,7 @@ jobs:
       - name: Install dependencies
         run: |
           ls
-          cd Desarrollo-Aquasmart-Backend/frontendWeb
+          cd frontendWeb
           npm install
 
       - name: Run tests
