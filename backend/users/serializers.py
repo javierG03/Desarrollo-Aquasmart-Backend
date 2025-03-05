@@ -12,6 +12,7 @@ from django.contrib.auth.signals import user_logged_in
 from django.utils import timezone
 from .models import LoginRestriction
 from rest_framework.authtoken.models import Token
+from rest_framework.exceptions import NotFound,PermissionDenied
 
 
 class DocumentTypeSerializer(serializers.ModelSerializer):
@@ -70,6 +71,7 @@ class LoginHistorySerializer(serializers.ModelSerializer):
         model = LoginHistory
         fields = ['timestamp', 'user']
         
+
 class LoginSerializer(serializers.Serializer):
     document = serializers.CharField(max_length=12, required=True)
     password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
@@ -84,7 +86,7 @@ class LoginSerializer(serializers.Serializer):
             raise NotFound({'details': 'User not found'})
 
         if not user.is_active:
-            raise serializers.ValidationError({"detail": "Your account is inactive. Please contact support."})
+            raise PermissionDenied({"detail": "Your account is inactive. Please contact support."})
 
         if not user.is_registered:
             raise serializers.ValidationError({"detail": "User is waiting to pass pre-registration. Please contact support for more information."})

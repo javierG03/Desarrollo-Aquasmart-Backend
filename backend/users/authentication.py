@@ -8,6 +8,9 @@ from .serializers import  GenerateOtpPasswordRecoverySerializer, ValidateOtpSeri
 from rest_framework.exceptions import ValidationError, NotFound
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import ValidationError, NotFound,PermissionDenied
+
+
 class LoginView(APIView):
     """
     Vista para el inicio de sesión de usuarios.
@@ -16,10 +19,10 @@ class LoginView(APIView):
     Devuelve un token de acceso en caso de éxito.
 
     Permisos:
-    - `AllowAny`: No requiere autenticación para acceder.
+    - AllowAny: No requiere autenticación para acceder.
 
     Métodos:
-    - `POST`: Recibe las credenciales del usuario y devuelve el token de autenticación.
+    - POST: Recibe las credenciales del usuario y devuelve el token de autenticación.
     """
     permission_classes = [AllowAny]
 
@@ -49,13 +52,13 @@ class LoginView(APIView):
         devuelve un token de acceso.
 
         Parámetros:
-        - `request.data` (dict): Debe contener las credenciales necesarias.
+        - request.data (dict): Debe contener las credenciales necesarias.
 
         Retorno:
-        - `200 OK`: Si la autenticación es exitosa.
-        - `400 BAD REQUEST`: Si hay errores de validación en las credenciales.
-        - `404 NOT FOUND`: Si el usuario no existe.
-        - `500 INTERNAL SERVER ERROR`: Si ocurre un error inesperado.
+        - 200 OK: Si la autenticación es exitosa.
+        - 400 BAD REQUEST: Si hay errores de validación en las credenciales.
+        - 404 NOT FOUND: Si el usuario no existe.
+        - 500 INTERNAL SERVER ERROR: Si ocurre un error inesperado.
         """
         try:
             serializer = LoginSerializer(data=request.data)
@@ -74,8 +77,10 @@ class LoginView(APIView):
             return Response({"error": e.detail}, status=status.HTTP_400_BAD_REQUEST)
         except NotFound as e:
             return Response({"error": e.detail}, status=status.HTTP_404_NOT_FOUND)
+        except PermissionDenied as e:
+            return Response({"error": e.detail}, status=status.HTTP_403_FORBIDDEN) 
         except Exception as e:
-            return Response({"error": "Unexpected error.", "detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
+            return Response({"error": "Unexpected error.", "detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class GenerateOtpView(APIView):

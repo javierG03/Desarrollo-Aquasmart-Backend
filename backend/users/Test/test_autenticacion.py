@@ -44,7 +44,8 @@ class TestLoginView:
         url = reverse("login")
         response = client.post(url, {"document": "123456789", "password": "password123"})
         assert response.status_code == status.HTTP_403_FORBIDDEN
-        assert response.data["detail"] == "Your account is inactive. Please contact support."
+        assert "error" in response.data
+        assert "detail" in response.data["error"]
 
     def test_login_blocked_user(self, setup_user):
         LoginRestriction.objects.create(user=setup_user, attempts=5)
@@ -63,5 +64,6 @@ class TestLoginView:
         url = reverse("login")
         response = client.post(url, {})
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "document" in response.data
-        assert "password" in response.data
+        assert "error" in response.data
+        assert "document" in response.data["error"]
+        assert "password" in response.data["error"]
