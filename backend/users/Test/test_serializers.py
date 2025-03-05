@@ -1,5 +1,5 @@
 import pytest
-from users.serializers import CustomUserSerializer, RecoverPasswordSerializer, ValidateOtpSerializer, ResetPasswordSerializer
+from users.serializers import CustomUserSerializer, GenerateOtpPasswordRecoverySerializer, ValidateOtpSerializer, ResetPasswordSerializer
 
 # Add your tests here
 
@@ -34,10 +34,10 @@ def test_custom_user_serializer_create():
 
 @pytest.mark.django_db
 def test_recover_password_serializer():
-    user = CustomUser.objects.create(document='12345678', email='john.doe@example.com')
+    user = CustomUser.objects.create(document='12345678', email='john.doe@example.com', phone= '123456789')
 
     data = {'document': '12345678', 'phone': '123456789'}
-    serializer = RecoverPasswordSerializer(data=data)
+    serializer = GenerateOtpPasswordRecoverySerializer(data=data)
     assert serializer.is_valid(), serializer.errors
 
     response = serializer.create(serializer.validated_data)

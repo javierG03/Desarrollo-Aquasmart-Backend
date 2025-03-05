@@ -32,7 +32,10 @@ class TestLoginView:
         url = reverse("login")
         response = client.post(url, {"document": "123456789", "password": "wrongpassword"})
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "detail" in response.data
+        assert "error" in response.data
+        assert "detail" in response.data["error"]
+        assert response.data["error"]["detail"][0] == "Credenciales inválidas."
+
 
     def test_login_inactive_user(self, setup_user):
         setup_user.is_active = False
@@ -48,9 +51,12 @@ class TestLoginView:
         client = APIClient()
         url = reverse("login")
         response = client.post(url, {"document": "123456789", "password": "wrongpassword"})
+    
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "detail" in response.data
-        assert "Too many failed attempts" in response.data["detail"]
+        assert "error" in response.data  # ✅ Primero verificamos que "error" existe
+        assert "detail" in response.data["error"]  # ✅ Verificar que "detail" está dentro de "error"
+        assert response.data["error"]["detail"][0] == "Usuario bloqueado por 30 minutos."  # ✅ Verificamos el mensaje exacto
+
 
     def test_login_missing_credentials(self):
         client = APIClient()
