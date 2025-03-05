@@ -17,14 +17,16 @@ Repositorio de desarrollo del sistema de gestion de distritos de riego acorde a 
 #### Instalar las dependencias del archivo requirements.txt
 `pip install -r requirements.txt`
 
-#### Crear las migraciones
-`python manage.py makemigrations`
-
 #### Ejecutar las migraciones
 `python manage.py migrate`
 
 #### Crear SuperUsuario
 `python manage.py createsuperuser`
+
+#### Crear archivo .env
+dentro del el archivo .env se crea sa sigiente variable
+`SECRET_KEY ='palabar secreta`
+se puede dejar esa palabra o cambiar si lo desea.
 
 #### Lanzamiento del servidor
 `python manage.py runserver`

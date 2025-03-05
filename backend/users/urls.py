@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import CustomUserCreateView, CustomUserListView,UserRegisterAPIView, DocumentTypeView, PersonTypeView, UserInactiveAPIView,UseroProfilelView
-from .authentication import GenerateOtpView,ResetPasswordView,ValidateOtpView, LoginView, RefreshTokenView
+from .authentication import GenerateOtpView,ResetPasswordView,ValidateOtpView, LoginView, LogoutView
 urlpatterns = [
     path('admin/listed', CustomUserListView.as_view(), name='customuser-list'),  # Listar usuarios
     path('admin/document-type',DocumentTypeView.as_view(), name='document-type'),
@@ -10,9 +10,9 @@ urlpatterns = [
     path('profile', UseroProfilelView.as_view(), name='perfil-usuario'),
     path('pre-register', CustomUserCreateView.as_view(), name='customuser-pre-register'),  # Pre-registro de usuarios    
     path('login', LoginView.as_view(), name='login'), # Login
-    path('token/refresh', RefreshTokenView.as_view(), name='token_refresh'),
     path('generate-otp', GenerateOtpView.as_view(), name='generate_otp'),
     path('validate-otp',ValidateOtpView.as_view(), name='validate-otp'),
     path('reset-password',ResetPasswordView.as_view(), name='reset-password'),
+    path('logout', LogoutView.as_view(), name='logout'),
     
 ]
