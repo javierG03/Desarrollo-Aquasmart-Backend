@@ -39,7 +39,7 @@ def test_generate_otp(db):
         address="Calle 456"
     )
     otp_instance = Otp.objects.create(user=user)
-    otp_instance.generateOTP()
+    otp_instance.generate_otp()
     assert len(otp_instance.otp) == 6
     assert otp_instance.otp.isdigit()
 
@@ -54,7 +54,7 @@ def test_validate_life_otp(db):
         address="Avenida 789"
     )
     otp_instance = Otp.objects.create(user=user)
-    otp_instance.generateOTP()
+    otp_instance.generate_otp()
     assert otp_instance.validate_life_otp() is True
     otp_instance.creation_time = timezone.now() - timezone.timedelta(minutes=16)
     assert otp_instance.validate_life_otp() is False
