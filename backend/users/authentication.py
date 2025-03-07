@@ -8,18 +8,13 @@ from .serializers import  GenerateOtpPasswordRecoverySerializer, ValidateOtpSeri
 from rest_framework.exceptions import ValidationError, NotFound,PermissionDenied
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import IsAuthenticated
+from API.custom_auth import CustomTokenAuthentication
 class LoginView(APIView):
     """
-    Vista para el inicio de sesión de usuarios.
-
-    Permite a los usuarios autenticarse proporcionando sus credenciales.
-    Devuelve un token de acceso en caso de éxito.
-
-    Permisos:
-    - `AllowAny`: No requiere autenticación para acceder.
-
-    Métodos:
-    - `POST`: Recibe las credenciales del usuario y devuelve el token de autenticación.
+    Endpoint para la autenticación de usuarios con generación de OTP.
+    
+    Permite a los usuarios autenticarse con su documento y contraseña.
+    Si la autenticación es exitosa, se genera un OTP y se asocia al usuario.
     """
     permission_classes = [AllowAny]
     @extend_schema(
@@ -114,14 +109,11 @@ class LoginView(APIView):
         """
         Maneja la autenticación del usuario y la generación del OTP.
 
-        Parámetros:
-        - `request.data` (dict): Debe contener las credenciales necesarias.
+        Args:
+            request (Request): Datos de entrada con documento y contraseña.
 
-        Retorno:
-        - `200 OK`: Si la autenticación es exitosa.
-        - `400 BAD REQUEST`: Si hay errores de validación en las credenciales.
-        - `404 NOT FOUND`: Si el usuario no existe.
-        - `500 INTERNAL SERVER ERROR`: Si ocurre un error inesperado.
+        Returns:
+            Response: Respuesta con mensaje de éxito o error.
         """
         try:
             serializer = LoginSerializer(data=request.data)
@@ -148,7 +140,11 @@ class LoginView(APIView):
         except PermissionDenied as e:
             return Response({"error": e.detail}, status=status.HTTP_403_FORBIDDEN) 
         except Exception as e:
-            return Response({"error": "Unexpected error.", "detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
+            return Response(
+                {"error": "Unexpected error.", "detail": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            ) 
+
 
 
 class GenerateOtpPasswordRecoveryView(APIView):

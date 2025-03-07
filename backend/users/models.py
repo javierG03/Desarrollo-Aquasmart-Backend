@@ -95,12 +95,8 @@ class CustomUser(AbstractUser):
     objects = UserManager()
 
     def __str__(self):
-        return f"{self.document} - {self.first_name} {self.last_name}"    
-    
-    class Meta:
-        app_label = 'users' 
-        
-"""Clase que maneja la cracion y validacion de codigo de un solo uso"""    
+        return f"{self.document} - {self.first_name} {self.last_name}"   
+
 class Otp(models.Model):
     """
     Modelo para gestionar códigos OTP para autenticación y recuperación de cuentas.

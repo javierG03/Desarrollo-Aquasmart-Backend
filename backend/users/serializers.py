@@ -1,4 +1,3 @@
-    
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
 from API.sendmsn import send_sms_recover
@@ -11,7 +10,6 @@ from django.contrib.auth.signals import user_logged_in
 from django.utils import timezone
 from .models import LoginRestriction
 from rest_framework.authtoken.models import Token
-from rest_framework.exceptions import NotFound,PermissionDenied
 
 
 class DocumentTypeSerializer(serializers.ModelSerializer):
@@ -106,7 +104,6 @@ class LoginHistorySerializer(serializers.ModelSerializer):
         model = LoginHistory
         fields = ['timestamp', 'user']
         
-
 class LoginSerializer(serializers.Serializer):
     """
     Serializer para la autenticación de usuarios mediante documento y contraseña.
@@ -247,8 +244,8 @@ class GenerateOtpLoginSerializer(serializers.Serializer):
 
         return {
             'otp': otp_generado,
-            'message': 'Se ha enviado un correo con el OTP para recuperar la contraseña.'
-        }     
+            'message': 'Se ha enviado un msn con el OTP para poder iniciar sesión.'
+        }  
         
 class GenerateOtpPasswordRecoverySerializer(serializers.Serializer):
     """
