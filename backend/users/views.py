@@ -2,7 +2,7 @@ from rest_framework import generics,status
 from rest_framework.views import APIView
 from .models import CustomUser, DocumentType, PersonType  
 from .serializers import CustomUserSerializer, DocumentTypeSerializer, PersonTypeSerializer ,UserProfileSerializer
-from rest_framework.permissions import IsAdminUser, IsAuthenticated  
+from rest_framework.permissions import IsAdminUser, IsAuthenticated, AllowAny  
 from drf_spectacular.utils import extend_schema, extend_schema_view,OpenApiParameter
 from rest_framework.response import Response
 from .validate import validate_user
@@ -28,6 +28,13 @@ class CustomUserCreateView(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
     serializer_class = CustomUserSerializer
     permission_classes = []  # Sin restricciones de acceso (puede ser cambiado según necesidad)
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+        user = response.data
+        return Response(
+            {"message": f"El usuario {user['document']} - {user['first_name']} {user['last_name']} se ha pre-registrado con éxito"},
+            status=status.HTTP_201_CREATED
+        )
     
 @extend_schema_view(
     post =extend_schema(
@@ -46,6 +53,11 @@ class DocumentTypeView(generics.CreateAPIView):
     queryset = DocumentType.objects.all()
     serializer_class = DocumentTypeSerializer
     permission_classes = [IsAdminUser, IsAuthenticated]
+
+class DocumentTypeListView(generics.ListAPIView):
+    queryset = DocumentType.objects.all()
+    serializer_class= DocumentTypeSerializer
+    permission_classes= [AllowAny]    
     
 @extend_schema_view(
     post =extend_schema(
@@ -60,10 +72,16 @@ class PersonTypeView(generics.CreateAPIView):
 
     Solo los usuarios administradores autenticados pueden acceder a esta vista.
     """
-
     queryset = PersonType.objects.all()
     serializer_class = PersonTypeSerializer
     permission_classes = [IsAdminUser, IsAuthenticated]
+    
+class PersonTypeListView(generics.ListAPIView):
+    queryset = PersonType.objects.all()
+    serializer_class= PersonTypeSerializer   
+    permission_classes= [AllowAny]       
+    
+    
 @extend_schema_view(
     get=extend_schema(
         summary="Listar todos los usuarios",

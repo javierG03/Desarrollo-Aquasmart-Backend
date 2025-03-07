@@ -5,9 +5,8 @@ from API.sendmsn import send_sms_recover
 from .models import DocumentType, PersonType, CustomUser, LoginHistory, Otp
 from django.contrib.auth.hashers import make_password, check_password
 from django.contrib.auth.password_validation import validate_password
-from rest_framework_simplejwt.tokens import RefreshToken
 from .validate import validate_user,validate_otp
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotFound,PermissionDenied
 from django.contrib.auth.signals import user_logged_in
 from django.utils import timezone
 from .models import LoginRestriction
@@ -48,9 +47,45 @@ class CustomUserSerializer(serializers.ModelSerializer):
         fields = [
             'document', 'first_name', 'last_name', 'email', 
             'document_type', 'person_type', 'phone', 'address',
-            'password','is_registered', 'is_active',
+            'password', 'is_registered', 'is_active',
         ]
-        read_only_fields = ('isRegistered', 'is_active')       
+        read_only_fields = ('is_registered', 'is_active')
+        
+        extra_kwargs = {
+            'document': {'validators': []},
+            'email': {'validators': []},
+        }
+
+    def validate_document(self, value):
+        """
+        Valida si el documento ya existe, si es solo numérico y maneja los mensajes personalizados.
+        """
+        if not value.isdigit():
+            raise serializers.ValidationError("El documento debe contener solo números.")
+
+        existing_user = CustomUser.objects.filter(document=value).first()
+        if existing_user:
+            if not existing_user.is_registered:
+                raise serializers.ValidationError("Ya tienes un pre-registro activo.")
+            else:
+                raise serializers.ValidationError("El usuario ya pasó el pre-registro.")
+        return value
+
+    def validate_phone(self, value):
+        """
+        Valida que el número de teléfono solo contenga números.
+        """
+        if not value.isdigit():
+            raise serializers.ValidationError("El teléfono debe contener solo números.")
+        return value
+
+    def validate_email(self, value):
+        """
+        Valida si el email ya existe y maneja el mensaje personalizado.
+        """
+        if CustomUser.objects.filter(email=value).exists():
+            raise serializers.ValidationError("Este correo ya está registrado.")
+        return value
 
     def create(self, validated_data):
         """
@@ -73,6 +108,31 @@ class LoginHistorySerializer(serializers.ModelSerializer):
         
 
 class LoginSerializer(serializers.Serializer):
+    """
+    Serializer para la autenticación de usuarios mediante documento y contraseña.
+
+    Este serializer maneja la validación de usuarios, verificación de intentos fallidos,
+    bloqueo de cuenta y generación de OTP en caso de autenticación exitosa.
+
+    Campos:
+        - document (str): Número de documento del usuario (máx. 12 caracteres).
+        - password (str): Contraseña del usuario (solo escritura).
+
+    Validaciones:
+        - Verifica que el usuario exista y esté activo.
+        - Revisa si el usuario ha completado su pre-registro.
+        - Controla intentos fallidos de inicio de sesión y bloquea el usuario si es necesario.
+        - Genera un código OTP en caso de autenticación exitosa.
+
+    Errores posibles:
+        - 404 NotFound: Usuario no encontrado.
+        - 403 PermissionDenied: Cuenta inactiva.
+        - 400 ValidationError: Usuario en pre-registro, intentos fallidos o credenciales incorrectas.
+
+    Retorna:
+        - Un diccionario con mensaje de éxito y OTP generado si la autenticación es correcta.
+    """
+    
     document = serializers.CharField(max_length=12, required=True)
     password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
 
@@ -129,54 +189,57 @@ class LoginSerializer(serializers.Serializer):
 
         return data
 
-class GenerateOtpLoginSerializer(serializers.Serializer): 
-    
+class GenerateOtpLoginSerializer(serializers.Serializer):
     """
-    Serializer para la generación de un OTP (One-Time Password) en la pantalla de inicio de sesión.
-    """    
-    document = serializers.CharField(max_length=12, help_text="Número de documento del usuario.")
+    Serializador para la generación de OTP en el login.
+
+    Este serializador permite a los usuarios recibir un código OTP para autenticación.
+    """
+
+    document = serializers.CharField(
+        max_length=12,
+        help_text="Número de documento del usuario."
+    )
 
     def validate_document(self, document):
         """
-        Valida la existencia del usuario asociado al documento.
+        Valida si el usuario existe en la base de datos.
 
-        Parámetros:
-        - `document` (str): Número de documento del usuario.
+        Args:
+            document (str): Número de documento del usuario.
 
-        Retorno:
-        - `CustomUser`: Instancia del usuario si es encontrado.
+        Returns:
+            user (CustomUser): Instancia del usuario si es válido.
 
-        Excepciones:
-        - `serializers.ValidationError`: Si el usuario no existe.
+        Raises:
+            serializers.ValidationError: Si el usuario no existe.
         """
         user = validate_user(document)
+        if not user:
+            raise serializers.ValidationError("User not found.")
         return user
 
     def create(self, validated_data):
         """
-        Genera un nuevo OTP para el usuario y lo envía por correo electrónico.
+        Genera un nuevo código OTP y lo envía por mensaje de texto.
 
-        - Elimina OTPs previos asociados al usuario.
-        - Crea un nuevo OTP.
-        - Envía el OTP al correo del usuario.
+        Args:
+            validated_data (dict): Datos validados que contienen el documento del usuario.
 
-        Parámetros:
-        - `validated_data` (dict): Contiene `document` con la información del usuario.
+        Returns:
+            dict: Diccionario con el OTP generado y un mensaje de confirmación.
 
-        Retorno:
-        - `dict`: Contiene el OTP generado y un mensaje de confirmación.
-
-        Excepciones:
-        - `serializers.ValidationError`: Si hay un error al enviar el correo.
+        Raises:
+            serializers.ValidationError: Si hay un error al enviar el correo.
         """
-        user = validated_data['document']  # El método `validate_document` ya retornó el usuario.
+        user = validated_data['document']  # `validate_document` ya retornó el usuario.
 
         # Eliminar OTPs previos y generar uno nuevo
         Otp.objects.filter(user=user).delete()
         nuevo_otp = Otp.objects.create(user=user)
         otp_generado = nuevo_otp.generate_otp()
 
-        # Simulación de envío de correo (en desarrollo, el mensaje se imprime en consola)
+        # Simulación de envío de correo/SMS
         try:
             send_sms_recover(user.email, otp_generado)
         except Exception as e:
@@ -186,82 +249,45 @@ class GenerateOtpLoginSerializer(serializers.Serializer):
             'otp': otp_generado,
             'message': 'Se ha enviado un correo con el OTP para recuperar la contraseña.'
         }     
-    
-
-class RecoverPasswordSerializer(serializers.Serializer):
-    document = serializers.CharField(max_length=12, required=True)
-
-    def create(self, validated_data):
-        user = validate_user(validated_data['document'])
-        if not user:
-            raise NotFound({'details': 'User not found'})
-
-        otp_serializer = GenerateOtpPasswordRecoverySerializer(data={"document": validated_data['document']})
-        if otp_serializer.is_valid(raise_exception=True):
-            otp_data = otp_serializer.save()
-            return otp_data
         
 class GenerateOtpPasswordRecoverySerializer(serializers.Serializer):
     """
-    Serializador para la generación de un OTP (One-Time Password).
-
-    Este serializador permite a un usuario solicitar un OTP, que se enviará a su correo electrónico.
-    El OTP puede ser utilizado para recuperación de contraseña u otras validaciones.
-
-    Campos:
-    - `document`: Número de documento del usuario.
-
-    Respuestas:
-    - Si el usuario existe, genera un OTP y lo envía por correo electrónico.
-    - Si el usuario no existe o hay un problema en el envío del correo, genera un error de validación.
+    Serializer para generar un OTP en el proceso de recuperación de contraseña.
     """
-
-    document = serializers.CharField(max_length=12, help_text="Número de documento del usuario.")
-    phone = serializers.CharField(max_length=20)
+    
+    document = serializers.CharField(
+        max_length=12, 
+        help_text="Número de documento del usuario registrado."
+    )
+    phone = serializers.CharField(
+        max_length=20, 
+        help_text="Número de teléfono asociado a la cuenta del usuario."
+    )
 
     def validate(self, attrs):
         """
-        Valida la existencia del usuario asociado al documento y teléfono.
-
-        Parámetros:
-        - `attrs` (dict): Contiene `document` y `phone`.
-
-        Retorno:
-        - `attrs`: Si la validación es correcta.
-
-        Excepciones:
-        - `serializers.ValidationError`: Si el usuario no existe o el teléfono no coincide.
+        Valida que el usuario exista y que el número de teléfono coincida con el registrado.
         """
         document = attrs.get('document')
         phone = attrs.get('phone')
-        print(document, phone)
+
         # Validar la existencia del usuario
         user = validate_user(document)
-        
         if user is None:
             raise NotFound("No se encontró un usuario con este documento.")
-            
-            
-        print(user)
 
         # Validar que el teléfono coincida con el registrado en el usuario
         if user.phone != phone:
             raise serializers.ValidationError({"error": "El número de teléfono no coincide con el registrado."})
 
-        attrs['user'] = user  # Guardamos el usuario validado en attrs para usarlo en `create`
+        attrs['user'] = user  # Guardamos el usuario validado en attrs
         return attrs
 
     def create(self, validated_data):
         """
-        Genera un nuevo OTP para el usuario y lo envía por correo o SMS.
-
-        Parámetros:
-        - `validated_data` (dict): Contiene `user` con la instancia validada.
-
-        Retorno:
-        - `dict`: Contiene el OTP generado y un mensaje de confirmación.
+        Genera un nuevo OTP y lo envía al usuario.
         """
-        user = validated_data['user']  # Ahora viene de `validate`
+        user = validated_data['user']
 
         # Eliminar OTPs previos y generar uno nuevo
         Otp.objects.filter(user=user).delete()
@@ -286,20 +312,20 @@ class ValidateOtpSerializer(serializers.Serializer):
     Serializador para validar un OTP (One-Time Password).
 
     Este serializador permite verificar si un OTP es válido, no ha sido utilizado y no ha expirado.
-    Si el OTP es para inicio de sesión (`is_login=True`), genera un token JWT.
+    Si el OTP es para inicio de sesión (`is_login=True`), genera un token.
     
     Campos:
     - `document`: Número de documento del usuario.
     - `otp`: Código OTP de 6 dígitos.
 
     Respuestas:
-    - Si el OTP es válido para inicio de sesión, devuelve `access` y `refresh` (tokens JWT).
+    - Si el OTP es válido para inicio de sesión, devuelve `token`.
     - Si el OTP es válido pero no es de inicio de sesión, devuelve un mensaje de confirmación.
     - Si el OTP ha expirado o es inválido, genera un error de validación.
     """
 
-    document = serializers.CharField(max_length=12, help_text="Número de documento del usuario.")
-    otp = serializers.CharField(max_length=6, help_text="Código OTP de 6 dígitos.")
+    document = serializers.CharField(max_length=12)
+    otp = serializers.CharField(max_length=6)
 
     def validate(self, data):
         """
@@ -308,22 +334,14 @@ class ValidateOtpSerializer(serializers.Serializer):
         - Verifica si el usuario existe a través de `validate_user(document)`.
         - Busca el OTP correspondiente con `validate_otp(user, otp, is_validated=False)`.
         - Revisa si el OTP ha expirado.
-        - Si el OTP es para inicio de sesión (`is_login=True`), genera un token JWT.
-        - Si no es de inicio de sesión, marca el OTP como validado.
-
-        Parámetros:
-        - `data` (dict): Contiene `document` y `otp`.
-
-        Retorno:
-        - `dict`: Dependiendo del caso:
-            - `{ "access": <token>, "refresh": <token> }` si el OTP es para login.
-            - `{ "message": "OTP validado correctamente" }` si el OTP es solo de validación.
-        - En caso de error, lanza `serializers.ValidationError`.
+        - Si el OTP es para inicio de sesión (`is_login=True`):
+            - Genera un token de autenticación.
+            - Registra evento de inicio de sesión.
+            - Elimina el OTP utilizado.
+        - Si el OTP es para otro propósito, lo marca como validado sin generar token.
         """
         document = data.get("document")
         otp = data.get("otp")
-
-        print(f"Contexto recibido en el serializador: {self.context}")
 
         # Verificar si el usuario existe
         user = validate_user(document)
@@ -451,50 +469,30 @@ class ResetPasswordSerializer(serializers.Serializer):
         # Eliminar todos los OTP validados del usuario
         Otp.objects.filter(user=user, is_validated=True).delete()
 
-        return user
-    
-class RefreshTokenSerializer(serializers.Serializer):
-    """
-    Serializador para la renovación de tokens de autenticación.
-
-    Permite a los usuarios obtener un nuevo token de acceso (`access token`)
-    a partir de un `refresh token` válido.
-
-    Campos:
-    - `refresh` (str): Token de actualización enviado por el cliente.
-
-    Respuestas:
-    - Si el token es válido, retorna un nuevo `access token`.
-    - Si el token es inválido o ha expirado, genera un error de validación.
-    """
-
-    refresh = serializers.CharField(help_text="Token de actualización proporcionado por el usuario.")
-
-    def validate(self, data):
-        """
-        Valida el token de actualización y genera un nuevo token de acceso.
-
-        Parámetros:
-        - `data` (dict): Contiene el `refresh token`.
-
-        Retorno:
-        - `dict`: Diccionario con un nuevo `access token`.
-
-        Excepciones:
-        - `serializers.ValidationError`: Si el token es inválido o ha expirado.
-        """
-        try:
-            refresh = RefreshToken(data["refresh"])
-            return {"access": str(refresh.access_token)}
-        except Exception:
-            raise serializers.ValidationError("Token inválido o expirado.")   
+        return user  
         
         
 class UserProfileSerializer(serializers.ModelSerializer):
+    """
+    Serializer para representar el perfil de usuario.
+
+    - `document_type_name`: Nombre del tipo de documento asociado al usuario.
+    - `person_type_name`: Nombre del tipo de persona (natural/jurídica).
+    - `email`: Correo electrónico del usuario.
+    - `document`: Número de documento de identidad.
+    - `first_name`: Nombre del usuario.
+    - `last_name`: Apellido del usuario.
+    - `phone`: Número de teléfono registrado.
+    - `address`: Dirección del usuario.
+    """
+
     document_type_name = serializers.CharField(source='document_type.typeName', read_only=True)
     person_type_name = serializers.CharField(source='person_type.typeName', read_only=True)
-    print(document_type_name)
 
     class Meta:
         model = CustomUser
-        fields = ['email', 'document', 'document_type_name', 'first_name', 'last_name', 'phone', 'address', 'person_type_name']       
+        fields = [
+            'email', 'document', 'document_type_name', 
+            'first_name', 'last_name', 'phone', 
+            'address', 'person_type_name'
+        ]    
