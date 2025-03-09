@@ -1,7 +1,7 @@
 from rest_framework import generics,status
 from rest_framework.views import APIView
 from .models import CustomUser, DocumentType, PersonType  
-from .serializers import CustomUserSerializer, DocumentTypeSerializer, PersonTypeSerializer ,UserProfileSerializer
+from .serializers import CustomUserSerializer, DocumentTypeSerializer, PersonTypeSerializer ,UserProfileSerializer, ChangePasswordSerializer
 from rest_framework.permissions import IsAdminUser, IsAuthenticated, AllowAny  
 from drf_spectacular.utils import extend_schema, extend_schema_view,OpenApiParameter
 from rest_framework.response import Response
@@ -235,4 +235,4 @@ class UseroProfilelView(generics.RetrieveAPIView):
     def get_object(self):
         print(self.request.user)
         return self.request.user    
-    
+

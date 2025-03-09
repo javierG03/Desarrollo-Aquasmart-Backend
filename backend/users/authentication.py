@@ -9,6 +9,7 @@ from rest_framework.exceptions import ValidationError, NotFound,PermissionDenied
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import IsAuthenticated
 from API.custom_auth import CustomTokenAuthentication
+from .serializers import ChangePasswordSerializer
 class LoginView(APIView):
     """
     Endpoint para la autenticación de usuarios con generación de OTP.
@@ -417,4 +418,37 @@ class ValidateTokenView(APIView):
                 {"detail": "Su sesión se cerró."},
                 status=status.HTTP_401_UNAUTHORIZED
             )
+
+@extend_schema(
+    summary="Cambiar contraseña",
+    description="Permite al usuario autenticado cambiar su contraseña proporcionando la actual y la nueva.",
+    request=ChangePasswordSerializer,
+    responses={
+        200: {"description": "Contraseña actualizada correctamente", "content": {"application/json": {"example": {"message": "Contraseña actualizada correctamente."}}}},
+        400: {"description": "Error de validación", "content": {"application/json": {"example": {"current_password": ["La contraseña actual es incorrecta."], "new_password": ["La contraseña es demasiado corta. Debe contener al menos 8 caracteres."]}}}},
+        401: {"description": "No autenticado", "content": {"application/json": {"example": {"detail": "Las credenciales de autenticación no se proveyeron."}}}}
+    },
+)
+class ChangePasswordView(APIView):
+    """
+    Vista para que un usuario autenticado cambie su contraseña.
     
+    Requiere autenticación y verifica la contraseña actual antes de permitir el cambio.
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        """
+        Procesa la solicitud de cambio de contraseña.
+        
+        Recibe la contraseña actual y la nueva, valida ambas, y si es correcto,
+        actualiza la contraseña del usuario.
+        """
+        serializer = ChangePasswordSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {"message": "Contraseña actualizada correctamente."}, 
+                status=status.HTTP_200_OK
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
