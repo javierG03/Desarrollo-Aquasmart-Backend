@@ -493,3 +493,50 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'first_name', 'last_name', 'phone', 
             'address', 'person_type_name'
         ]    
+
+class ChangePasswordSerializer(serializers.Serializer):
+    """
+    Serializador para cambiar la contraseña del usuario autenticado.
+    
+    Permite a un usuario autenticado cambiar su contraseña proporcionando
+    la contraseña actual y la nueva contraseña.
+    """
+    current_password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
+    new_password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
+
+    def validate_current_password(self, value):
+        """
+        Valida que la contraseña actual sea correcta.
+        """
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("La contraseña actual es incorrecta.")
+        return value
+
+    def validate_new_password(self, value):
+        """
+        Valida la nueva contraseña según las reglas de seguridad.
+        """
+        user = self.context['request'].user
+        
+        # Validar que la nueva contraseña no sea la misma que la actual
+        if user.check_password(value):
+            raise serializers.ValidationError("La nueva contraseña no puede ser igual a la actual.")
+            
+        # Validar la contraseña con las reglas de Django
+        try:
+            validate_password(value, user=user)
+            return value
+        except serializers.ValidationError as e:
+            raise serializers.ValidationError(e.messages)
+
+    def save(self):
+        """
+        Actualiza la contraseña del usuario.
+        """
+        user = self.context['request'].user
+        user.set_password(self.validated_data['new_password'])
+        user.save()
+        return user
+    
+
