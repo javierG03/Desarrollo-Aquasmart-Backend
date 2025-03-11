@@ -330,7 +330,7 @@ class AdminUserUpdateAPIView(generics.RetrieveUpdateAPIView):
         
         return response
 
-class UseroProfilelView(generics.RetrieveAPIView):
+class UserProfilelView(generics.RetrieveAPIView):
     serializer_class = UserProfileSerializer
     permission_classes = [IsAuthenticated]
 

@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import CustomUserCreateView, CustomUserListView,UserRegisterAPIView, DocumentTypeView, PersonTypeView, UserInactiveAPIView,UseroProfilelView,DocumentTypeListView,PersonTypeListView, AdminUserUpdateAPIView, UserProfileUpdateView, UserActivateAPIView
+from .views import CustomUserCreateView, CustomUserListView,UserRegisterAPIView, DocumentTypeView, PersonTypeView, UserInactiveAPIView,UserProfilelView,DocumentTypeListView,PersonTypeListView, AdminUserUpdateAPIView, UserProfileUpdateView, UserActivateAPIView
 from .authentication import GenerateOtpPasswordRecoveryView,ResetPasswordView,ValidateOtpView, LoginView, LogoutView, ValidateTokenView, ChangePasswordView
 urlpatterns = [
     path('admin/listed', CustomUserListView.as_view(), name='customuser-list'),  # Listar usuarios
@@ -8,7 +8,7 @@ urlpatterns = [
     path("admin/register/<str:document>", UserRegisterAPIView.as_view(), name='customuser-register'),
     path('admin/inactive/<str:document>',UserInactiveAPIView.as_view(),name='Inative-user'),
     path('admin/activate/<str:document>',UserActivateAPIView.as_view(),name='Activate-user'),
-    path('profile', UseroProfilelView.as_view(), name='perfil-usuario'),
+    path('profile', UserProfilelView.as_view(), name='perfil-usuario'),
     path('pre-register', CustomUserCreateView.as_view(), name='customuser-pre-register'),  # Pre-registro de usuarios    
     path('login', LoginView.as_view(), name='login'), # Login
     path('generate-otp', GenerateOtpPasswordRecoveryView.as_view(), name='generate_otp_password_recovery'),
