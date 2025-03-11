@@ -5,9 +5,9 @@ from rest_framework.exceptions import ValidationError
 def validate_user(document):
         """
         Verifica si el usuario con el documento proporcionado existe.
-        """
-        
+        """        
         return CustomUser.objects.filter(document=document).first()
+    
 def validate_otp(user, is_validated=False, otp=None):
     """
     Valida si existe un OTP según el estado de validación.

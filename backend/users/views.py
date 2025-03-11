@@ -1,12 +1,14 @@
 from rest_framework import generics, status, permissions
 from rest_framework.views import APIView
 from .models import CustomUser, DocumentType, PersonType  
-from .serializers import CustomUserSerializer, DocumentTypeSerializer, PersonTypeSerializer ,UserProfileSerializer, ChangePasswordSerializer
+from .serializers import CustomUserSerializer, DocumentTypeSerializer, PersonTypeSerializer ,UserProfileSerializer, UserProfileUpdateSerializer
 from rest_framework.permissions import IsAdminUser, IsAuthenticated, AllowAny  
 from drf_spectacular.utils import extend_schema, extend_schema_view,OpenApiParameter
 from rest_framework.response import Response
 from .validate import validate_user
-
+from API.google.google_drive import upload_to_drive
+import os
+from django.conf import settings
 @extend_schema_view(
     post=extend_schema(
         summary="Crear un nuevo usuario",
@@ -28,11 +30,44 @@ class CustomUserCreateView(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
     serializer_class = CustomUserSerializer
     permission_classes = []  # Sin restricciones de acceso (puede ser cambiado según necesidad)
+    def perform_create(self, serializer):
+        """
+        Crea un usuario y maneja la subida de archivos a Google Drive.
+        """
+        user = serializer.save()  # Guarda el usuario primero
+        uploaded_files = self.request.FILES.getlist('file')
+        # Obtiene los archivos subidos
+        
+        if uploaded_files and user.drive_folder_id:
+            
+            for uploaded_file in uploaded_files:
+                temp_file_path = os.path.join(settings.MEDIA_ROOT, uploaded_file.name)
+
+                # Guardar el archivo temporalmente
+                with open(temp_file_path, 'wb+') as temp_file:
+                    for chunk in uploaded_file.chunks():
+                        temp_file.write(chunk)
+
+                # Subir archivo a Google Drive
+                upload_to_drive(temp_file_path, uploaded_file.name, folder_id=user.drive_folder_id)
+                
+
+                # Eliminar el archivo temporal
+                os.remove(temp_file_path)
+
+            
+            user.save()
+
     def create(self, request, *args, **kwargs):
+        """
+        Sobrescribe create para manejar la respuesta personalizada.
+        """
         response = super().create(request, *args, **kwargs)
-        user = response.data
         return Response(
-            {"message": f"El usuario {user['document']} - {user['first_name']} {user['last_name']} se ha pre-registrado con éxito"},
+            {
+                "message": "Usuario Pre-registrado exitosamente.",
+                "user": response.data
+            },
             status=status.HTTP_201_CREATED
         )
     
@@ -302,3 +337,16 @@ class UseroProfilelView(generics.RetrieveAPIView):
     def get_object(self):
         print(self.request.user)
         return self.request.user
+    
+class UserProfileUpdateView(generics.UpdateAPIView):
+    serializer_class = UserProfileUpdateSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        """Retorna el usuario autenticado para actualizar su perfil."""
+        return self.request.user  # 🔹 Devuelve el usuario, NO un Response
+
+    def update(self, request, *args, **kwargs):
+        """Personaliza la respuesta después de actualizar el perfil."""
+        response = super().update(request, *args, **kwargs)
+        return Response({"message": "Datos actualizados correctamente"}, status=status.HTTP_200_OK)

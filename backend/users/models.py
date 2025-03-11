@@ -86,6 +86,7 @@ class CustomUser(AbstractUser):
     phone = models.CharField(max_length=20, db_index=True, verbose_name="Teléfono")
     address = models.CharField(max_length=200, db_index=True, verbose_name="Dirección")
     is_registered = models.BooleanField(default=False, help_text="Indica si el usuario completó el pre-registro", db_index=True, verbose_name="Registrado")
+    drive_folder_id = models.CharField(max_length=100, blank=True, null=True, verbose_name="ID Carpeta Google Drive")  
 
     username = None
 
@@ -207,7 +208,7 @@ class LoginRestriction(models.Model):
         return message
     
     def block_user(self):
-        """Bloquea al usuario por 24 horas"""
+        """Bloquea al usuario por 30 minutos"""
         self.blocked_until = now() + timedelta(hours=0.5)
         self.attempts = 0  # Reiniciar intentos
         self.save()

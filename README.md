@@ -28,5 +28,21 @@ dentro del el archivo .env se crea sa sigiente variable
 `SECRET_KEY ='palabar secreta`
 se puede dejar esa palabra o cambiar si lo desea.
 
+Credenciales  del correo que se usara para envia los corres (Gmail)
+Para sacar la contraseña de aplicaccion debe primero tener activa la verificacion de 2 pasos
+`EMAIL_HOST_PASSWORD= ''`
+`EMAIL_HOST_USER = ''`
+Credenciales que se consiguen en el google cloud
+[Google Cloud](https://console.cloud.google.com/projectselector2/iam-admin/)
+`PROJECT_ID=""`
+`PRIVATE_KEY_ID=""`
+`PRIVATE_KEY=""`
+`CLIENT_EMAIL=""`
+`CLIENT_ID=""`
+`AUTH_URI=""`
+`TOKEN_URI=""`
+`AUTH_PROVIDER_CERT_URL=""`
+`CLIENT_X509_CERT_URL=""`
+
 #### Lanzamiento del servidor
 `python manage.py runserver`
