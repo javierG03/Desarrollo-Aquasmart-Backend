@@ -420,23 +420,44 @@ class ValidateTokenView(APIView):
             )
 
 @extend_schema(
+    tags=["Seguridad"],
     summary="Cambiar contraseña",
     description="Permite al usuario autenticado cambiar su contraseña proporcionando la actual, la nueva y la confirmación.",
     request=ChangePasswordSerializer,
     responses={
-        200: {"description": "Contraseña actualizada correctamente", 
-              "content": {"application/json": {"example": {"message": "Actualización de contraseña exitosa"}}}},
-        400: {"description": "Error de validación", 
-              "content": {"application/json": {"example": {
-                  "current_password": ["La contraseña actual es incorrecta."],
-                  "new_password": ["La contraseña debe contener al menos una letra mayúscula."],
-                  "confirm_password": ["Las contraseñas no coinciden, por favor, verifíquelas."]
-              }}}},
-        401: {"description": "No autenticado", 
-              "content": {"application/json": {"example": {"detail": "Las credenciales de autenticación no se proveyeron."}}}},
-        500: {"description": "Error en el sistema", 
-              "content": {"application/json": {"example": {"error": "ERROR, error en envío de formulario, por favor intente más tarde"}}}}
-    },
+        200: OpenApiResponse(
+                response=ChangePasswordSerializer,
+                description="Contraseña actualizada correctamente",
+                examples=[
+                    {"message": "Actualización de contraseña exitosa"}
+                ]
+            ),
+        400: OpenApiResponse(
+                response=ChangePasswordSerializer,
+                description="Error de validación",
+                examples=[
+                    {
+                        "current_password": ["La contraseña actual es incorrecta."],
+                        "new_password": ["La contraseña debe contener al menos una letra mayúscula."],
+                        "confirm_password": ["Las contraseñas no coinciden, por favor, verifíquelas."]
+                    }
+                ]
+            ),
+        401: OpenApiResponse(
+                response=ChangePasswordSerializer,
+                description="No autenticado",
+                examples=[
+                    {"detail": "Las credenciales de autenticación no se proveyeron."}
+                ]
+            ),
+        500: OpenApiResponse(
+                response=ChangePasswordSerializer,
+                description="Error en el sistema",
+                examples=[
+                    {"error": "ERROR, error en envío de formulario, por favor intente más tarde"}
+                ]
+            ),
+    }
 )
 class ChangePasswordView(APIView):
     """

@@ -8,6 +8,7 @@ from .validate import validate_user,validate_otp
 from rest_framework.exceptions import NotFound,PermissionDenied
 from django.contrib.auth.signals import user_logged_in
 from django.utils import timezone
+from django.core.exceptions import ValidationError as DjangoValidationError
 from .models import LoginRestriction
 from rest_framework.authtoken.models import Token
 
@@ -500,11 +501,26 @@ class ChangePasswordSerializer(serializers.Serializer):
     Serializador para cambio de contraseña.
     
     Permite a un usuario autenticado cambiar su contraseña proporcionando
-    la contraseña actual, la nueva contraseña y la confirmación de la nueva contraseña.
+    la contraseña actual, la nueva contraseña y su confirmación.
     """
-    current_password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
-    new_password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
-    confirm_password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
+    current_password = serializers.CharField(
+        write_only=True, 
+        required=True, 
+        style={'input_type': 'password'},
+        help_text="Contraseña actual del usuario."
+    )
+    new_password = serializers.CharField(
+        write_only=True, 
+        required=True, 
+        style={'input_type': 'password'},
+        help_text="Nueva contraseña que debe cumplir con los requisitos de seguridad."
+    )
+    confirm_password = serializers.CharField(
+        write_only=True, 
+        required=True, 
+        style={'input_type': 'password'},
+        help_text="Confirmación de la nueva contraseña. Debe coincidir con el campo new_password."
+    )
 
     def validate_current_password(self, value):
         """
@@ -520,57 +536,21 @@ class ChangePasswordSerializer(serializers.Serializer):
         Valida que la nueva contraseña y la confirmación coincidan,
         y que la nueva contraseña no sea igual a la actual.
         """
+        # Verificar que la nueva contraseña y la confirmación coincidan
         if data.get('new_password') != data.get('confirm_password'):
             raise serializers.ValidationError({"confirm_password": "Las contraseñas no coinciden, por favor, verifíquelas."})
         
+        # Verificar que la nueva contraseña no sea igual a la actual
         if data.get('current_password') == data.get('new_password'):
             raise serializers.ValidationError({"new_password": "La contraseña nueva es igual a la actual, por favor, verifíquelas."})
         
-        return data
-
-    def validate_new_password(self, value):
-        """
-        Valida la nueva contraseña según las reglas de seguridad.
-        """
-        user = self.context['request'].user
-        
-        # Validar longitud
-        if len(value) < 8 or len(value) > 20:
-            raise serializers.ValidationError(
-                "La contraseña debe tener entre 8 y 20 caracteres."
-            )
-        
-        # Validar al menos una letra mayúscula
-        if not any(char.isupper() for char in value):
-            raise serializers.ValidationError(
-                "La contraseña debe contener al menos una letra mayúscula."
-            )
-        
-        # Validar al menos una letra minúscula
-        if not any(char.islower() for char in value):
-            raise serializers.ValidationError(
-                "La contraseña debe contener al menos una letra minúscula."
-            )
-        
-        # Validar al menos un número
-        if not any(char.isdigit() for char in value):
-            raise serializers.ValidationError(
-                "La contraseña debe contener al menos un número."
-            )
-        
-        # Validar al menos un carácter especial
-        special_chars = "@#$%^&*()_+-=[]{}|;:'\",.<>/?`~"
-        if not any(char in special_chars for char in value):
-            raise serializers.ValidationError(
-                "La contraseña debe contener al menos un carácter especial (como @, #, $, etc.)."
-            )
-            
-        # Validar la contraseña con las reglas de Django
+        # Aplicar todas las validaciones configuradas en settings.py
         try:
-            validate_password(value, user=user)
-            return value
-        except serializers.ValidationError as e:
-            raise serializers.ValidationError(e.messages)
+            validate_password(data.get('new_password'), self.context['request'].user)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError({"new_password": list(e.messages)})
+            
+        return data
 
     def save(self):
         """
@@ -580,4 +560,3 @@ class ChangePasswordSerializer(serializers.Serializer):
         user.set_password(self.validated_data['new_password'])
         user.save()
         return user
-
