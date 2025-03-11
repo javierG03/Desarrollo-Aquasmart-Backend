@@ -32,13 +32,13 @@ Repositorio de desarrollo del sistema de gestion de distritos de riego acorde a 
     python manage.py createsuperuser
 
 #### Crear archivo .env
-dentro del el archivo .env se crea sa sigiente variable
+Dentro del el archivo .env se crea sa sigiente variable
 
     SECRET_KEY ='palabar secreta'
 
-se puede dejar esa palabra o cambiar si lo desea.
+se puede dejar esa palabra o cambiar si lo desea (Recomendado).
 
-Credenciales  del correo que se usara para envia los corres (Gmail)
+Credenciales para hacer envia los correos mediante (Gmail):
 Para sacar la contraseña de aplicaccion debe primero tener activa la verificacion de 2 pasos
 
     EMAIL_HOST_PASSWORD= ''
@@ -58,5 +58,6 @@ Credenciales que se consiguen en el google cloud
     CLIENT_X509_CERT_URL=""
 
 #### Lanzamiento del servidor
-`python manage.py runserver`
+
+    python manage.py runserver
 
