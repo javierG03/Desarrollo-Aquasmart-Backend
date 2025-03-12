@@ -420,35 +420,72 @@ class ValidateTokenView(APIView):
             )
 
 @extend_schema(
+    tags=["Seguridad"],
     summary="Cambiar contraseña",
-    description="Permite al usuario autenticado cambiar su contraseña proporcionando la actual y la nueva.",
+    description="Permite al usuario autenticado cambiar su contraseña proporcionando la actual, la nueva y la confirmación.",
     request=ChangePasswordSerializer,
     responses={
-        200: {"description": "Contraseña actualizada correctamente", "content": {"application/json": {"example": {"message": "Contraseña actualizada correctamente."}}}},
-        400: {"description": "Error de validación", "content": {"application/json": {"example": {"current_password": ["La contraseña actual es incorrecta."], "new_password": ["La contraseña es demasiado corta. Debe contener al menos 8 caracteres."]}}}},
-        401: {"description": "No autenticado", "content": {"application/json": {"example": {"detail": "Las credenciales de autenticación no se proveyeron."}}}}
-    },
+        200: OpenApiResponse(
+                response=ChangePasswordSerializer,
+                description="Contraseña actualizada correctamente",
+                examples=[
+                    {"message": "Actualización de contraseña exitosa"}
+                ]
+            ),
+        400: OpenApiResponse(
+                response=ChangePasswordSerializer,
+                description="Error de validación",
+                examples=[
+                    {
+                        "current_password": ["La contraseña actual es incorrecta."],
+                        "new_password": ["La contraseña debe contener al menos una letra mayúscula."],
+                        "confirm_password": ["Las contraseñas no coinciden, por favor, verifíquelas."]
+                    }
+                ]
+            ),
+        401: OpenApiResponse(
+                response=ChangePasswordSerializer,
+                description="No autenticado",
+                examples=[
+                    {"detail": "Las credenciales de autenticación no se proveyeron."}
+                ]
+            ),
+        500: OpenApiResponse(
+                response=ChangePasswordSerializer,
+                description="Error en el sistema",
+                examples=[
+                    {"error": "ERROR, error en envío de formulario, por favor intente más tarde"}
+                ]
+            ),
+    }
 )
 class ChangePasswordView(APIView):
     """
     Vista para que un usuario autenticado cambie su contraseña.
     
-    Requiere autenticación y verifica la contraseña actual antes de permitir el cambio.
+    Requiere autenticación y valida:
+    - Que la contraseña actual sea correcta
+    - Que la nueva contraseña cumpla con los requisitos de seguridad
+    - Que la confirmación de contraseña coincida con la nueva
     """
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
         """
         Procesa la solicitud de cambio de contraseña.
-        
-        Recibe la contraseña actual y la nueva, valida ambas, y si es correcto,
-        actualiza la contraseña del usuario.
         """
-        serializer = ChangePasswordSerializer(data=request.data, context={'request': request})
-        if serializer.is_valid():
-            serializer.save()
+        try:
+            serializer = ChangePasswordSerializer(data=request.data, context={'request': request})
+            if serializer.is_valid():
+                serializer.save()
+                return Response(
+                    {"message": "Actualización de contraseña exitosa"}, 
+                    status=status.HTTP_200_OK
+                )
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            # Captura cualquier error inesperado
             return Response(
-                {"message": "Contraseña actualizada correctamente."}, 
-                status=status.HTTP_200_OK
+                {"error": "ERROR, error en envío de formulario, por favor intente más tarde"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

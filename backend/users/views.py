@@ -1,12 +1,14 @@
-from rest_framework import generics,status
+from rest_framework import generics, status, permissions
 from rest_framework.views import APIView
 from .models import CustomUser, DocumentType, PersonType  
-from .serializers import CustomUserSerializer, DocumentTypeSerializer, PersonTypeSerializer ,UserProfileSerializer, ChangePasswordSerializer
+from .serializers import CustomUserSerializer, DocumentTypeSerializer, PersonTypeSerializer ,UserProfileSerializer, UserProfileUpdateSerializer
 from rest_framework.permissions import IsAdminUser, IsAuthenticated, AllowAny  
 from drf_spectacular.utils import extend_schema, extend_schema_view,OpenApiParameter
 from rest_framework.response import Response
 from .validate import validate_user
-
+from API.google.google_drive import upload_to_drive
+import os
+from django.conf import settings
 @extend_schema_view(
     post=extend_schema(
         summary="Crear un nuevo usuario",
@@ -28,11 +30,44 @@ class CustomUserCreateView(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
     serializer_class = CustomUserSerializer
     permission_classes = []  # Sin restricciones de acceso (puede ser cambiado según necesidad)
+    def perform_create(self, serializer):
+        """
+        Crea un usuario y maneja la subida de archivos a Google Drive.
+        """
+        user = serializer.save()  # Guarda el usuario primero
+        uploaded_files = self.request.FILES.getlist('file')
+        # Obtiene los archivos subidos
+        
+        if uploaded_files and user.drive_folder_id:
+            
+            for uploaded_file in uploaded_files:
+                temp_file_path = os.path.join(settings.MEDIA_ROOT, uploaded_file.name)
+
+                # Guardar el archivo temporalmente
+                with open(temp_file_path, 'wb+') as temp_file:
+                    for chunk in uploaded_file.chunks():
+                        temp_file.write(chunk)
+
+                # Subir archivo a Google Drive
+                upload_to_drive(temp_file_path, uploaded_file.name, folder_id=user.drive_folder_id)
+                
+
+                # Eliminar el archivo temporal
+                os.remove(temp_file_path)
+
+            
+            user.save()
+
     def create(self, request, *args, **kwargs):
+        """
+        Sobrescribe create para manejar la respuesta personalizada.
+        """
         response = super().create(request, *args, **kwargs)
-        user = response.data
         return Response(
-            {"message": f"El usuario {user['document']} - {user['first_name']} {user['last_name']} se ha pre-registrado con éxito"},
+            {
+                "message": "Usuario Pre-registrado exitosamente.",
+                "user": response.data
+            },
             status=status.HTTP_201_CREATED
         )
     
@@ -228,11 +263,90 @@ class UserActivateAPIView(APIView):
         user.save()
         return Response({'status': 'User activated'}, status=status.HTTP_200_OK)    
 
-class UseroProfilelView(generics.RetrieveAPIView):
+# RF: Actualización de información de usuarios del distrito
+@extend_schema_view(
+    get=extend_schema(
+        summary="Obtener detalles de usuario",
+        description="Obtiene información detallada de un usuario específico por documento. Solo para administradores.",
+        responses={200: CustomUserSerializer}
+    ),
+    patch=extend_schema(
+        summary="Actualizar usuario",
+        description="Actualiza información parcial de un usuario. Solo para superusuarios o administradores.",
+        request=CustomUserSerializer,
+        responses={200: CustomUserSerializer}
+    )
+)
+class AdminUserUpdateAPIView(generics.RetrieveUpdateAPIView):
+    """
+    API para gestión de actualizaciones de usuarios por administradores
+    
+    Permite:
+    - Ver detalles completos de un usuario (GET)
+    - Actualización parcial de campos (PATCH)
+    """
+    
+    queryset = CustomUser.objects.all()
+    serializer_class = CustomUserSerializer
+    lookup_field = 'document'
+    lookup_url_kwarg = 'document'
+    
+    def get_permissions(self):
+        """Define permisos combinados para la vista"""
+        return [IsAuthenticated(), self.IsAdminOrSuperUser()]
+    
+    class IsAdminOrSuperUser(permissions.BasePermission):
+        """Permiso personalizado que verifica is_staff o is_superuser"""
+        
+        def has_permission(self, request, view):
+            return request.user.is_staff or request.user.is_superuser
+        
+        def has_object_permission(self, request, view, obj):
+            return self.has_permission(request, view)
+    
+    def get_queryset(self):
+        """Optimiza consultas relacionadas"""
+        return super().get_queryset().select_related('person_type', 'document_type')
+    
+    def perform_update(self, serializer):
+        """Manejo especial para actualización de contraseña"""
+        password = serializer.validated_data.pop('password', None)
+        instance = serializer.save()
+        
+        if password:
+            instance.set_password(password)
+            instance.save(update_fields=['password'])
+    
+    def patch(self, request, *args, **kwargs):
+        """Maneja actualizaciones parciales con formato de respuesta consistente"""
+        response = super().patch(request, *args, **kwargs)
+        
+        if response.status_code == status.HTTP_200_OK:
+            return Response({
+                'status': 'success',
+                'message': 'Usuario actualizado exitosamente',
+                'data': response.data
+            }, status=status.HTTP_200_OK)
+        
+        return response
+
+class UserProfilelView(generics.RetrieveAPIView):
     serializer_class = UserProfileSerializer
     permission_classes = [IsAuthenticated]
 
     def get_object(self):
         print(self.request.user)
-        return self.request.user    
+        return self.request.user
+    
+class UserProfileUpdateView(generics.UpdateAPIView):
+    serializer_class = UserProfileUpdateSerializer
+    permission_classes = [IsAuthenticated]
 
+    def get_object(self):
+        """Retorna el usuario autenticado para actualizar su perfil."""
+        return self.request.user  # 🔹 Devuelve el usuario, NO un Response
+
+    def update(self, request, *args, **kwargs):
+        """Personaliza la respuesta después de actualizar el perfil."""
+        response = super().update(request, *args, **kwargs)
+        return Response({"message": "Datos actualizados correctamente"}, status=status.HTTP_200_OK)
