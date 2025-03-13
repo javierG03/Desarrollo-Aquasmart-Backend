@@ -97,7 +97,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
         try:
             validate_password(value)
         except DjangoValidationError as e:
-             raise serializers.ValidationError({"datail": list(e.messages)})
+             raise serializers.ValidationError({"detail": list(e.messages)})
 
     def create(self, validated_data):
         """
@@ -170,7 +170,7 @@ class LoginSerializer(serializers.Serializer):
             raise PermissionDenied({"detail": "Su cuenta está inactiva. Póngase en contacto con el servicio de soporte."})
 
         if not user.is_registered:
-            raise serializers.ValidationError({"detail": "Usuerio en espera de validar su pre-registro. Póngase en contacto con soprte para mas informacion"})
+            raise serializers.ValidationError({"detail": "Usuario en espera de validar su pre-registro. Póngase en contacto con soporte para mas informacion"})
 
         # Buscar registro de intentos (si existe)
         login_restriction = LoginRestriction.objects.filter(user=user).first()
