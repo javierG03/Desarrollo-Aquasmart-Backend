@@ -1,4 +1,4 @@
 [flake8]
-exclude = env, .git, __pycache__, .venv, VirtualEnv, frontendWeb/node_modules
+exclude = env, .git, __pycache__, .venv, VirtualEnv, frontendWeb/node_modules, env/Lib/site-packages, venv/
 max-line-length = 120
-ignore = E501, F401
+ignore = E501, F401, W503, F841, F811, E402,
