@@ -10,7 +10,7 @@ class Plot(models.Model):
     plot_extension =models.DecimalField(max_digits=4, decimal_places=2, null=False, blank=False, verbose_name="Extensión de tierra")
     registration_date = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de registro")
     
-    REQUIRED_FIELDS = ['plot_name', ' latitud','longitud','plot_extension']
+    REQUIRED_FIELDS = ['plot_name', 'latitud','longitud','plot_extension']
     
     class Meta:
         verbose_name = "Predio"

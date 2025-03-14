@@ -4,7 +4,7 @@ from .models import Plot
 class PlotSerializer(serializers.ModelSerializer):
     class Meta:
         model = Plot
-        fields = ['id_plot','owner','plot_name', ' latitud','longitud','plot_extension', 'registration_date']
+        fields = ['id_plot','owner','plot_name', 'latitud','longitud','plot_extension', 'registration_date']
         read_only_fields = ['id', 'fecha_registro']  # Estos campos no se pueden modificar
 
     def validate(self, data):
