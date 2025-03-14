@@ -1,0 +1,21 @@
+#!/bin/sh
+
+echo "🚀 Activando entorno virtual..."
+VIRTUAL_ENV="C:/Users/serda/Documents/Semestre 9/Proyecto Integrador IV/Equipo Pruebas/repositorio/branch/desarrollo-aquasmart-backend/virtualenv"
+PATH="$VIRTUAL_ENV/Scripts:$PATH"
+export PATH VIRTUAL_ENV
+
+echo "🚀 Ejecutando pruebas antes de hacer push..."
+
+# Ejecutar pytest
+pytest backend/users/Test/
+pytest_exit_code=$?
+
+# Capturar el código de salida de pytest
+if [ $pytest_exit_code -ne 0 ]; then
+    echo "❌ Tests fallidos. No se permitirá el push."
+    exit 1
+fi
+
+echo "✅ Todos los tests pasaron. Procediendo con el push."
+exit 0

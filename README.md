@@ -23,6 +23,12 @@ Repositorio de desarrollo del sistema de gestion de distritos de riego acorde a 
 
     pip install -r requirements.txt
 
+
+### Ejecutar instalación de hooks
+
+    bash setup_hooks.sh
+
+
 #### Ejecutar las migraciones
 
     python manage.py migrate
