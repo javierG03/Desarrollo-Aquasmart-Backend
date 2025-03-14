@@ -17,3 +17,10 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
       - id: check-json
+  - repo: local
+    hooks:
+      - id: pytest
+        name: Run pytest tests
+        entry: pytest backend/users/Test/  # Ruta donde están tus tests
+        language: system
+        pass_filenames: false
