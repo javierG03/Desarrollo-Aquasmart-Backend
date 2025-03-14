@@ -15,7 +15,7 @@ Repositorio de desarrollo del sistema de gestion de distritos de riego acorde a 
 
     cd Desarrollo-Aquasmart
 
-#### Crear entorno virtual   
+#### Crear entorno virtual
 
      python -m venv venv
 
@@ -60,4 +60,3 @@ Credenciales que se consiguen en el google cloud
 #### Lanzamiento del servidor
 
     python manage.py runserver
-

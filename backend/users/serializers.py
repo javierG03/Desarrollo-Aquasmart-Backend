@@ -4,8 +4,8 @@ from API.sendmsn import send_email
 from .models import DocumentType, PersonType, CustomUser, LoginHistory, Otp
 from django.contrib.auth.hashers import make_password, check_password
 from django.contrib.auth.password_validation import validate_password
-from .validate import validate_user,validate_otp
-from rest_framework.exceptions import NotFound,PermissionDenied
+from .validate import validate_user, validate_otp
+from rest_framework.exceptions import NotFound, PermissionDenied
 from django.contrib.auth.signals import user_logged_in
 from django.utils import timezone
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -14,61 +14,82 @@ from rest_framework.authtoken.models import Token
 from API.google.google_drive import create_folder, share_folder
 import os
 import re
+
+
 class DocumentTypeSerializer(serializers.ModelSerializer):
     """
     Serializer para el modelo DocumentType.
     Representa los tipos de documentos disponibles.
     """
-    
+
     class Meta:
         model = DocumentType
-        fields = ['documentTypeId', 'typeName']
+        fields = ["documentTypeId", "typeName"]
+
 
 class PersonTypeSerializer(serializers.ModelSerializer):
     """
     Serializer para el modelo PersonType.
     Representa los tipos de personas en el sistema.
     """
+
     class Meta:
         model = PersonType
-        fields = ['personTypeId', 'typeName']
+        fields = ["personTypeId", "typeName"]
+
 
 class CustomUserSerializer(serializers.ModelSerializer):
     """
     Serializer para el modelo CustomUser.
     Gestiona la creación de usuarios, incluyendo el manejo seguro de contraseñas.
     """
-    password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
-    document_type = serializers.PrimaryKeyRelatedField(queryset=DocumentType.objects.all(), required=False)
-    person_type = serializers.PrimaryKeyRelatedField(queryset=PersonType.objects.all(), required=False)
+
+    password = serializers.CharField(
+        write_only=True, required=True, style={"input_type": "password"}
+    )
+    document_type = serializers.PrimaryKeyRelatedField(
+        queryset=DocumentType.objects.all(), required=False
+    )
+    person_type = serializers.PrimaryKeyRelatedField(
+        queryset=PersonType.objects.all(), required=False
+    )
     drive_folder_id = serializers.CharField(read_only=True)  # Solo lectura
     files = serializers.ListField(
-        child=serializers.FileField(),
-        write_only=True,
-        required=False
+        child=serializers.FileField(), write_only=True, required=False
     )
-
 
     class Meta:
         model = CustomUser
         fields = [
-            'document', 'first_name', 'last_name', 'email', 
-            'document_type', 'person_type', 'phone', 'address',
-            'password', 'is_registered', 'is_active','drive_folder_id','files'
+            "document",
+            "first_name",
+            "last_name",
+            "email",
+            "document_type",
+            "person_type",
+            "phone",
+            "address",
+            "password",
+            "is_registered",
+            "is_active",
+            "drive_folder_id",
+            "files",
         ]
-        read_only_fields = ('is_registered', 'is_active','drive_folder_id')
-        
+        read_only_fields = ("is_registered", "is_active", "drive_folder_id")
+
         extra_kwargs = {
-            'document': {'validators': []},
-            'email': {'validators': []},
+            "document": {"validators": []},
+            "email": {"validators": []},
         }
 
     def validate_document(self, value):
         """
         Valida si el documento ya existe, si es solo numérico y maneja los mensajes personalizados.
         """
-        if not re.match(r'^\d+$', value):
-            raise serializers.ValidationError("El documento debe contener solo números.")
+        if not re.match(r"^\d+$", value):
+            raise serializers.ValidationError(
+                "El documento debe contener solo números."
+            )
 
         existing_user = CustomUser.objects.filter(document=value).first()
         if existing_user:
@@ -82,7 +103,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
         """
         Valida que el número de teléfono solo contenga números.
         """
-        if not re.match(r'^\d+$', value):
+        if not re.match(r"^\d+$", value):
             raise serializers.ValidationError("El teléfono debe contener solo números.")
         return value
 
@@ -93,20 +114,21 @@ class CustomUserSerializer(serializers.ModelSerializer):
         if CustomUser.objects.filter(email=value).exists():
             raise serializers.ValidationError("Este correo ya está registrado.")
         return value
+
     def validate_password(self, value):
         try:
             validate_password(value)
         except DjangoValidationError as e:
-             raise serializers.ValidationError({"detail": list(e.messages)})
+            raise serializers.ValidationError({"detail": list(e.messages)})
 
     def create(self, validated_data):
         """
         Crea un usuario nuevo sin manejar la subida de archivos.
         """
-        validated_data['password'] = make_password(validated_data['password'])
-        validated_data['is_active'] = False
+        validated_data["password"] = make_password(validated_data["password"])
+        validated_data["is_active"] = False
         user = CustomUser.objects.create(**validated_data)
-        
+
         # Crear carpeta en Google Drive y asociarla al usuario
         folder_name = f"{user.document}_{user.first_name}_{user.last_name}"
         folder_id = create_folder(folder_name)
@@ -115,19 +137,28 @@ class CustomUserSerializer(serializers.ModelSerializer):
 
         # Compartir la carpeta con el administrador
         if folder_id:
-            share_folder(folder_id, email=os.environ.get('EMAIL_HOST_USER', default=os.getenv("EMAIL_HOST_USER")), role='writer')
+            share_folder(
+                folder_id,
+                email=os.environ.get(
+                    "EMAIL_HOST_USER", default=os.getenv("EMAIL_HOST_USER")
+                ),
+                role="writer",
+            )
 
         return user
+
 
 class LoginHistorySerializer(serializers.ModelSerializer):
     """
     Serializer para el modelo LoginHistory.
     Almacena los registros de inicio de sesión de los usuarios.
     """
+
     class Meta:
         model = LoginHistory
-        fields = ['timestamp', 'user']
-        
+        fields = ["timestamp", "user"]
+
+
 class LoginSerializer(serializers.Serializer):
     """
     Serializer para la autenticación de usuarios mediante documento y contraseña.
@@ -153,31 +184,45 @@ class LoginSerializer(serializers.Serializer):
     Retorna:
         - Un diccionario con mensaje de éxito y OTP generado si la autenticación es correcta.
     """
-    
+
     document = serializers.CharField(max_length=12, required=True)
-    password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
+    password = serializers.CharField(
+        write_only=True, required=True, style={"input_type": "password"}
+    )
 
     def validate(self, data):
-        document = data.get('document')
-        password = data.get('password')               
+        document = data.get("document")
+        password = data.get("password")
 
         user = validate_user(document)
 
-        if not user: 
-            raise NotFound({'details': 'No se encontró un usuario con este documento.'})
+        if not user:
+            raise NotFound({"details": "No se encontró un usuario con este documento."})
 
         if not user.is_active:
-            raise PermissionDenied({"detail": "Su cuenta está inactiva. Póngase en contacto con el servicio de soporte."})
+            raise PermissionDenied(
+                {
+                    "detail": "Su cuenta está inactiva. Póngase en contacto con el servicio de soporte."
+                }
+            )
 
         if not user.is_registered:
-            raise serializers.ValidationError({"detail": "Usuario en espera de validar su pre-registro. Póngase en contacto con soporte para mas informacion"})
+            raise serializers.ValidationError(
+                {
+                    "detail": "Usuario en espera de validar su pre-registro. Póngase en contacto con soporte para mas informacion"
+                }
+            )
 
         # Buscar registro de intentos (si existe)
         login_restriction = LoginRestriction.objects.filter(user=user).first()
 
         # Verificar si el usuario está bloqueado
         if login_restriction and login_restriction.is_blocked():
-            raise serializers.ValidationError({"detail": f"Demasiados intentos fallidos. Inténtalo de nuevo después {login_restriction.blocked_until}."})
+            raise serializers.ValidationError(
+                {
+                    "detail": f"Demasiados intentos fallidos. Inténtalo de nuevo después {login_restriction.blocked_until}."
+                }
+            )
 
         # Validar la contraseña
         if not user.check_password(password):
@@ -198,17 +243,18 @@ class LoginSerializer(serializers.Serializer):
         otp_serializer = GenerateOtpLoginSerializer(data={"document": document})
         if otp_serializer.is_valid(raise_exception=True):
             otp_data = otp_serializer.save()
-            
+
             # Agregar información del usuario y OTP
             data["user_document"] = user.document
             data["otp"] = otp_data["otp"]
             data["message"] = otp_data["message"]
 
-        data.pop("otp", None)    
-        data.pop("user_document", None)    
+        data.pop("otp", None)
+        data.pop("user_document", None)
         data.pop("password", None)
 
         return data
+
 
 class GenerateOtpLoginSerializer(serializers.Serializer):
     """
@@ -218,8 +264,7 @@ class GenerateOtpLoginSerializer(serializers.Serializer):
     """
 
     document = serializers.CharField(
-        max_length=12,
-        help_text="Número de documento del usuario."
+        max_length=12, help_text="Número de documento del usuario."
     )
 
     def validate_document(self, document):
@@ -253,7 +298,7 @@ class GenerateOtpLoginSerializer(serializers.Serializer):
         Raises:
             serializers.ValidationError: Si hay un error al enviar el correo.
         """
-        user = validated_data['document']  # `validate_document` ya retornó el usuario.
+        user = validated_data["document"]  # `validate_document` ya retornó el usuario.
 
         # Eliminar OTPs previos y generar uno nuevo
         Otp.objects.filter(user=user).delete()
@@ -267,10 +312,10 @@ class GenerateOtpLoginSerializer(serializers.Serializer):
             raise serializers.ValidationError(f"Error al enviar el correo: {str(e)}")
 
         return {
-            'otp': otp_generado,
-            'message': 'Se ha enviado el código OTP de iniciar sesión.'
-        }    
-        
+            "otp": otp_generado,
+            "message": "Se ha enviado el código OTP de iniciar sesión.",
+        }
+
 
 class GenerateOtpPasswordRecoverySerializer(serializers.Serializer):
     """
@@ -278,12 +323,10 @@ class GenerateOtpPasswordRecoverySerializer(serializers.Serializer):
     """
 
     document = serializers.CharField(
-        max_length=12,
-        help_text="Número de documento del usuario registrado."
+        max_length=12, help_text="Número de documento del usuario registrado."
     )
     phone = serializers.CharField(
-        max_length=20,
-        help_text="Número de teléfono asociado a la cuenta del usuario."
+        max_length=20, help_text="Número de teléfono asociado a la cuenta del usuario."
     )
 
     def validate(self, attrs):
@@ -300,7 +343,9 @@ class GenerateOtpPasswordRecoverySerializer(serializers.Serializer):
 
         # Validar que el teléfono coincida con el registrado en la base de datos
         if user.phone != phone:
-            raise serializers.ValidationError({"phone": "El número de teléfono no coincide con el registrado."})
+            raise serializers.ValidationError(
+                {"phone": "El número de teléfono no coincide con el registrado."}
+            )
 
         attrs["user"] = user  # Guardamos el usuario validado en attrs
         return attrs
@@ -314,18 +359,21 @@ class GenerateOtpPasswordRecoverySerializer(serializers.Serializer):
         # Eliminar OTPs previos y generar uno nuevo
         Otp.objects.filter(user=user).delete()
         nuevo_otp = Otp.objects.create(user=user)
-        otp_generado = nuevo_otp.generate_otp()  # Asegúrate de que esta función retorne el OTP correcto
+        otp_generado = (
+            nuevo_otp.generate_otp()
+        )  # Asegúrate de que esta función retorne el OTP correcto
 
         # Intentar enviar OTP por correo
         try:
-            send_email(user.email, otp_generado, purpose="recover" )
+            send_email(user.email, otp_generado, purpose="recover")
         except Exception as e:
-            raise serializers.ValidationError(f"Hubo un problema al enviar el código. Inténtalo más tarde. {e}")
+            raise serializers.ValidationError(
+                f"Hubo un problema al enviar el código. Inténtalo más tarde. {e}"
+            )
 
         return {
             "message": "Se ha enviado el código de recuperación a su correo electrónico."
         }
-
 
 
 class ValidateOtpSerializer(serializers.Serializer):
@@ -334,7 +382,7 @@ class ValidateOtpSerializer(serializers.Serializer):
 
     Este serializador permite verificar si un OTP es válido, no ha sido utilizado y no ha expirado.
     Si el OTP es para inicio de sesión (`is_login=True`), genera un token.
-    
+
     Campos:
     - `document`: Número de documento del usuario.
     - `otp`: Código OTP de 6 dígitos.
@@ -377,17 +425,16 @@ class ValidateOtpSerializer(serializers.Serializer):
         response_data = {}
 
         if otp_instance.is_login:
-            # Generar tokens JWT para autenticación            
+            # Generar tokens JWT para autenticación
             token, created = Token.objects.get_or_create(user=user)
             user.last_login = timezone.now()
             user.save()
 
             # Registrar evento de inicio de sesión
-            request = self.context.get('request')                                
-            user_logged_in.send(sender=user.__class__, request=request, user=user)    
+            request = self.context.get("request")
+            user_logged_in.send(sender=user.__class__, request=request, user=user)
 
-            response_data['token'] = str(token.key)
-            
+            response_data["token"] = str(token.key)
 
             # Eliminar OTP de inicio de sesión usados
             Otp.objects.filter(user=user, is_login=True).delete()
@@ -396,9 +443,10 @@ class ValidateOtpSerializer(serializers.Serializer):
             # Marcar el OTP como validado
             otp_instance.is_validated = True
             otp_instance.save()
-            response_data['message'] = 'OTP validado correctamente'
+            response_data["message"] = "OTP validado correctamente"
 
         return response_data
+
 
 class ResetPasswordSerializer(serializers.Serializer):
     """
@@ -458,7 +506,9 @@ class ResetPasswordSerializer(serializers.Serializer):
 
         # Validar que la nueva contraseña no sea la misma que la actual
         if check_password(new_password, user.password):
-            raise serializers.ValidationError({"detail": "No puedes usar la misma contraseña actual."})
+            raise serializers.ValidationError(
+                {"detail": "No puedes usar la misma contraseña actual."}
+            )
 
         # Validar la contraseña con las reglas de Django
         try:
@@ -480,8 +530,8 @@ class ResetPasswordSerializer(serializers.Serializer):
         Retorno:
         - `CustomUser`: Instancia del usuario con la nueva contraseña guardada.
         """
-        document = self.validated_data['document']
-        new_password = self.validated_data['new_password']
+        document = self.validated_data["document"]
+        new_password = self.validated_data["new_password"]
 
         user = CustomUser.objects.get(document=document)
         user.password = make_password(new_password)  # Encripta la nueva contraseña
@@ -490,9 +540,9 @@ class ResetPasswordSerializer(serializers.Serializer):
         # Eliminar todos los OTP validados del usuario
         Otp.objects.filter(user=user, is_validated=True).delete()
 
-        return user  
-        
-        
+        return user
+
+
 class UserProfileSerializer(serializers.ModelSerializer):
     """
     Serializer para representar el perfil de usuario.
@@ -507,28 +557,44 @@ class UserProfileSerializer(serializers.ModelSerializer):
     - `address`: Dirección del usuario.
     """
 
-    document_type_name = serializers.CharField(source='document_type.typeName', read_only=True)
-    person_type_name = serializers.CharField(source='person_type.typeName', read_only=True)
+    document_type_name = serializers.CharField(
+        source="document_type.typeName", read_only=True
+    )
+    person_type_name = serializers.CharField(
+        source="person_type.typeName", read_only=True
+    )
 
     class Meta:
         model = CustomUser
         fields = [
-            'email', 'document', 'document_type_name', 
-            'first_name', 'last_name', 'phone', 
-            'address', 'person_type_name'
-        ] 
-        
+            "email",
+            "document",
+            "document_type_name",
+            "first_name",
+            "last_name",
+            "phone",
+            "address",
+            "person_type_name",
+        ]
+
+
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ['email', 'phone']
+        fields = ["email", "phone"]
 
     def validate_email(self, value):
         """Evita que el email sea el mismo o que esté duplicado."""
         user = self.instance
         if user.email == value:
-            raise serializers.ValidationError("El nuevo email no puede ser el mismo que el actual.")
-        if CustomUser.objects.filter(email=value).exclude(document=user.document).exists():
+            raise serializers.ValidationError(
+                "El nuevo email no puede ser el mismo que el actual."
+            )
+        if (
+            CustomUser.objects.filter(email=value)
+            .exclude(document=user.document)
+            .exists()
+        ):
             raise serializers.ValidationError("Este email ya está en uso.")
         return value
 
@@ -536,78 +602,95 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
         """Evita que el número de teléfono sea el mismo, que tenga letras o que esté duplicado."""
         user = self.instance
         if user.phone == value:
-            raise serializers.ValidationError("El nuevo número de teléfono no puede ser el mismo que el actual.")
+            raise serializers.ValidationError(
+                "El nuevo número de teléfono no puede ser el mismo que el actual."
+            )
 
-        if not re.match(r'^\d+$', value):  # Verifica que sean solo números
-            raise serializers.ValidationError("El número de teléfono solo puede contener dígitos.")
+        if not re.match(r"^\d+$", value):  # Verifica que sean solo números
+            raise serializers.ValidationError(
+                "El número de teléfono solo puede contener dígitos."
+            )
 
-        if CustomUser.objects.filter(phone=value).exclude(document=user.document).exists():
+        if (
+            CustomUser.objects.filter(phone=value)
+            .exclude(document=user.document)
+            .exists()
+        ):
             raise serializers.ValidationError("Este número de teléfono ya está en uso.")
 
-        return value         
+        return value
 
 
 class ChangePasswordSerializer(serializers.Serializer):
     """
     Serializador para cambio de contraseña.
-    
+
     Permite a un usuario autenticado cambiar su contraseña proporcionando
     la contraseña actual, la nueva contraseña y su confirmación.
     """
+
     current_password = serializers.CharField(
-        write_only=True, 
-        required=True, 
-        style={'input_type': 'password'},
-        help_text="Contraseña actual del usuario."
+        write_only=True,
+        required=True,
+        style={"input_type": "password"},
+        help_text="Contraseña actual del usuario.",
     )
     new_password = serializers.CharField(
-        write_only=True, 
-        required=True, 
-        style={'input_type': 'password'},
-        help_text="Nueva contraseña que debe cumplir con los requisitos de seguridad."
+        write_only=True,
+        required=True,
+        style={"input_type": "password"},
+        help_text="Nueva contraseña que debe cumplir con los requisitos de seguridad.",
     )
     confirm_password = serializers.CharField(
-        write_only=True, 
-        required=True, 
-        style={'input_type': 'password'},
-        help_text="Confirmación de la nueva contraseña. Debe coincidir con el campo new_password."
+        write_only=True,
+        required=True,
+        style={"input_type": "password"},
+        help_text="Confirmación de la nueva contraseña. Debe coincidir con el campo new_password.",
     )
 
     def validate_current_password(self, value):
         """
         Valida que la contraseña actual sea correcta.
         """
-        user = self.context['request'].user
+        user = self.context["request"].user
         if not user.check_password(value):
             raise serializers.ValidationError("La contraseña actual es incorrecta.")
         return value
-    
+
     def validate(self, data):
         """
         Valida que la nueva contraseña y la confirmación coincidan,
         y que la nueva contraseña no sea igual a la actual.
         """
         # Verificar que la nueva contraseña y la confirmación coincidan
-        if data.get('new_password') != data.get('confirm_password'):
-            raise serializers.ValidationError({"confirm_password": "Las contraseñas no coinciden, por favor, verifíquelas."})
-        
+        if data.get("new_password") != data.get("confirm_password"):
+            raise serializers.ValidationError(
+                {
+                    "confirm_password": "Las contraseñas no coinciden, por favor, verifíquelas."
+                }
+            )
+
         # Verificar que la nueva contraseña no sea igual a la actual
-        if data.get('current_password') == data.get('new_password'):
-            raise serializers.ValidationError({"new_password": "La contraseña nueva es igual a la actual, por favor, verifíquelas."})
-        
+        if data.get("current_password") == data.get("new_password"):
+            raise serializers.ValidationError(
+                {
+                    "new_password": "La contraseña nueva es igual a la actual, por favor, verifíquelas."
+                }
+            )
+
         # Aplicar todas las validaciones configuradas en settings.py
         try:
-            validate_password(data.get('new_password'), self.context['request'].user)
+            validate_password(data.get("new_password"), self.context["request"].user)
         except DjangoValidationError as e:
             raise serializers.ValidationError({"new_password": list(e.messages)})
-            
+
         return data
 
     def save(self):
         """
         Actualiza la contraseña del usuario.
         """
-        user = self.context['request'].user
-        user.set_password(self.validated_data['new_password'])
+        user = self.context["request"].user
+        user.set_password(self.validated_data["new_password"])
         user.save()
         return user

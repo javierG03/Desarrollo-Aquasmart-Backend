@@ -42,6 +42,7 @@ def inactive_user(db):
         is_registered=True,
     )
 
+
 @pytest.fixture
 def auth_token(api_client, test_user):
     """Verifica que se envía el código de recuperación, pero no devuelve token."""
@@ -49,20 +50,21 @@ def auth_token(api_client, test_user):
     data = {
         "document": test_user.document,
         "password": "SecurePass123",
-        "phone": test_user.phone  # ✅ Agregar el campo obligatorio
+        "phone": test_user.phone,  # ✅ Agregar el campo obligatorio
     }
     response = api_client.post(url, data)
 
     print("\nAPI RESPONSE:", response.data)  # 👀 Verificar respuesta real
 
+    assert (
+        "message" in response.data
+    ), f"Clave inesperada en respuesta: {response.data.keys()}"
+    assert (
+        response.data["message"]
+        == "Se ha enviado el código de recuperación a su correo electrónico."
+    )
 
-    assert "message" in response.data, f"Clave inesperada en respuesta: {response.data.keys()}"
-    assert response.data["message"] == "Se ha enviado el código de recuperación a su correo electrónico."
-    
     return None  # 🔴 No hay token, solo confirmamos el mensaje
-
-
-
 
 
 @pytest.fixture
@@ -72,16 +74,15 @@ def otp_for_user(db, test_user):
     return otp
 
 
-
 @pytest.fixture
 def expired_otp(db, test_user):
     """Simula un OTP caducado sin modificar el modelo."""
     otp = Otp.objects.create(user=test_user, otp="654321", is_validated=False)
-    
+
     # Simula que la API verifica si el OTP ha expirado
     def mock_is_expired():
         return True  # Forzamos que el OTP se considere caducado
-    
+
     # Reemplazar método en el test
     otp.is_expired = mock_is_expired
     return otp
@@ -97,25 +98,29 @@ def used_otp(db, test_user):
 def test_request_password_recovery(api_client, test_user):
     """✅ Usuario registrado solicita recuperación de contraseña correctamente."""
     url = reverse("generate_otp_password_recovery")
-    data = {"document": test_user.document, "phone": test_user.phone}  # 📌 Agregar 'phone'
-    
+    data = {
+        "document": test_user.document,
+        "phone": test_user.phone,
+    }  # 📌 Agregar 'phone'
+
     response = api_client.post(url, data)
-    
-    assert response.status_code == status.HTTP_200_OK, f"Error en respuesta: {response.data}"
+
+    assert (
+        response.status_code == status.HTTP_200_OK
+    ), f"Error en respuesta: {response.data}"
     assert "Se ha enviado el código de recuperación" in response.data["message"]
-
-
-
 
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("invalid_document", ["", "12345678901234567890"])
-def test_request_password_recovery_invalid_document(api_client, auth_token, invalid_document):
+def test_request_password_recovery_invalid_document(
+    api_client, auth_token, invalid_document
+):
     """❌ No se puede solicitar recuperación con documento inválido."""
     url = reverse("reset-password")
     data = {
         "document": invalid_document,
-        "new_password": "TemporaryPass123@"  # ✅ Agregar si es requerido
+        "new_password": "TemporaryPass123@",  # ✅ Agregar si es requerido
     }
 
     response = api_client.post(url, data)
@@ -123,21 +128,28 @@ def test_request_password_recovery_invalid_document(api_client, auth_token, inva
     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     # 🔹 Buscar error en document o new_password según respuesta
-    error_message = response.data.get("document", response.data.get("new_password", [None]))[0]
+    error_message = response.data.get(
+        "document", response.data.get("new_password", [None])
+    )[0]
 
-    assert error_message is not None, f"Error esperado pero no encontrado en: {response.data}"
-    
+    assert (
+        error_message is not None
+    ), f"Error esperado pero no encontrado en: {response.data}"
+
 
 @pytest.mark.django_db
 def test_request_password_recovery_unregistered_user(api_client, auth_token):
     """❌ Solicitud de recuperación con usuario no registrado"""
     url = reverse("change-password")
     data = {"document": "999999999999"}
-    
+
     headers = {"Authorization": f"Bearer {auth_token}"}
     response = api_client.post(url, data, headers=headers)
 
-    assert response.status_code in [status.HTTP_404_NOT_FOUND, status.HTTP_401_UNAUTHORIZED], f"Error inesperado: {response.data}"
+    assert response.status_code in [
+        status.HTTP_404_NOT_FOUND,
+        status.HTTP_401_UNAUTHORIZED,
+    ], f"Error inesperado: {response.data}"
 
 
 @pytest.mark.django_db
@@ -149,54 +161,66 @@ def test_request_password_recovery_inactive_user(api_client, inactive_user):
 
     print("\n🔹 API RESPONSE:", response.data)  # 👀 Verificar respuesta real
 
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED, f"❌ Código de respuesta inesperado: {response.status_code}"
+    assert (
+        response.status_code == status.HTTP_401_UNAUTHORIZED
+    ), f"❌ Código de respuesta inesperado: {response.status_code}"
 
     # 🔹 Ajustar validación según estructura real de la respuesta
     error_message = response.data.get("detail", response.data.get("message"))
 
-    assert error_message is not None, f"❌ Error esperado pero no encontrado en: {response.data}"
-    assert "Authentication credentials" in error_message, f"❌ Mensaje inesperado: {error_message}"
-
+    assert (
+        error_message is not None
+    ), f"❌ Error esperado pero no encontrado en: {response.data}"
+    assert (
+        "Authentication credentials" in error_message
+    ), f"❌ Mensaje inesperado: {error_message}"
 
 
 @pytest.mark.django_db
 def test_reset_password_with_valid_otp(api_client, test_user, otp_for_user):
     """✅ OTP válido permite resetear contraseña"""
-    
+
     # Validar el OTP antes de restablecer la contraseña
     validate_otp_url = reverse("validate-otp")
-    api_client.post(validate_otp_url, {"document": test_user.document, "otp": otp_for_user.otp})
+    api_client.post(
+        validate_otp_url, {"document": test_user.document, "otp": otp_for_user.otp}
+    )
 
     url = reverse("reset-password")
     data = {
         "document": test_user.document,
         "otp": otp_for_user.otp,
-        "new_password": "NewSecurePass123@"
+        "new_password": "NewSecurePass123@",
     }
     response = api_client.post(url, data)
 
     print("\nAPI RESPONSE:", response.data)  # 🔍 Verificar respuesta real
 
-    assert response.status_code == status.HTTP_200_OK, f"Error inesperado: {response.data}"
-
-
+    assert (
+        response.status_code == status.HTTP_200_OK
+    ), f"Error inesperado: {response.data}"
 
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("invalid_otp", ["ABC123", "12@34!", "12345"])
-def test_reset_password_with_invalid_otp(api_client, test_user, otp_for_user, invalid_otp):
+def test_reset_password_with_invalid_otp(
+    api_client, test_user, otp_for_user, invalid_otp
+):
     """❌ OTP con formato inválido no debe ser aceptado."""
-    
 
     url = reverse("reset-password")
-    
-    data = {"document": test_user.document, "otp": invalid_otp, "new_password": "NewSecurePass123!"}
+
+    data = {
+        "document": test_user.document,
+        "otp": invalid_otp,
+        "new_password": "NewSecurePass123!",
+    }
 
     response = api_client.post(url, data)
 
-    assert response.status_code == status.HTTP_400_BAD_REQUEST, f"Error inesperado: {response.data}"
-
-
+    assert (
+        response.status_code == status.HTTP_400_BAD_REQUEST
+    ), f"Error inesperado: {response.data}"
 
 
 @pytest.mark.django_db
@@ -206,23 +230,31 @@ def test_reset_password_with_expired_otp(api_client, test_user):
 
     # 🔹 Simulamos un OTP expirado
     expired_otp = Otp.objects.create(user=test_user, otp="654321", is_validated=False)
-    
+
     # Asegurarnos de que el backend lo trate como expirado
-    expired_otp.created_at = timezone.now() - timedelta(minutes=15)  # Suponiendo que el tiempo de expiración es 10 min
+    expired_otp.created_at = timezone.now() - timedelta(
+        minutes=15
+    )  # Suponiendo que el tiempo de expiración es 10 min
     expired_otp.save()
 
-    data = {"document": test_user.document, "otp": "654321", "new_password": "NewSecurePass123!"}
+    data = {
+        "document": test_user.document,
+        "otp": "654321",
+        "new_password": "NewSecurePass123!",
+    }
     response = api_client.post(url, data)
 
     print("\n🔹 API RESPONSE:", response.data)  # 👀 Verificar respuesta real
 
-    assert response.status_code == status.HTTP_400_BAD_REQUEST, f"❌ Código de respuesta inesperado: {response.status_code}"
-    
+    assert (
+        response.status_code == status.HTTP_400_BAD_REQUEST
+    ), f"❌ Código de respuesta inesperado: {response.status_code}"
+
     # Aceptamos tanto el mensaje actual como el esperado si el backend aún no ha sido corregido
     expected_messages = ["OTP ha caducado", "No hay un OTP validado para este usuario."]
-    assert any(msg in response.data.get("detail", "") for msg in expected_messages), f"❌ Mensaje inesperado: {response.data}"
-
-
+    assert any(
+        msg in response.data.get("detail", "") for msg in expected_messages
+    ), f"❌ Mensaje inesperado: {response.data}"
 
 
 @pytest.mark.django_db
@@ -238,7 +270,7 @@ def test_reset_password_with_used_otp(api_client, test_user, used_otp):
     data = {
         "document": test_user.document,
         "otp": used_otp.otp,  # OTP ya usado
-        "new_password": "NewSecurePass123@"
+        "new_password": "NewSecurePass123@",
     }
 
     response = api_client.post(url, data)
@@ -246,36 +278,45 @@ def test_reset_password_with_used_otp(api_client, test_user, used_otp):
     print("\n🔹 API RESPONSE:", response.data)
 
     # ✅ Asegurar que el código de respuesta es 400 (Bad Request)
-    assert response.status_code == status.HTTP_400_BAD_REQUEST, f"❌ Código inesperado: {response.status_code}"
+    assert (
+        response.status_code == status.HTTP_400_BAD_REQUEST
+    ), f"❌ Código inesperado: {response.status_code}"
 
     # ✅ Verificar que el mensaje de error sea el correcto
-    error_message = response.data.get("detail", [""])[0]  # Extraer el primer mensaje de error si es una lista
-    assert "No hay un OTP validado para este usuario" in error_message, f"❌ Mensaje inesperado: {error_message}"
-
+    error_message = response.data.get("detail", [""])[
+        0
+    ]  # Extraer el primer mensaje de error si es una lista
+    assert (
+        "No hay un OTP validado para este usuario" in error_message
+    ), f"❌ Mensaje inesperado: {error_message}"
 
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("weak_password", ["123456", "password", "SecurePass"])
-def test_reset_password_with_weak_password(api_client, test_user, otp_for_user, weak_password):
+def test_reset_password_with_weak_password(
+    api_client, test_user, otp_for_user, weak_password
+):
     """❌ Nueva contraseña sin requisitos mínimos debe ser rechazada."""
 
     url = reverse("reset-password")
     data = {
         "document": test_user.document,
         "otp": otp_for_user.otp,
-        "new_password": weak_password
+        "new_password": weak_password,
     }
     response = api_client.post(url, data)
 
     print("\n🔍 API RESPONSE:", response.data)  # Verificar la respuesta real
 
-    assert response.status_code == status.HTTP_400_BAD_REQUEST, f"❌ Código inesperado: {response.status_code}"
+    assert (
+        response.status_code == status.HTTP_400_BAD_REQUEST
+    ), f"❌ Código inesperado: {response.status_code}"
 
     # 🔧 Capturar correctamente los errores según la estructura de la respuesta
     error_messages = (
-        response.data.get("password") or
-        response.data.get("detail", []) or
-        response.data.get("non_field_errors", [])
+        response.data.get("password")
+        or response.data.get("detail", [])
+        or response.data.get("non_field_errors", [])
     )
 
     assert error_messages, f"❌ No se encontró mensaje de error en: {response.data}"
@@ -284,9 +325,3 @@ def test_reset_password_with_weak_password(api_client, test_user, otp_for_user, 
     error_text = " ".join([str(err) for err in error_messages])
 
     assert "contraseña" in error_text.lower(), f"❌ Mensaje inesperado: {error_text}"
-
-
-
-
-
-

@@ -4,11 +4,9 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('users', '0007_customuser_drive_folder_id'),
-        ('users', '0009_alter_customuser_options'),
+        ("users", "0007_customuser_drive_folder_id"),
+        ("users", "0009_alter_customuser_options"),
     ]
 
-    operations = [
-    ]
+    operations = []

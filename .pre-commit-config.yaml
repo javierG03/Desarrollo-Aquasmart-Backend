@@ -1,0 +1,27 @@
+# Archivo .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/psf/black
+    rev: 23.3.0  # Versión actual de Black
+    hooks:
+      - id: black
+
+  - repo: https://github.com/PyCQA/flake8
+    rev: 6.0.0  # Última versión estable
+    hooks:
+      - id: flake8
+        args: ["--exclude=env,VirtualEnv,frontendWeb/node_modules"]
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+  - repo: local
+    hooks:
+      - id: pytest
+        name: Run pytest tests
+        entry: pytest backend/users/Test/  # Ruta donde están tus tests
+        language: system
+        pass_filenames: false

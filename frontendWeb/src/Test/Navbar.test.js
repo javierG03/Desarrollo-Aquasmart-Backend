@@ -16,19 +16,19 @@ describe('NavBar', () => {
         <NavBar />
       </MemoryRouter>
     );
-    
+
     // Verificamos si el logo está presente
     const logo = screen.getByAltText('Logo');
     expect(logo).toBeInTheDocument();
 
     // Verificamos que los enlaces estén presentes
     const links = [
-      'Perfil', 
-      'Control IoT', 
-      'Gestión de Registros', 
-      'Facturación', 
-      'Historial de consumo', 
-      'Predicciones', 
+      'Perfil',
+      'Control IoT',
+      'Gestión de Registros',
+      'Facturación',
+      'Historial de consumo',
+      'Predicciones',
       'Permisos'
     ];
 

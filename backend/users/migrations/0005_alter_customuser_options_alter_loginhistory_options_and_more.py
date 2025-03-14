@@ -7,122 +7,190 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('users', '0004_rename_isregistered_customuser_is_registered'),
+        ("users", "0004_rename_isregistered_customuser_is_registered"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='customuser',
+            name="customuser",
             options={},
         ),
         migrations.AlterModelOptions(
-            name='loginhistory',
-            options={'verbose_name': 'Historial de Inicio de Sesión', 'verbose_name_plural': 'Historiales de Inicio de Sesión'},
+            name="loginhistory",
+            options={
+                "verbose_name": "Historial de Inicio de Sesión",
+                "verbose_name_plural": "Historiales de Inicio de Sesión",
+            },
         ),
         migrations.AlterModelOptions(
-            name='otp',
-            options={'verbose_name': 'Código OTP', 'verbose_name_plural': 'Códigos OTP'},
+            name="otp",
+            options={
+                "verbose_name": "Código OTP",
+                "verbose_name_plural": "Códigos OTP",
+            },
         ),
         migrations.AlterField(
-            model_name='customuser',
-            name='address',
-            field=models.CharField(db_index=True, max_length=200, verbose_name='Dirección'),
+            model_name="customuser",
+            name="address",
+            field=models.CharField(
+                db_index=True, max_length=200, verbose_name="Dirección"
+            ),
         ),
         migrations.AlterField(
-            model_name='customuser',
-            name='document',
-            field=models.CharField(db_index=True, max_length=12, primary_key=True, serialize=False, verbose_name='Documento'),
+            model_name="customuser",
+            name="document",
+            field=models.CharField(
+                db_index=True,
+                max_length=12,
+                primary_key=True,
+                serialize=False,
+                verbose_name="Documento",
+            ),
         ),
         migrations.AlterField(
-            model_name='customuser',
-            name='document_type',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, related_name='document_type', to='users.documenttype', verbose_name='Tipo de Documento'),
+            model_name="customuser",
+            name="document_type",
+            field=models.ForeignKey(
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="document_type",
+                to="users.documenttype",
+                verbose_name="Tipo de Documento",
+            ),
         ),
         migrations.AlterField(
-            model_name='customuser',
-            name='email',
-            field=models.EmailField(db_index=True, max_length=254, unique=True, verbose_name='Correo Electrónico'),
+            model_name="customuser",
+            name="email",
+            field=models.EmailField(
+                db_index=True,
+                max_length=254,
+                unique=True,
+                verbose_name="Correo Electrónico",
+            ),
         ),
         migrations.AlterField(
-            model_name='customuser',
-            name='first_name',
-            field=models.CharField(db_index=True, max_length=50, verbose_name='Nombre'),
+            model_name="customuser",
+            name="first_name",
+            field=models.CharField(db_index=True, max_length=50, verbose_name="Nombre"),
         ),
         migrations.AlterField(
-            model_name='customuser',
-            name='is_registered',
-            field=models.BooleanField(db_index=True, default=False, help_text='Indica si el usuario completó el pre-registro', verbose_name='Registrado'),
+            model_name="customuser",
+            name="is_registered",
+            field=models.BooleanField(
+                db_index=True,
+                default=False,
+                help_text="Indica si el usuario completó el pre-registro",
+                verbose_name="Registrado",
+            ),
         ),
         migrations.AlterField(
-            model_name='customuser',
-            name='last_name',
-            field=models.CharField(db_index=True, max_length=50, verbose_name='Apellido'),
+            model_name="customuser",
+            name="last_name",
+            field=models.CharField(
+                db_index=True, max_length=50, verbose_name="Apellido"
+            ),
         ),
         migrations.AlterField(
-            model_name='customuser',
-            name='person_type',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, related_name='person_type', to='users.persontype', verbose_name='Tipo de Persona'),
+            model_name="customuser",
+            name="person_type",
+            field=models.ForeignKey(
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="person_type",
+                to="users.persontype",
+                verbose_name="Tipo de Persona",
+            ),
         ),
         migrations.AlterField(
-            model_name='customuser',
-            name='phone',
-            field=models.CharField(db_index=True, max_length=20, verbose_name='Teléfono'),
+            model_name="customuser",
+            name="phone",
+            field=models.CharField(
+                db_index=True, max_length=20, verbose_name="Teléfono"
+            ),
         ),
         migrations.AlterField(
-            model_name='documenttype',
-            name='documentTypeId',
-            field=models.AutoField(primary_key=True, serialize=False, verbose_name='ID de Tipo de Documento'),
+            model_name="documenttype",
+            name="documentTypeId",
+            field=models.AutoField(
+                primary_key=True,
+                serialize=False,
+                verbose_name="ID de Tipo de Documento",
+            ),
         ),
         migrations.AlterField(
-            model_name='documenttype',
-            name='typeName',
-            field=models.CharField(max_length=50, verbose_name='Nombre del Tipo de Documento'),
+            model_name="documenttype",
+            name="typeName",
+            field=models.CharField(
+                max_length=50, verbose_name="Nombre del Tipo de Documento"
+            ),
         ),
         migrations.AlterField(
-            model_name='loginhistory',
-            name='timestamp',
-            field=models.DateTimeField(default=django.utils.timezone.now, verbose_name='Fecha y Hora de Inicio de Sesión'),
+            model_name="loginhistory",
+            name="timestamp",
+            field=models.DateTimeField(
+                default=django.utils.timezone.now,
+                verbose_name="Fecha y Hora de Inicio de Sesión",
+            ),
         ),
         migrations.AlterField(
-            model_name='loginhistory',
-            name='user',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='login_history', to=settings.AUTH_USER_MODEL, verbose_name='Usuario'),
+            model_name="loginhistory",
+            name="user",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="login_history",
+                to=settings.AUTH_USER_MODEL,
+                verbose_name="Usuario",
+            ),
         ),
         migrations.AlterField(
-            model_name='otp',
-            name='creation_time',
-            field=models.DateTimeField(default=django.utils.timezone.now, verbose_name='Fecha de Creación'),
+            model_name="otp",
+            name="creation_time",
+            field=models.DateTimeField(
+                default=django.utils.timezone.now, verbose_name="Fecha de Creación"
+            ),
         ),
         migrations.AlterField(
-            model_name='otp',
-            name='is_login',
-            field=models.BooleanField(default=False, verbose_name='Para Inicio de Sesión'),
+            model_name="otp",
+            name="is_login",
+            field=models.BooleanField(
+                default=False, verbose_name="Para Inicio de Sesión"
+            ),
         ),
         migrations.AlterField(
-            model_name='otp',
-            name='is_validated',
-            field=models.BooleanField(default=False, verbose_name='Validado'),
+            model_name="otp",
+            name="is_validated",
+            field=models.BooleanField(default=False, verbose_name="Validado"),
         ),
         migrations.AlterField(
-            model_name='otp',
-            name='otp',
-            field=models.CharField(max_length=6, unique=True, verbose_name='Código OTP'),
+            model_name="otp",
+            name="otp",
+            field=models.CharField(
+                max_length=6, unique=True, verbose_name="Código OTP"
+            ),
         ),
         migrations.AlterField(
-            model_name='otp',
-            name='user',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='otp', to=settings.AUTH_USER_MODEL, verbose_name='Usuario'),
+            model_name="otp",
+            name="user",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="otp",
+                to=settings.AUTH_USER_MODEL,
+                verbose_name="Usuario",
+            ),
         ),
         migrations.AlterField(
-            model_name='persontype',
-            name='personTypeId',
-            field=models.AutoField(primary_key=True, serialize=False, verbose_name='ID de Tipo de Persona'),
+            model_name="persontype",
+            name="personTypeId",
+            field=models.AutoField(
+                primary_key=True, serialize=False, verbose_name="ID de Tipo de Persona"
+            ),
         ),
         migrations.AlterField(
-            model_name='persontype',
-            name='typeName',
-            field=models.CharField(max_length=20, verbose_name='Nombre del Tipo de Persona'),
+            model_name="persontype",
+            name="typeName",
+            field=models.CharField(
+                max_length=20, verbose_name="Nombre del Tipo de Persona"
+            ),
         ),
     ]

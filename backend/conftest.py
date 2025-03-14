@@ -1,6 +1,7 @@
 import sys
 import os
 
+
 def pytest_configure(config):
     # Get the absolute path to the project's root directory (where manage.py is, which is 'backend' directory)
     project_root = os.path.dirname(os.path.abspath(__file__))
