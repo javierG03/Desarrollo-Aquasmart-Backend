@@ -54,9 +54,9 @@ class CustomUserSerializer(serializers.ModelSerializer):
         fields = [
             'document', 'first_name', 'last_name', 'email', 
             'document_type', 'person_type', 'phone', 'address',
-            'password', 'is_registered', 'is_active','drive_folder_id','files'
+            'password', 'is_registered', 'is_active','date_joined','drive_folder_id','files'
         ]
-        read_only_fields = ('is_registered', 'is_active','drive_folder_id')
+        read_only_fields = ('is_registered', 'is_active','drive_folder_id','date_joined')
         
         extra_kwargs = {
             'document': {'validators': []},
