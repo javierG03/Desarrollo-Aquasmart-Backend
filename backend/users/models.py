@@ -94,6 +94,13 @@ class CustomUser(AbstractUser):
     REQUIRED_FIELDS = ['first_name', 'last_name', 'phone', 'address', 'email']
 
     objects = UserManager()
+    
+    class Meta:
+        permissions = [
+            ("can_toggle_is_active", "Puede cambiar el estado de is_active"),
+            ("can_toggle_is_registered", "Puede cambiar el estado de is_registered"),
+            ("can_toggle_is_staff", "Puede cambiar el estado de is_staff"),
+        ]
 
     def __str__(self):
         return f"{self.document} - {self.first_name} {self.last_name}"   

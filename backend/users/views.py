@@ -9,6 +9,8 @@ from .validate import validate_user_exist
 from API.google.google_drive import upload_to_drive
 import os
 from django.conf import settings
+from .permissions import PuedeCambiarIsActive,CanRegister,CanAddDocumentType
+from rest_framework.authentication import TokenAuthentication
 @extend_schema_view(
     post=extend_schema(
         summary="Crear un nuevo usuario",
@@ -87,7 +89,7 @@ class DocumentTypeView(generics.CreateAPIView):
 
     queryset = DocumentType.objects.all()
     serializer_class = DocumentTypeSerializer
-    permission_classes = [IsAdminUser, IsAuthenticated]
+    permission_classes = [CanAddDocumentType, IsAuthenticated]
 
 class DocumentTypeListView(generics.ListAPIView):
     queryset = DocumentType.objects.all()
@@ -163,8 +165,8 @@ class UserRegisterAPIView(APIView):
 
     Solo los administradores autenticados pueden acceder a esta vista.
     """
-
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated,CanRegister]
 
     def patch(self, request, document):
         """
@@ -197,7 +199,7 @@ class UserInactiveAPIView(APIView):
     Solo los administradores autenticados pueden acceder a esta vista.
     """
 
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, PuedeCambiarIsActive]
 
     def patch(self, request, document):
         """
@@ -229,7 +231,7 @@ class UserActivateAPIView(APIView):
     Solo los administradores autenticados pueden acceder a esta vista.
     """
 
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, PuedeCambiarIsActive]
 
     def patch(self, request, document):
         """
