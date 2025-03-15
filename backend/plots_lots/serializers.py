@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import Plot
 from users.models import CustomUser
-
+from rest_framework.exceptions import NotFound
 class PlotSerializer(serializers.ModelSerializer):
     owner = serializers.CharField()
     class Meta:
@@ -16,7 +16,7 @@ class PlotSerializer(serializers.ModelSerializer):
         try:
             user = CustomUser.objects.get(document=value)
         except CustomUser.DoesNotExist:
-            raise serializers.ValidationError("El usuario no está registrado.")
+            raise NotFound("El usuario no está registrado.")
 
         return user  # Retornar el objeto en lugar del ID
 
