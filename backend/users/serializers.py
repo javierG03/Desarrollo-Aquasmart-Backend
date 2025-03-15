@@ -4,7 +4,15 @@ from API.sendmsn import send_email
 from .models import DocumentType, PersonType, CustomUser, LoginHistory, Otp
 from django.contrib.auth.hashers import make_password, check_password
 from django.contrib.auth.password_validation import validate_password
-from .validate import validate_user, validate_otp
+from .validate import (
+    validate_user_exist,
+    validate_otp,
+    validate_create_user_email,
+    validate_create_user_document,
+    validate_user_password,
+    validate_only_number_phone,
+    validate_user_current_password,
+)
 from rest_framework.exceptions import NotFound, PermissionDenied
 from django.contrib.auth.signals import user_logged_in
 from django.utils import timezone
@@ -83,43 +91,16 @@ class CustomUserSerializer(serializers.ModelSerializer):
         }
 
     def validate_document(self, value):
-        """
-        Valida si el documento ya existe, si es solo numérico y maneja los mensajes personalizados.
-        """
-        if not re.match(r"^\d+$", value):
-            raise serializers.ValidationError(
-                "El documento debe contener solo números."
-            )
-
-        existing_user = CustomUser.objects.filter(document=value).first()
-        if existing_user:
-            if not existing_user.is_registered:
-                raise serializers.ValidationError("Ya tienes un pre-registro activo.")
-            else:
-                raise serializers.ValidationError("El usuario ya pasó el pre-registro.")
-        return value
+        return validate_create_user_document(value)
 
     def validate_phone(self, value):
-        """
-        Valida que el número de teléfono solo contenga números.
-        """
-        if not re.match(r"^\d+$", value):
-            raise serializers.ValidationError("El teléfono debe contener solo números.")
-        return value
+        return validate_only_number_phone(value)
 
     def validate_email(self, value):
-        """
-        Valida si el email ya existe y maneja el mensaje personalizado.
-        """
-        if CustomUser.objects.filter(email=value).exists():
-            raise serializers.ValidationError("Este correo ya está registrado.")
-        return value
+        return validate_create_user_email(value)
 
     def validate_password(self, value):
-        try:
-            validate_password(value)
-        except DjangoValidationError as e:
-            raise serializers.ValidationError({"detail": list(e.messages)})
+        return validate_user_password(value)
 
     def create(self, validated_data):
         """
@@ -194,10 +175,7 @@ class LoginSerializer(serializers.Serializer):
         document = data.get("document")
         password = data.get("password")
 
-        user = validate_user(document)
-
-        if not user:
-            raise NotFound({"details": "No se encontró un usuario con este documento."})
+        user = validate_user_exist(document)
 
         if not user.is_active:
             raise PermissionDenied(
@@ -270,20 +248,8 @@ class GenerateOtpLoginSerializer(serializers.Serializer):
     def validate_document(self, document):
         """
         Valida si el usuario existe en la base de datos.
-
-        Args:
-            document (str): Número de documento del usuario.
-
-        Returns:
-            user (CustomUser): Instancia del usuario si es válido.
-
-        Raises:
-            serializers.ValidationError: Si el usuario no existe.
         """
-        user = validate_user(document)
-        if not user:
-            raise serializers.ValidationError("User not found.")
-        return user
+        return validate_user_exist(document)
 
     def create(self, validated_data):
         """
@@ -337,9 +303,7 @@ class GenerateOtpPasswordRecoverySerializer(serializers.Serializer):
         phone = attrs.get("phone")
 
         # Validar existencia del usuario
-        user = validate_user(document)
-        if user is None:
-            raise NotFound("No se encontró un usuario con este documento.")
+        user = validate_user_exist(document)
 
         # Validar que el teléfono coincida con el registrado en la base de datos
         if user.phone != phone:
@@ -413,7 +377,7 @@ class ValidateOtpSerializer(serializers.Serializer):
         otp = data.get("otp")
 
         # Verificar si el usuario existe
-        user = validate_user(document)
+        user = validate_user_exist(document)
 
         # Verificar si el OTP es válido y no ha sido utilizado
         otp_instance = validate_otp(user=user, is_validated=False, otp=otp)
@@ -499,10 +463,10 @@ class ResetPasswordSerializer(serializers.Serializer):
         new_password = data.get("new_password")
 
         # Verificar si el usuario existe
-        user = validate_user(document)
+        user = validate_user_exist(document)
 
         # Verificar si existe un OTP validado para este usuario
-        otp_instance = validate_otp(user=user, is_validated=True)
+        validate_otp(user=user, is_validated=True)
 
         # Validar que la nueva contraseña no sea la misma que la actual
         if check_password(new_password, user.password):
@@ -579,12 +543,23 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
+    email = serializers.CharField(required=True, allow_blank=False)
+    phone = serializers.CharField(required=True, allow_blank=False)
+
     class Meta:
         model = CustomUser
-        fields = ["email", "phone"]
+        fields = ["email", "phone"]  # Solo permitimos estos campos
+
+    def validate(self, data):
+        """Verifica que al menos un campo haya sido enviado."""
+        if not data.get("email") and not data.get("phone"):
+            raise serializers.ValidationError(
+                "Debes enviar al menos el email o el teléfono para actualizar el perfil."
+            )
+        return data
 
     def validate_email(self, value):
-        """Evita que el email sea el mismo o que esté duplicado."""
+        """Evita que el email sea el mismo o que esté vacío."""
         user = self.instance
         if user.email == value:
             raise serializers.ValidationError(
@@ -596,28 +571,18 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
             .exists()
         ):
             raise serializers.ValidationError("Este email ya está en uso.")
+
         return value
 
     def validate_phone(self, value):
-        """Evita que el número de teléfono sea el mismo, que tenga letras o que esté duplicado."""
+        """Evita que el número de teléfono sea el mismo, contenga letras o esté vacío."""
         user = self.instance
         if user.phone == value:
             raise serializers.ValidationError(
                 "El nuevo número de teléfono no puede ser el mismo que el actual."
             )
 
-        if not re.match(r"^\d+$", value):  # Verifica que sean solo números
-            raise serializers.ValidationError(
-                "El número de teléfono solo puede contener dígitos."
-            )
-
-        if (
-            CustomUser.objects.filter(phone=value)
-            .exclude(document=user.document)
-            .exists()
-        ):
-            raise serializers.ValidationError("Este número de teléfono ya está en uso.")
-
+        validate_only_number_phone(value)
         return value
 
 
@@ -652,10 +617,8 @@ class ChangePasswordSerializer(serializers.Serializer):
         """
         Valida que la contraseña actual sea correcta.
         """
-        user = self.context["request"].user
-        if not user.check_password(value):
-            raise serializers.ValidationError("La contraseña actual es incorrecta.")
-        return value
+        user = self.context["request"].user  # Obtiene el usuario desde el contexto
+        return validate_user_current_password(value, user)
 
     def validate(self, data):
         """

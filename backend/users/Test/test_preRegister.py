@@ -169,10 +169,7 @@ def test_pre_register_weak_password(api_client, weak_password):
     else:
         error_message = " ".join([str(err) for err in password_errors])
 
-    assert (
-        "contraseña" in error_message.lower()
-    ), f"Mensaje inesperado: {error_message}"
-
+    assert "contraseña" in error_message.lower(), f"Mensaje inesperado: {error_message}"
 
 
 @pytest.mark.django_db
@@ -207,7 +204,6 @@ def test_pre_register_invalid_document(api_client, invalid_document):
     ), f"Clave inesperada en la respuesta: {response.data.keys()}"
 
 
-
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     "invalid_phone", ["", "abcd1234", "1234567890" * 50, "@1234567890"]
@@ -231,6 +227,7 @@ def test_pre_register_invalid_phone(api_client, invalid_phone):
     assert (
         "phone" in response.data
     ), f"Clave inesperada en la respuesta: {response.data.keys()}"
+
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
@@ -265,14 +262,10 @@ def test_pre_register_weak_password_constraints(api_client, weak_password):
         error_message = " ".join([str(err) for err in password_errors])
 
     if weak_password == "":  # Caso especial para contraseña vacía
-        assert error_message.lower() == "this field may not be blank.", f"Mensaje inesperado: {error_message}"
+        assert (
+            error_message.lower() == "this field may not be blank."
+        ), f"Mensaje inesperado: {error_message}"
     else:
-        assert "contraseña" in error_message.lower(), f"Mensaje inesperado: {error_message}"
-
-
-
-
-
-
-
-
+        assert (
+            "contraseña" in error_message.lower()
+        ), f"Mensaje inesperado: {error_message}"

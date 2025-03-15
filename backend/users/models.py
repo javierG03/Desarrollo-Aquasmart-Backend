@@ -184,7 +184,7 @@ class Otp(models.Model):
         Returns:
             bool: True si el OTP es válido, False si ha expirado.
         """
-        return (now() - self.creation_time) <= timedelta(minutes=15)
+        return (now() - self.creation_time) <= timedelta(minutes=5)
 
     def __str__(self):
         return f"OTP {self.otp} para {self.user.first_name}"

@@ -11,7 +11,7 @@ from .serializers import (
 from rest_framework.permissions import IsAdminUser, IsAuthenticated, AllowAny
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
 from rest_framework.response import Response
-from .validate import validate_user
+from .validate import validate_user_exist
 from API.google.google_drive import upload_to_drive
 import os
 from django.conf import settings
@@ -46,7 +46,7 @@ class CustomUserCreateView(generics.CreateAPIView):
         Crea un usuario y maneja la subida de archivos a Google Drive.
         """
         user = serializer.save()  # Guarda el usuario primero
-        uploaded_files = self.request.FILES.getlist("file")
+        uploaded_files = self.request.FILES.getlist("attachments")
         # Obtiene los archivos subidos
 
         if uploaded_files and user.drive_folder_id:
@@ -210,22 +210,19 @@ class UserRegisterAPIView(APIView):
         Returns:
             Response: Estado de la activación del usuario.
         """
-        user = validate_user(document)
-        # Verificar si la validacion de usuario no sea None
-        if user is None:
-            return Response(
-                {"error": "User not found."}, status=status.HTTP_404_NOT_FOUND
-            )
+        user = validate_user_exist(document)
         # Verificar si ya está registrado
         if user.is_registered:
             return Response(
-                {"status": "The user is registered"}, status=status.HTTP_400_BAD_REQUEST
+                {"status": "el usuario ya se encuentra registrado"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         # Verificar si ya está activo
         if user.is_active:
             return Response(
-                {"status": "The user is activated"}, status=status.HTTP_400_BAD_REQUEST
+                {"status": "El usuario ya se encuentra activo."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
         user.is_registered = True
         user.is_active = True
@@ -253,28 +250,26 @@ class UserInactiveAPIView(APIView):
         Returns:
             Response: Estado de la activación del usuario.
         """
-        user = validate_user(document)
-        # Verificar si la validacion de usuario no sea None
-        if user is None:
-            return Response(
-                {"error": "User not found."}, status=status.HTTP_404_NOT_FOUND
-            )
+        user = validate_user_exist(document)
         # Verificar si ya está registrado
         if not user.is_registered:
             return Response(
-                {"status": "The user is not registered"},
+                {"status": "El usuario no a pasado el pre-registro o esta pendiente."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         # Verificar si ya está activo
         if not user.is_active:
             return Response(
-                {"status": "The user is not activated"},
+                {"status": "El usuario ya se encuentrea inactivo."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         user.is_active = False
         user.save()
-        return Response({"status": "User inactivated"}, status=status.HTTP_200_OK)
+        return Response(
+            {"status": "El usuario a sido desactivado correctamente."},
+            status=status.HTTP_200_OK,
+        )
 
 
 class UserActivateAPIView(APIView):
@@ -297,27 +292,27 @@ class UserActivateAPIView(APIView):
         Returns:
             Response: Estado de la activación del usuario.
         """
-        user = validate_user(document)
-        # Verificar si la validacion de usuario no sea None
-        if user is None:
-            return Response(
-                {"error": "User not found."}, status=status.HTTP_404_NOT_FOUND
-            )
+        user = validate_user_exist(document)
+
         # Verificar si ya está registrado
         if not user.is_registered:
             return Response(
-                {"status": "The user is not registered"},
+                {"status": "El usuario no a pasado el pre-registro o esta pendiente"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         # Verificar si ya está activo
         if user.is_active:
             return Response(
-                {"status": "The user is activated"}, status=status.HTTP_400_BAD_REQUEST
+                {"status": "El usuario ya se encuentra activo."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
         user.is_active = True
         user.save()
-        return Response({"status": "User activated"}, status=status.HTTP_200_OK)
+        return Response(
+            {"status": "El usuario a sido activado con exito."},
+            status=status.HTTP_200_OK,
+        )
 
 
 # RF: Actualización de información de usuarios del distrito
@@ -376,6 +371,18 @@ class AdminUserUpdateAPIView(generics.RetrieveUpdateAPIView):
 
     def patch(self, request, *args, **kwargs):
         """Maneja actualizaciones parciales con formato de respuesta consistente"""
+
+        # Validación para el documento
+        if "document" in request.data:
+            return Response(
+                {
+                    "status": "error",
+                    "message": "Modificación de documento no permitida",
+                    "details": "El documento de identidad no puede ser modificado",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         response = super().patch(request, *args, **kwargs)
 
         if response.status_code == status.HTTP_200_OK:
@@ -406,11 +413,32 @@ class UserProfileUpdateView(generics.UpdateAPIView):
 
     def get_object(self):
         """Retorna el usuario autenticado para actualizar su perfil."""
-        return self.request.user  # 🔹 Devuelve el usuario, NO un Response
+        return self.request.user
 
     def update(self, request, *args, **kwargs):
-        """Personaliza la respuesta después de actualizar el perfil."""
-        response = super().update(request, *args, **kwargs)
-        return Response(
-            {"message": "Datos actualizados correctamente"}, status=status.HTTP_200_OK
-        )
+        """Personaliza la respuesta dependiendo de los campos actualizados."""
+        partial = kwargs.pop("partial", True)  # 🔹 Permite actualizaciones parciales
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+
+        if serializer.is_valid():
+            serializer.save()
+
+            # 🔹 Detecta qué campo fue actualizado
+            updated_fields = []
+            if "email" in request.data:
+                updated_fields.append("correo electrónico")
+            if "phone" in request.data:
+                updated_fields.append("número de teléfono")
+
+            # 🔹 Construye el mensaje de respuesta dinámico
+            if updated_fields:
+                message = (
+                    f"Se ha actualizado tu {' y '.join(updated_fields)} correctamente."
+                )
+            else:
+                message = "Datos actualizados correctamente."
+
+            return Response({"message": message}, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
