@@ -138,13 +138,12 @@ class LoginSerializer(serializers.Serializer):
         document = data.get('document')
         password = data.get('password')               
 
-        user = validate_user_exist(document)        
+        user = validate_user_exist(document)   
+        if not user.is_registered:
+            raise serializers.ValidationError({"detail": "Usuerio en espera de validar su pre-registro. Póngase en contacto con soprte para mas informacion"})     
 
         if not user.is_active:
-            raise PermissionDenied({"detail": "Su cuenta está inactiva. Póngase en contacto con el servicio de soporte."})
-
-        if not user.is_registered:
-            raise serializers.ValidationError({"detail": "Usuerio en espera de validar su pre-registro. Póngase en contacto con soprte para mas informacion"})
+            raise PermissionDenied({"detail": "Su cuenta está inactiva. Póngase en contacto con el servicio de soporte."})       
 
         # Buscar registro de intentos (si existe)
         login_restriction = LoginRestriction.objects.filter(user=user).first()
