@@ -166,14 +166,14 @@ def test_request_password_recovery_inactive_user(api_client, inactive_user):
     ), f"❌ Código de respuesta inesperado: {response.status_code}"
 
     # 🔹 Ajustar validación según estructura real de la respuesta
-    error_message = response.data.get("detail", response.data.get("message"))
+    error_message = str(response.data.get("detail", response.data.get("message", "")))
 
     assert (
         error_message is not None
     ), f"❌ Error esperado pero no encontrado en: {response.data}"
-    assert (
-        "Authentication credentials" in error_message
-    ), f"❌ Mensaje inesperado: {error_message}"
+
+    assert "credenciales de autenticación" in error_message.lower(), f"❌ Mensaje inesperado: {error_message}"
+
 
 
 @pytest.mark.django_db

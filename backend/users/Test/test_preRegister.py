@@ -191,17 +191,18 @@ def test_pre_register_invalid_document(api_client, invalid_document):
 
     response = api_client.post(url, data)
 
-    print("API RESPONSE:", response.data)
+    print("API RESPONSE:", response.data)  # 👀 Para depuración
     print("API STATUS CODE:", response.status_code)
 
-    assert response.status_code == status.HTTP_400_BAD_REQUEST, (
-        f"❌ La API aceptó un documento inválido ({invalid_document}) con status {response.status_code}.\n"
-        f"Respuesta de la API: {response.data}"
-    )
+    if response.status_code == status.HTTP_201_CREATED:
+        pytest.fail(
+            f"❌ La API aceptó un documento inválido ({invalid_document}) con status 201.\n"
+            f"Respuesta de la API: {response.data}"
+        )
 
-    assert (
-        "document" in response.data
-    ), f"Clave inesperada en la respuesta: {response.data.keys()}"
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "document" in response.data, f"Clave inesperada en la respuesta: {response.data.keys()}"
+
 
 
 @pytest.mark.django_db
@@ -263,8 +264,9 @@ def test_pre_register_weak_password_constraints(api_client, weak_password):
 
     if weak_password == "":  # Caso especial para contraseña vacía
         assert (
-            error_message.lower() == "this field may not be blank."
+            error_message.lower() in ["this field may not be blank.", "este campo no puede estar en blanco."]
         ), f"Mensaje inesperado: {error_message}"
+
     else:
         assert (
             "contraseña" in error_message.lower()
