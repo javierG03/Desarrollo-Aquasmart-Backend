@@ -8,6 +8,4 @@ class PlotViewSet(viewsets.ModelViewSet):
     serializer_class = PlotSerializer
     permission_classes = [IsAuthenticated]  # Solo usuarios autenticados pueden acceder
 
-    def perform_create(self, serializer):
-        # Asignar automáticamente el dueño del predio al usuario autenticado
-        serializer.save(dueño=self.request.user)
+    
