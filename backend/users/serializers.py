@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
 from API.sendmsn import send_email
-from .models import DocumentType, PersonType, CustomUser, LoginHistory, Otp
+from .models import DocumentType, PersonType, CustomUser, LoginHistory, Otp,UserUpdateLog
 from django.contrib.auth.hashers import make_password, check_password
 from django.contrib.auth.password_validation import validate_password
 from .validate import validate_user_exist,validate_otp,validate_create_user_email,validate_create_user_document,validate_user_password,validate_only_number_phone,validate_user_current_password
@@ -489,26 +489,49 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "Debes enviar al menos el email o el teléfono para actualizar el perfil."
             )
+        
+        # Verifica si el usuario puede realizar una actualización
+        user = self.instance
+        update_log, created = UserUpdateLog.objects.get_or_create(user=user)
+        can_update, message = update_log.can_update()
+        if not can_update:
+            raise serializers.ValidationError(message)
+        
+        # Guardamos el mensaje para devolverlo en la respuesta
+        self.context['update_message'] = message
         return data
 
     def validate_email(self, value):
         """Evita que el email sea el mismo o que esté vacío."""
-        user = self.instance
-        if user.email == value:
-            raise serializers.ValidationError("El nuevo email no puede ser el mismo que el actual.")
+        user = self.instance        
         if CustomUser.objects.filter(email=value).exclude(document=user.document).exists():
             raise serializers.ValidationError("Este email ya está en uso.")
-
         return value
 
     def validate_phone(self, value):
-        """Evita que el número de teléfono sea el mismo, contenga letras o esté vacío."""
-        user = self.instance
-        if user.phone == value:
-            raise serializers.ValidationError("El nuevo número de teléfono no puede ser el mismo que el actual.")
-        
+        """Evita que el número de teléfono sea el mismo, contenga letras o esté vacío."""               
         validate_only_number_phone(value)        
         return value
+
+    def update(self, instance, validated_data):
+        """Actualiza el usuario y aumenta el contador de actualizaciones."""
+        # Actualiza los campos del usuario
+        instance.email = validated_data.get('email', instance.email)
+        instance.phone = validated_data.get('phone', instance.phone)
+        instance.save()
+
+        # Incrementa el contador de actualizaciones
+        update_log, created = UserUpdateLog.objects.get_or_create(user=instance)
+        update_log.increment_update_count()
+
+        # Devuelve la instancia y el mensaje de actualización
+        return instance
+
+    def to_representation(self, instance):
+        """Devuelve la representación del objeto junto con el mensaje de actualización."""
+        representation = super().to_representation(instance)
+        representation['message'] = self.context.get('update_message', 'Datos actualizados con éxito.')
+        return representation
 
 class ChangePasswordSerializer(serializers.Serializer):
     """
