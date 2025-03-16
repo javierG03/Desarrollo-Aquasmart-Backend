@@ -1,27 +1,30 @@
-from rest_framework.permissions import BasePermission
-
-class IsAdminUser(BasePermission):
-    """
-    Permiso personalizado para permitir solo a usuarios administradores.
-    """
-    def has_permission(self, request, view):
-        return bool(request.user and request.user.is_staff)
+from rest_framework.permissions import BasePermission, IsAdminUser
 
 class IsOwnerOrAdmin(BasePermission):
     """
-    Permiso personalizado para permitir a usuarios ver solo sus propios predios,
-    mientras que los administradores pueden ver todos.
+    Permiso personalizado que:
+    1. Para acciones de lista (GET /plots):
+       - Permite acceso solo a administradores
+    2. Para acciones sobre predios específicos:
+       - Permite acceso a administradores
+       - Permite acceso a dueños de sus propios predios
+       - Deniega acceso a otros usuarios
     """
     def has_permission(self, request, view):
-        # Si es una lista (GET al endpoint principal), solo permitir a admins
+        # Verificar autenticación básica
+        if not request.user or not request.user.is_authenticated:
+            return False
+            
+        # Para listar predios, solo permitir admins
         if view.action == 'list':
-            return bool(request.user and request.user.is_staff)
-        # Para otras acciones, permitir si el usuario está autenticado
-        return bool(request.user and request.user.is_authenticated)
+            return IsAdminUser().has_permission(request, view)
+            
+        # Para otras acciones, permitir usuarios autenticados
+        return True
 
     def has_object_permission(self, request, view, obj):
-        # Permitir acceso si el usuario es admin o es el dueño del predio
-        return bool(
-            request.user.is_staff or
+        # Permitir acceso si es admin o dueño del predio
+        return (
+            IsAdminUser().has_permission(request, view) or 
             obj.owner.document == request.user.document
         )
