@@ -10,7 +10,7 @@ class Plot(models.Model):
     longitud = models.DecimalField(max_digits=9, decimal_places=6, null=False, blank=False, verbose_name="Latitud de predio")
     plot_extension =models.DecimalField(max_digits=4, decimal_places=2, null=False, blank=False, verbose_name="Extensión de tierra")
     registration_date = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de registro")
-    is_activate = models.BooleanField(default=True, help_text="Indica si el usuario completó el pre-registro", db_index=True, verbose_name="estado predio")
+    is_activate = models.BooleanField(default=True, help_text="Indica si el predio esta habilitado", db_index=True, verbose_name="estado predio")
     
     REQUIRED_FIELDS = ['owner','plot_name','latitud','longitud','plot_extension']
     

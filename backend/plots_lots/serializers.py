@@ -18,6 +18,12 @@ class PlotSerializer(serializers.ModelSerializer):
         """Validación personalizada para evitar duplicados en la georeferenciación."""
         latitud = data.get('latitud')
         longitud = data.get('longitud')
-        if Plot.objects.filter(latitud=latitud, longitud=longitud).exists():
+
+           # Obtener la instancia actual si está disponible
+        instance = self.instance  
+
+        # Verificar si la geolocalización ya está asignada a otro predio (excluyendo el actual)
+        if Plot.objects.exclude(id_plot=instance.id_plot if instance else None).filter(latitud=latitud, longitud=longitud).exists():
             raise serializers.ValidationError("La georeferenciación ya está asignada a otro predio.")
+
         return data
