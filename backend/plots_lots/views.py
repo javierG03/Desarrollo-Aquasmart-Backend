@@ -47,7 +47,7 @@ class PlotViewSet(viewsets.ModelViewSet):
             return Response({"error": "Error en la actualización del predio, por favor intente más tarde."}, 
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def inhabilitar(self, request, pk=None):
+    def inactive(self, request, pk=None):
         """ Inhabilita un predio cambiando is_activate a False """
         try:
             predio = self.get_queryset().filter(id_plot=pk).first()
@@ -65,7 +65,7 @@ class PlotViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({"error": f"No se pudo inhabilitar el predio: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def habilitar(self, request, pk=None):
+    def active(self, request, pk=None):
         """ Habilita un predio cambiando is_activate a True """
         try:
             predio = self.get_object()
