@@ -3,25 +3,19 @@ from .models import Plot
 from users.models import CustomUser
 from rest_framework.exceptions import NotFound
 class PlotSerializer(serializers.ModelSerializer):
-    owner = serializers.CharField()
+    owner = serializers.PrimaryKeyRelatedField(
+        queryset=CustomUser.objects.all(),
+        error_messages={'does_not_exist': "El usuario asignado no está registrado"}
+    )
+
     class Meta:
         model = Plot
-        fields = ['id_plot','owner','plot_name', 'latitud','longitud','plot_extension', 'registration_date']
-        read_only_fields = ['id_plot', 'registration_date']  # Estos campos no se pueden modificar
-        
+        fields = ['id_plot', 'owner', 'plot_name', 'latitud', 'longitud', 'plot_extension', 'registration_date']
+        read_only_fields = ['id_plot', 'registration_date']
 
-
-    def validate_owner(self, value):
-        """Validar que el usuario existe en la base de datos."""
-        try:
-            user = CustomUser.objects.get(document=value)
-        except CustomUser.DoesNotExist:
-            raise NotFound("El usuario no está registrado.")
-
-        return user  # Retornar el objeto en lugar del ID
-
+    
     def validate(self, data):
-        """Validación para evitar duplicados en la georeferenciación."""
+        """Validación personalizada para evitar duplicados en la georeferenciación."""
         latitud = data.get('latitud')
         longitud = data.get('longitud')
         if Plot.objects.filter(latitud=latitud, longitud=longitud).exists():
