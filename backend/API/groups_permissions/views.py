@@ -6,7 +6,6 @@ from django.contrib.auth.models import Group, Permission
 from .serializers import GroupSerializer, PermissionSerializer
 from rest_framework.views import APIView
 from collections import defaultdict
-
 class GroupViewSet(viewsets.ModelViewSet):
     queryset = Group.objects.all()
     serializer_class = GroupSerializer

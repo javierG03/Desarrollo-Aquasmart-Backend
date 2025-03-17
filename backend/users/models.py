@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.utils.timezone import now, timedelta
-from datetime import datetime
+from datetime import datetime,date
 import secrets
 import string
 
@@ -86,6 +86,7 @@ class CustomUser(AbstractUser):
     phone = models.CharField(max_length=20, db_index=True, verbose_name="Teléfono")
     address = models.CharField(max_length=200, db_index=True, verbose_name="Dirección")
     is_registered = models.BooleanField(default=False, help_text="Indica si el usuario completó el pre-registro", db_index=True, verbose_name="Registrado")
+    drive_folder_id = models.CharField(max_length=100, blank=True, null=True, verbose_name="ID Carpeta Google Drive")  
 
     username = None
 
@@ -93,6 +94,13 @@ class CustomUser(AbstractUser):
     REQUIRED_FIELDS = ['first_name', 'last_name', 'phone', 'address', 'email']
 
     objects = UserManager()
+    
+    class Meta:
+        permissions = [
+            ("can_toggle_is_active", "Puede cambiar el estado de is_active"),
+            ("can_toggle_is_registered", "Puede cambiar el estado de is_registered"),
+            ("can_toggle_is_staff", "Puede cambiar el estado de is_staff"),
+        ]
 
     def __str__(self):
         return f"{self.document} - {self.first_name} {self.last_name}"   
@@ -129,7 +137,7 @@ class Otp(models.Model):
         Returns:
             bool: True si el OTP es válido, False si ha expirado.
         """
-        return (now() - self.creation_time) <= timedelta(minutes=15)
+        return (now() - self.creation_time) <= timedelta(minutes=5)
 
     def __str__(self):
         return f"OTP {self.otp} para {self.user.first_name}"
@@ -207,7 +215,7 @@ class LoginRestriction(models.Model):
         return message
     
     def block_user(self):
-        """Bloquea al usuario por 24 horas"""
+        """Bloquea al usuario por 30 minutos"""
         self.blocked_until = now() + timedelta(hours=0.5)
         self.attempts = 0  # Reiniciar intentos
         self.save()
@@ -221,3 +229,43 @@ class LoginRestriction(models.Model):
             self.attempts = 0
             self.save()
         return False
+    
+class UserUpdateLog(models.Model):
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='update_log')
+    update_count = models.IntegerField(default=0)
+    last_update_date = models.DateField(auto_now=True)
+    first_update_date = models.DateField(null=True, blank=True)  # Nueva campo para la primera actualización
+
+    def can_update(self):
+        """Verifica si el usuario puede realizar una actualización dentro de su semana personalizada."""
+        today = date.today()
+
+        # Si es la primera actualización, inicializa la fecha de la primera actualización
+        if self.first_update_date is None:
+            self.first_update_date = today
+            self.save()
+
+        # Calcula el final de la semana personalizada (7 días después de la primera actualización)
+        end_of_week = self.first_update_date + timedelta(days=6)
+
+        # Si la fecha actual está fuera de la semana personalizada, reinicia el contador
+        if today > end_of_week:
+            self.update_count = 0
+            self.first_update_date = today  # Reinicia la semana personalizada
+            self.save()
+
+        # Verifica si el usuario ha excedido el límite de actualizaciones
+        if self.update_count >= 3:
+            return False, "Has alcanzado el límite de 3 actualizaciones esta semana. Podrás actualizar nuevamente la próxima semana."
+        elif self.update_count == 2:
+            return True, "Datos actualizados con éxito. Te queda 0 cambio más esta semana."
+        elif self.update_count == 1:
+            return True, "Datos actualizados con éxito. Te quedan 1 cambios más esta semana."
+        else:
+            return True, "Datos actualizados con éxito."
+
+    def increment_update_count(self):
+        """Incrementa el contador de actualizaciones y actualiza la fecha."""
+        self.update_count += 1
+        self.last_update_date = date.today()
+        self.save()
