@@ -172,8 +172,9 @@ def test_request_password_recovery_inactive_user(api_client, inactive_user):
         error_message is not None
     ), f"❌ Error esperado pero no encontrado en: {response.data}"
 
-    assert "credenciales de autenticación" in error_message.lower(), f"❌ Mensaje inesperado: {error_message}"
-
+    assert (
+        "credenciales de autenticación" in error_message.lower()
+    ), f"❌ Mensaje inesperado: {error_message}"
 
 
 @pytest.mark.django_db

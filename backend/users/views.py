@@ -11,11 +11,15 @@ from .serializers import (
 from rest_framework.permissions import IsAdminUser, IsAuthenticated, AllowAny
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
 from rest_framework.response import Response
+from django.contrib.auth.models import Permission
 from .validate import validate_user_exist
 from API.google.google_drive import upload_to_drive
 import os
 from django.conf import settings
-
+from .permissions import PuedeCambiarIsActive,CanRegister,CanAddDocumentType
+from rest_framework.authentication import TokenAuthentication
+from rest_framework import serializers
+from users.models import CustomUser
 
 @extend_schema_view(
     post=extend_schema(
@@ -99,8 +103,7 @@ class DocumentTypeView(generics.CreateAPIView):
 
     queryset = DocumentType.objects.all()
     serializer_class = DocumentTypeSerializer
-    permission_classes = [IsAdminUser, IsAuthenticated]
-
+    permission_classes = [CanAddDocumentType, IsAuthenticated]
 
 class DocumentTypeListView(generics.ListAPIView):
     queryset = DocumentType.objects.all()
@@ -196,8 +199,8 @@ class UserRegisterAPIView(APIView):
 
     Solo los administradores autenticados pueden acceder a esta vista.
     """
-
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated,CanRegister]
 
     def patch(self, request, document):
         """
@@ -237,7 +240,7 @@ class UserInactiveAPIView(APIView):
     Solo los administradores autenticados pueden acceder a esta vista.
     """
 
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, PuedeCambiarIsActive]
 
     def patch(self, request, document):
         """
@@ -279,7 +282,7 @@ class UserActivateAPIView(APIView):
     Solo los administradores autenticados pueden acceder a esta vista.
     """
 
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, PuedeCambiarIsActive]
 
     def patch(self, request, document):
         """
@@ -409,36 +412,145 @@ class UserProfilelView(generics.RetrieveAPIView):
 
 class UserProfileUpdateView(generics.UpdateAPIView):
     serializer_class = UserProfileUpdateSerializer
-    permission_classes = [IsAuthenticated]
+    queryset = CustomUser.objects.all()
 
     def get_object(self):
-        """Retorna el usuario autenticado para actualizar su perfil."""
-        return self.request.user
+        """Obtiene el usuario actual."""
+        return self.request.user  # Asume que el usuario está autenticado
 
     def update(self, request, *args, **kwargs):
-        """Personaliza la respuesta dependiendo de los campos actualizados."""
-        partial = kwargs.pop("partial", True)  # 🔹 Permite actualizaciones parciales
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        """Maneja la actualización del perfil del usuario."""
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except serializers.ValidationError as e:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+class AssignPermissionToUser(APIView):
+    permission_classes = [IsAdminUser]  # Solo administradores pueden asignar permisos
 
-        if serializer.is_valid():
-            serializer.save()
+    def post(self, request, *args, **kwargs):
+        document = request.data.get('document')
+        permission_codenames = request.data.get('permission_codenames', [])
 
-            # 🔹 Detecta qué campo fue actualizado
-            updated_fields = []
-            if "email" in request.data:
-                updated_fields.append("correo electrónico")
-            if "phone" in request.data:
-                updated_fields.append("número de teléfono")
+        # Validar que se proporcionen los datos necesarios
+        if not document or not permission_codenames:
+            return Response(
+                {"error": "Se requieren document y permission_codenames (lista)"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-            # 🔹 Construye el mensaje de respuesta dinámico
-            if updated_fields:
-                message = (
-                    f"Se ha actualizado tu {' y '.join(updated_fields)} correctamente."
-                )
-            else:
-                message = "Datos actualizados correctamente."
+        try:
+            # Obtener el usuario por document
+            user = CustomUser.objects.get(document=document)
+        except CustomUser.DoesNotExist:
+            return Response(
+                {"error": "Usuario no encontrado"},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
-            return Response({"message": message}, status=status.HTTP_200_OK)
+        assigned_permissions = []
+        errors = []
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        for codename in permission_codenames:
+            try:
+                # Obtener el permiso
+                permission = Permission.objects.get(codename=codename)
+                # Asignar el permiso al usuario
+                user.user_permissions.add(permission)
+                assigned_permissions.append(permission.name)
+            except Permission.DoesNotExist:
+                errors.append(f"Permiso '{codename}' no encontrado")
+
+        if errors:
+            return Response(
+                {"message": "Algunos permisos no se asignaron", "errors": errors},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return Response(
+            {"message": f"Permisos asignados: {', '.join(assigned_permissions)}"},
+            status=status.HTTP_200_OK
+        )
+
+class RemovePermissionFromUser(APIView):
+    permission_classes = [IsAdminUser]  # Solo administradores pueden eliminar permisos
+
+    def post(self, request, *args, **kwargs):
+        document = request.data.get('document')
+        permission_codenames = request.data.get('permission_codenames', [])
+
+        # Validar que se proporcionen los datos necesarios
+        if not document or not permission_codenames:
+            return Response(
+                {"error": "Se requieren document y permission_codenames (lista)"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            # Obtener el usuario por document
+            user = CustomUser.objects.get(document=document)
+        except CustomUser.DoesNotExist:
+            return Response(
+                {"error": "Usuario no encontrado"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        removed_permissions = []
+        errors = []
+
+        for codename in permission_codenames:
+            try:
+                # Obtener el permiso
+                permission = Permission.objects.get(codename=codename)
+                # Eliminar el permiso del usuario
+                user.user_permissions.remove(permission)
+                removed_permissions.append(permission.name)
+            except Permission.DoesNotExist:
+                errors.append(f"Permiso '{codename}' no encontrado")
+
+        if errors:
+            return Response(
+                {"message": "Algunos permisos no se eliminaron", "errors": errors},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return Response(
+            {"message": f"Permisos eliminados: {', '.join(removed_permissions)}"},
+            status=status.HTTP_200_OK
+        )
+
+
+class ListUserPermissions(APIView):
+    permission_classes = [IsAdminUser]  # Solo administradores pueden listar permisos
+
+    def get(self, request, document, *args, **kwargs):
+        try:
+            # Obtener el usuario por document
+            user = CustomUser.objects.get(document=document)
+        except CustomUser.DoesNotExist:
+            return Response(
+                {"error": "Usuario no encontrado"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Obtener permisos asignados directamente al usuario
+        direct_permissions = user.user_permissions.all()
+        direct_permissions_list = [perm.codename for perm in direct_permissions]
+
+        # Obtener permisos heredados de grupos
+        group_permissions = user.get_group_permissions()
+        group_permissions_list = list(group_permissions)
+
+        return Response(
+            {
+                "direct_permissions": direct_permissions_list,
+                "group_permissions": group_permissions_list,
+                "all_permissions": list(user.get_all_permissions())
+            },
+            status=status.HTTP_200_OK
+        )
+    

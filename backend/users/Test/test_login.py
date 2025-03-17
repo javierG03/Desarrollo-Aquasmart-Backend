@@ -82,8 +82,6 @@ def test_login_user_not_found(api_client):
     assert "No se encontró un usuario con este documento." in error_message
 
 
-
-
 @pytest.mark.django_db
 def test_login_wrong_password(api_client, test_user):
     url = reverse("login")
@@ -91,11 +89,10 @@ def test_login_wrong_password(api_client, test_user):
     response = api_client.post(url, data)
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     error_message = str(response.data["error"]["detail"])
-    assert "credenciales inválidas" in error_message.lower() or "usuario bloqueado" in error_message.lower()
-
-
-
-
+    assert (
+        "credenciales inválidas" in error_message.lower()
+        or "usuario bloqueado" in error_message.lower()
+    )
 
 
 @pytest.mark.django_db
@@ -182,14 +179,19 @@ def deleted_user(db):
 
 # -------------------- 🚀 NUEVAS PRUEBAS --------------------
 @pytest.mark.django_db
-@pytest.mark.parametrize("invalid_document", ["", "123", "12345678901234567890", "@invalid!", "abcd1234"])
+@pytest.mark.parametrize(
+    "invalid_document", ["", "123", "12345678901234567890", "@invalid!", "abcd1234"]
+)
 def test_login_invalid_document(api_client, invalid_document):
     """❌ Documento con longitud incorrecta o caracteres inválidos."""
     url = reverse("login")
     data = {"document": invalid_document, "password": "SecurePass123"}
     response = api_client.post(url, data)
 
-    assert response.status_code in [status.HTTP_400_BAD_REQUEST, status.HTTP_404_NOT_FOUND]
+    assert response.status_code in [
+        status.HTTP_400_BAD_REQUEST,
+        status.HTTP_404_NOT_FOUND,
+    ]
 
     # Manejar error como string
     error_message = response.data.get("error", "")
@@ -204,10 +206,6 @@ def test_login_invalid_document(api_client, invalid_document):
         or "este campo no puede estar en blanco" in error_message
         or "asegúrese de que este campo no tenga más de 12 caracteres" in error_message
     )
-
-
-
-
 
 
 @pytest.mark.django_db
@@ -275,8 +273,6 @@ def test_invalid_otp(api_client, test_user, otp_for_user, invalid_otp):
     )  # Asegúrate de que esta es la URL correcta para validar OTP
     data = {"document": test_user.document, "otp": invalid_otp}
     response = api_client.post(url, data)
-
-    
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
 

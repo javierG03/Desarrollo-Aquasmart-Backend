@@ -25,14 +25,15 @@ def test_user(db):
         is_registered=True,
     )
 
+
 @pytest.fixture
 def valid_otp(db, test_user):
     """Genera un OTP válido sin marcarlo como utilizado."""
-    otp = Otp.objects.create(user=test_user, otp="123456", is_validated=False, creation_time=now())
+    otp = Otp.objects.create(
+        user=test_user, otp="123456", is_validated=False, creation_time=now()
+    )
     otp.refresh_from_db()
     return otp
-
-
 
 
 @pytest.mark.django_db
@@ -44,21 +45,22 @@ def test_single_session_active(api_client, test_user):
 
     # 🔹 Primer intento de inicio de sesión (recibe OTP)
     login_response1 = api_client.post(login_url, login_data)
-    assert login_response1.status_code == status.HTTP_200_OK, f"Error en login: {login_response1.data}"
+    assert (
+        login_response1.status_code == status.HTTP_200_OK
+    ), f"Error en login: {login_response1.data}"
 
     # 🔹 Segundo intento de inicio de sesión
     login_response2 = api_client.post(login_url, login_data)
 
     # ✅ Verificar que la API responde nuevamente con 200 OK y envía otro OTP
-    assert login_response2.status_code == status.HTTP_200_OK, f"Error en segundo login: {login_response2.data}"
+    assert (
+        login_response2.status_code == status.HTTP_200_OK
+    ), f"Error en segundo login: {login_response2.data}"
     assert "message" in login_response2.data
-    assert login_response2.data["message"] == "Se ha enviado el código OTP de iniciar sesión."
-
-
-
-
-
-
+    assert (
+        login_response2.data["message"]
+        == "Se ha enviado el código OTP de iniciar sesión."
+    )
 
 
 @pytest.mark.django_db
@@ -75,20 +77,23 @@ def test_session_invalid_after_relogin(api_client, test_user):
 
     # 🔹 Generar y validar primer OTP
     otp1 = Otp.objects.create(user=test_user, otp="654321", is_validated=False)
-    otp_response1 = api_client.post(verify_otp_url, {"document": test_user.document, "otp": otp1.otp})
+    otp_response1 = api_client.post(
+        verify_otp_url, {"document": test_user.document, "otp": otp1.otp}
+    )
     assert otp_response1.status_code == status.HTTP_200_OK
     assert otp_response1.data["message"] == "OTP validado correctamente"
 
     # 🔹 Generar y validar un segundo OTP sin cerrar sesión
     otp2 = Otp.objects.create(user=test_user, otp="987654", is_validated=False)
-    otp_response2 = api_client.post(verify_otp_url, {"document": test_user.document, "otp": otp2.otp})
+    otp_response2 = api_client.post(
+        verify_otp_url, {"document": test_user.document, "otp": otp2.otp}
+    )
 
     # ✅ Verificar que la API permite validar otro OTP sin restricciones
-    assert otp_response2.status_code == status.HTTP_200_OK, f"Error al validar segundo OTP: {otp_response2.data}"
+    assert (
+        otp_response2.status_code == status.HTTP_200_OK
+    ), f"Error al validar segundo OTP: {otp_response2.data}"
     assert otp_response2.data["message"] == "OTP validado correctamente"
-
-
-
 
 
 @pytest.mark.django_db
@@ -106,7 +111,9 @@ def test_logout_invalidates_token(api_client, test_user):
 
     # 🔹 Generar y validar OTP
     new_otp = Otp.objects.create(user=test_user, otp="654321", is_validated=False)
-    otp_response = api_client.post(verify_otp_url, {"document": test_user.document, "otp": new_otp.otp})
+    otp_response = api_client.post(
+        verify_otp_url, {"document": test_user.document, "otp": new_otp.otp}
+    )
 
     assert otp_response.status_code == status.HTTP_200_OK
     assert "message" in otp_response.data
@@ -114,12 +121,11 @@ def test_logout_invalidates_token(api_client, test_user):
 
     # 🔹 Intentar obtener un token (no debería existir)
     token = otp_response.data.get("token")
-    assert token is None, f"❌ Se esperaba que no hubiera token, pero se encontró: {token}"
+    assert (
+        token is None
+    ), f"❌ Se esperaba que no hubiera token, pero se encontró: {token}"
 
     # 🔹 Intentar hacer logout (no se puede probar porque no hay token)
-    print("⚠️ No se puede probar logout porque la API no genera token después de validar OTP.")
-
-
-
-
-
+    print(
+        "⚠️ No se puede probar logout porque la API no genera token después de validar OTP."
+    )

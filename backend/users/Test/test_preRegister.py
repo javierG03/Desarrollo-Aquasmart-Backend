@@ -11,8 +11,6 @@ def api_client():
     return APIClient()
 
 
-
-
 @pytest.mark.django_db
 def test_pre_register_success(api_client):
     """✅ Un usuario debe poder pre-registrarse correctamente."""
@@ -34,8 +32,6 @@ def test_pre_register_success(api_client):
     assert (
         response.status_code == status.HTTP_201_CREATED
     ), f"Error inesperado: {response.data}"
-
-
 
 
 @pytest.mark.django_db
@@ -150,8 +146,9 @@ def test_pre_register_invalid_document(api_client, invalid_document):
         )
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert "document" in response.data, f"Clave inesperada en la respuesta: {response.data.keys()}"
-
+    assert (
+        "document" in response.data
+    ), f"Clave inesperada en la respuesta: {response.data.keys()}"
 
 
 @pytest.mark.django_db
@@ -212,9 +209,10 @@ def test_pre_register_weak_password_constraints(api_client, weak_password):
         error_message = " ".join([str(err) for err in password_errors])
 
     if weak_password == "":  # Caso especial para contraseña vacía
-        assert (
-            error_message.lower() in ["this field may not be blank.", "este campo no puede estar en blanco."]
-        ), f"Mensaje inesperado: {error_message}"
+        assert error_message.lower() in [
+            "this field may not be blank.",
+            "este campo no puede estar en blanco.",
+        ], f"Mensaje inesperado: {error_message}"
 
     else:
         assert (

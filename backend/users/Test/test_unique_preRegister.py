@@ -5,9 +5,6 @@ from rest_framework.test import APIClient
 from users.models import CustomUser
 
 
-
-
-
 @pytest.fixture
 def api_client():
     """Cliente API para realizar las solicitudes de prueba."""
@@ -27,7 +24,6 @@ def test_user(db):
         is_active=True,
         is_registered=True,
     )
-
 
 
 @pytest.mark.django_db
