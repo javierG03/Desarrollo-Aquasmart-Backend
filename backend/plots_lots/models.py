@@ -24,6 +24,7 @@ class Plot(models.Model):
                         
             unique_value = str(uuid.uuid4())
     
+    
             # Crear el hash MD5 del valor
             hash_obj = hashlib.md5(unique_value.encode())
             
