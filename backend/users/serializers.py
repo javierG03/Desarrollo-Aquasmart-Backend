@@ -472,7 +472,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         fields = [
             'email', 'document', 'document_type_name', 
             'first_name', 'last_name', 'phone', 
-            'address', 'person_type_name'
+            'address', 'person_type_name','drive_folder_id'
         ] 
         
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
