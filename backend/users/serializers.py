@@ -224,7 +224,7 @@ class GenerateOtpLoginSerializer(serializers.Serializer):
 
         # Simulación de envío de correo/SMS
         try:
-            send_email(user.email, otp_generado, purpose="login")
+            send_email2(user.email, otp_generado, purpose="login",name=user.first_name)
         except Exception as e:
             raise serializers.ValidationError(f"Error al enviar el correo: {str(e)}")
 
