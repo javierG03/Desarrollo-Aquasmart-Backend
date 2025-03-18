@@ -6,3 +6,5 @@ __pycache__
 db.sqlite3
 docker-compose.yml
 Dockerfile
+hoooks/pre-commit
+hoooks/pre-push
