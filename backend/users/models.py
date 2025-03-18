@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.utils.timezone import now, timedelta
-from datetime import datetime,date
+from datetime import datetime, date
 import secrets
 import string
 
@@ -141,7 +141,7 @@ class CustomUser(AbstractUser):
     REQUIRED_FIELDS = ["first_name", "last_name", "phone", "address", "email"]
 
     objects = UserManager()
-    
+
     class Meta:
         permissions = [
             ("can_toggle_is_active", "Puede cambiar el estado de is_active"),
@@ -302,12 +302,17 @@ class LoginRestriction(models.Model):
             self.attempts = 0
             self.save()
         return False
-    
+
+
 class UserUpdateLog(models.Model):
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='update_log')
+    user = models.OneToOneField(
+        CustomUser, on_delete=models.CASCADE, related_name="update_log"
+    )
     update_count = models.IntegerField(default=0)
     last_update_date = models.DateField(auto_now=True)
-    first_update_date = models.DateField(null=True, blank=True)  # Nueva campo para la primera actualización
+    first_update_date = models.DateField(
+        null=True, blank=True
+    )  # Nueva campo para la primera actualización
 
     def can_update(self):
         """Verifica si el usuario puede realizar una actualización dentro de su semana personalizada."""
@@ -329,11 +334,20 @@ class UserUpdateLog(models.Model):
 
         # Verifica si el usuario ha excedido el límite de actualizaciones
         if self.update_count >= 3:
-            return False, "Has alcanzado el límite de 3 actualizaciones esta semana. Podrás actualizar nuevamente la próxima semana."
+            return (
+                False,
+                "Has alcanzado el límite de 3 actualizaciones esta semana. Podrás actualizar nuevamente la próxima semana.",
+            )
         elif self.update_count == 2:
-            return True, "Datos actualizados con éxito. Te queda 0 cambio más esta semana."
+            return (
+                True,
+                "Datos actualizados con éxito. Te queda 0 cambio más esta semana.",
+            )
         elif self.update_count == 1:
-            return True, "Datos actualizados con éxito. Te quedan 1 cambios más esta semana."
+            return (
+                True,
+                "Datos actualizados con éxito. Te quedan 1 cambios más esta semana.",
+            )
         else:
             return True, "Datos actualizados con éxito."
 

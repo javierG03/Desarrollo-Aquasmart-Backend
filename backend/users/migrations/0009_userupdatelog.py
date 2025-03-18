@@ -6,20 +6,34 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('users', '0008_alter_customuser_options'),
+        ("users", "0008_alter_customuser_options"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='UserUpdateLog',
+            name="UserUpdateLog",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('update_count', models.IntegerField(default=0)),
-                ('last_update_date', models.DateField(auto_now=True)),
-                ('first_update_date', models.DateField(blank=True, null=True)),
-                ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='update_log', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("update_count", models.IntegerField(default=0)),
+                ("last_update_date", models.DateField(auto_now=True)),
+                ("first_update_date", models.DateField(blank=True, null=True)),
+                (
+                    "user",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="update_log",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
     ]

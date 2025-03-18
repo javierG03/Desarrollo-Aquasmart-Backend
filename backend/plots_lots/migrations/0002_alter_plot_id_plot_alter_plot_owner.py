@@ -6,21 +6,29 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('plots_lots', '0001_initial'),
+        ("plots_lots", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='plot',
-            name='id_plot',
-            field=models.CharField(max_length=10, primary_key=True, serialize=False, verbose_name='ID de predio'),
+            model_name="plot",
+            name="id_plot",
+            field=models.CharField(
+                max_length=10,
+                primary_key=True,
+                serialize=False,
+                verbose_name="ID de predio",
+            ),
         ),
         migrations.AlterField(
-            model_name='plot',
-            name='owner',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='dueño_de_predio', to=settings.AUTH_USER_MODEL),
+            model_name="plot",
+            name="owner",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="dueño_de_predio",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
     ]

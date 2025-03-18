@@ -38,29 +38,22 @@ def valid_otp(db, test_user):
 
 @pytest.mark.django_db
 def test_single_session_active(api_client, test_user):
-    """✅ La API permite múltiples intentos de inicio de sesión y genera un nuevo OTP en cada intento."""
+    """✅ Un usuario puede iniciar sesión múltiples veces y recibir un nuevo OTP en cada intento."""
     login_url = reverse("login")
 
     login_data = {"document": test_user.document, "password": "SecurePass123"}
 
     # 🔹 Primer intento de inicio de sesión (recibe OTP)
     login_response1 = api_client.post(login_url, login_data)
-    assert (
-        login_response1.status_code == status.HTTP_200_OK
-    ), f"Error en login: {login_response1.data}"
+    assert login_response1.status_code == status.HTTP_200_OK, f"Error en login: {login_response1.data}"
+    assert login_response1.data["message"] == "Se ha enviado el código OTP de iniciar sesión."
 
-    # 🔹 Segundo intento de inicio de sesión
+    # 🔹 Segundo intento de inicio de sesión (recibe otro OTP)
     login_response2 = api_client.post(login_url, login_data)
+    assert login_response2.status_code == status.HTTP_200_OK, f"Error en segundo login: {login_response2.data}"
+    assert login_response2.data["message"] == "Se ha enviado el código OTP de iniciar sesión."
 
-    # ✅ Verificar que la API responde nuevamente con 200 OK y envía otro OTP
-    assert (
-        login_response2.status_code == status.HTTP_200_OK
-    ), f"Error en segundo login: {login_response2.data}"
-    assert "message" in login_response2.data
-    assert (
-        login_response2.data["message"]
-        == "Se ha enviado el código OTP de iniciar sesión."
-    )
+
 
 
 @pytest.mark.django_db

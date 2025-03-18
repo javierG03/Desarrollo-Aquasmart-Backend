@@ -16,10 +16,11 @@ from .validate import validate_user_exist
 from API.google.google_drive import upload_to_drive
 import os
 from django.conf import settings
-from .permissions import PuedeCambiarIsActive,CanRegister,CanAddDocumentType
+from .permissions import PuedeCambiarIsActive, CanRegister, CanAddDocumentType
 from rest_framework.authentication import TokenAuthentication
 from rest_framework import serializers
 from users.models import CustomUser
+
 
 @extend_schema_view(
     post=extend_schema(
@@ -104,6 +105,7 @@ class DocumentTypeView(generics.CreateAPIView):
     queryset = DocumentType.objects.all()
     serializer_class = DocumentTypeSerializer
     permission_classes = [CanAddDocumentType, IsAuthenticated]
+
 
 class DocumentTypeListView(generics.ListAPIView):
     queryset = DocumentType.objects.all()
@@ -199,8 +201,9 @@ class UserRegisterAPIView(APIView):
 
     Solo los administradores autenticados pueden acceder a esta vista.
     """
+
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsAuthenticated,CanRegister]
+    permission_classes = [IsAuthenticated, CanRegister]
 
     def patch(self, request, document):
         """
@@ -428,19 +431,20 @@ class UserProfileUpdateView(generics.UpdateAPIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         except serializers.ValidationError as e:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
+
+
 class AssignPermissionToUser(APIView):
     permission_classes = [IsAdminUser]  # Solo administradores pueden asignar permisos
 
     def post(self, request, *args, **kwargs):
-        document = request.data.get('document')
-        permission_codenames = request.data.get('permission_codenames', [])
+        document = request.data.get("document")
+        permission_codenames = request.data.get("permission_codenames", [])
 
         # Validar que se proporcionen los datos necesarios
         if not document or not permission_codenames:
             return Response(
                 {"error": "Se requieren document y permission_codenames (lista)"},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         try:
@@ -448,8 +452,7 @@ class AssignPermissionToUser(APIView):
             user = CustomUser.objects.get(document=document)
         except CustomUser.DoesNotExist:
             return Response(
-                {"error": "Usuario no encontrado"},
-                status=status.HTTP_404_NOT_FOUND
+                {"error": "Usuario no encontrado"}, status=status.HTTP_404_NOT_FOUND
             )
 
         assigned_permissions = []
@@ -468,26 +471,27 @@ class AssignPermissionToUser(APIView):
         if errors:
             return Response(
                 {"message": "Algunos permisos no se asignaron", "errors": errors},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         return Response(
             {"message": f"Permisos asignados: {', '.join(assigned_permissions)}"},
-            status=status.HTTP_200_OK
+            status=status.HTTP_200_OK,
         )
+
 
 class RemovePermissionFromUser(APIView):
     permission_classes = [IsAdminUser]  # Solo administradores pueden eliminar permisos
 
     def post(self, request, *args, **kwargs):
-        document = request.data.get('document')
-        permission_codenames = request.data.get('permission_codenames', [])
+        document = request.data.get("document")
+        permission_codenames = request.data.get("permission_codenames", [])
 
         # Validar que se proporcionen los datos necesarios
         if not document or not permission_codenames:
             return Response(
                 {"error": "Se requieren document y permission_codenames (lista)"},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         try:
@@ -495,8 +499,7 @@ class RemovePermissionFromUser(APIView):
             user = CustomUser.objects.get(document=document)
         except CustomUser.DoesNotExist:
             return Response(
-                {"error": "Usuario no encontrado"},
-                status=status.HTTP_404_NOT_FOUND
+                {"error": "Usuario no encontrado"}, status=status.HTTP_404_NOT_FOUND
             )
 
         removed_permissions = []
@@ -515,12 +518,12 @@ class RemovePermissionFromUser(APIView):
         if errors:
             return Response(
                 {"message": "Algunos permisos no se eliminaron", "errors": errors},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         return Response(
             {"message": f"Permisos eliminados: {', '.join(removed_permissions)}"},
-            status=status.HTTP_200_OK
+            status=status.HTTP_200_OK,
         )
 
 
@@ -533,8 +536,7 @@ class ListUserPermissions(APIView):
             user = CustomUser.objects.get(document=document)
         except CustomUser.DoesNotExist:
             return Response(
-                {"error": "Usuario no encontrado"},
-                status=status.HTTP_404_NOT_FOUND
+                {"error": "Usuario no encontrado"}, status=status.HTTP_404_NOT_FOUND
             )
 
         # Obtener permisos asignados directamente al usuario
@@ -549,8 +551,7 @@ class ListUserPermissions(APIView):
             {
                 "direct_permissions": direct_permissions_list,
                 "group_permissions": group_permissions_list,
-                "all_permissions": list(user.get_all_permissions())
+                "all_permissions": list(user.get_all_permissions()),
             },
-            status=status.HTTP_200_OK
+            status=status.HTTP_200_OK,
         )
-    

@@ -4,15 +4,19 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('plots_lots', '0002_alter_plot_id_plot_alter_plot_owner'),
+        ("plots_lots", "0002_alter_plot_id_plot_alter_plot_owner"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='plot',
-            name='is_activate',
-            field=models.BooleanField(db_index=True, default=True, help_text='Indica si el usuario completó el pre-registro', verbose_name='estado predio'),
+            model_name="plot",
+            name="is_activate",
+            field=models.BooleanField(
+                db_index=True,
+                default=True,
+                help_text="Indica si el usuario completó el pre-registro",
+                verbose_name="estado predio",
+            ),
         ),
     ]
