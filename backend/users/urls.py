@@ -24,6 +24,7 @@ from .authentication import (
     LogoutView,
     ValidateTokenView,
     ChangePasswordView,
+    GenerateOtpLoginView,
 )
 
 
@@ -53,6 +54,11 @@ urlpatterns = [
         "pre-register", CustomUserCreateView.as_view(), name="customuser-pre-register"
     ),  # Pre-registro de usuarios
     path("login", LoginView.as_view(), name="login"),  # Login
+    path(
+        "generate-otp-login",
+        GenerateOtpLoginView.as_view(),
+        name="generate_otp_login_agin",
+    ),
     path(
         "generate-otp",
         GenerateOtpPasswordRecoveryView.as_view(),

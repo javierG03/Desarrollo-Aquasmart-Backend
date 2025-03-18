@@ -16,7 +16,9 @@ def api_client():
 def test_user(db):
     """Usuario de prueba ya registrado en la base de datos."""
 
-    person_type = PersonType.objects.create(typeName="Natural")  # ✅ Corrección: Crear instancia de PersonType
+    person_type = PersonType.objects.create(
+        typeName="Natural"
+    )  # ✅ Corrección: Crear instancia de PersonType
 
     return CustomUser.objects.create_user(
         document="123456789012",
@@ -30,7 +32,10 @@ def test_user(db):
         is_active=True,
         is_registered=True,
     )
+
+
 from rest_framework.test import force_authenticate
+
 
 @pytest.mark.django_db
 def test_view_personal_data_authenticated(api_client, test_user):
@@ -43,19 +48,27 @@ def test_view_personal_data_authenticated(api_client, test_user):
     # 🔹 Iniciar sesión
     login_data = {"document": test_user.document, "password": "SecurePass123"}
     login_response = api_client.post(login_url, login_data)
-    assert login_response.status_code == status.HTTP_200_OK, f"Error en login: {login_response.data}"
+    assert (
+        login_response.status_code == status.HTTP_200_OK
+    ), f"Error en login: {login_response.data}"
 
     # 🔹 Generar y validar OTP
     otp = Otp.objects.create(user=test_user, otp="654321", is_validated=False)
-    otp_response = api_client.post(verify_otp_url, {"document": test_user.document, "otp": otp.otp})
+    otp_response = api_client.post(
+        verify_otp_url, {"document": test_user.document, "otp": otp.otp}
+    )
 
     print("🔹 API OTP RESPONSE:", otp_response.data)  # Depuración
 
-    assert otp_response.status_code == status.HTTP_200_OK, f"Error en validación OTP: {otp_response.data}"
+    assert (
+        otp_response.status_code == status.HTTP_200_OK
+    ), f"Error en validación OTP: {otp_response.data}"
 
     # 🔹 Obtener el token de la respuesta (verificar la clave exacta)
     token = otp_response.data.get("token")
-    assert token, f"❌ No se recibió un token tras validar el OTP. Respuesta: {otp_response.data}"
+    assert (
+        token
+    ), f"❌ No se recibió un token tras validar el OTP. Respuesta: {otp_response.data}"
 
     # 🔹 Autenticarse con el token
     api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
@@ -66,15 +79,12 @@ def test_view_personal_data_authenticated(api_client, test_user):
     print("🔹 API PROFILE RESPONSE:", profile_response.data)  # Depuración
 
     # ✅ Verificar acceso a la información personal
-    assert profile_response.status_code == status.HTTP_200_OK, f"Error al obtener datos personales: {profile_response.data}"
-    assert "document" in profile_response.data, "❌ No se encontraron los datos personales en la respuesta."
-
-
-
-
-
-
-
+    assert (
+        profile_response.status_code == status.HTTP_200_OK
+    ), f"Error al obtener datos personales: {profile_response.data}"
+    assert (
+        "document" in profile_response.data
+    ), "❌ No se encontraron los datos personales en la respuesta."
 
 
 @pytest.mark.django_db
@@ -83,14 +93,22 @@ def test_view_personal_data_unauthenticated(api_client):
 
     # 🔹 Verificar la URL correcta en `urls.py`
     try:
-        profile_url = reverse("perfil-usuario")  # ✅ Verificar que el nombre sea correcto en `urls.py`
+        profile_url = reverse(
+            "perfil-usuario"
+        )  # ✅ Verificar que el nombre sea correcto en `urls.py`
     except:
-        pytest.fail("❌ No se encontró la URL 'perfil-usuario'. Verifica las rutas en `urls.py`.")
+        pytest.fail(
+            "❌ No se encontró la URL 'perfil-usuario'. Verifica las rutas en `urls.py`."
+        )
 
     # 🔹 Intentar obtener los datos personales sin autenticación
     response = api_client.get(profile_url)
 
     # ✅ Debe fallar con 401 (No autorizado)
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED, f"❌ Acceso no autorizado permitido: {response.data}"
+    assert (
+        response.status_code == status.HTTP_401_UNAUTHORIZED
+    ), f"❌ Acceso no autorizado permitido: {response.data}"
     assert "detail" in response.data
-    assert response.data["detail"] == "Las credenciales de autenticación no se proveyeron."
+    assert (
+        response.data["detail"] == "Las credenciales de autenticación no se proveyeron."
+    )

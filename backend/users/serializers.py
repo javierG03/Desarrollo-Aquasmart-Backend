@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
-from API.sendmsn import send_email
+from API.sendmsn import send_email2
 from .models import (
     DocumentType,
     PersonType,
@@ -341,7 +341,7 @@ class GenerateOtpPasswordRecoverySerializer(serializers.Serializer):
 
         # Intentar enviar OTP por correo
         try:
-            send_email(user.email, otp_generado, purpose="recover")
+            send_email2(user.email, otp_generado, purpose="recover")
         except Exception as e:
             raise serializers.ValidationError(
                 f"Hubo un problema al enviar el código. Inténtalo más tarde. {e}"

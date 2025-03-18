@@ -4,11 +4,9 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('users', '0009_userupdatelog'),
-        ('users', '0010_merge_20250312_1624'),
+        ("users", "0009_userupdatelog"),
+        ("users", "0010_merge_20250312_1624"),
     ]
 
-    operations = [
-    ]
+    operations = []
