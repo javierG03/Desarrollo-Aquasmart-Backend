@@ -278,7 +278,7 @@ class GenerateOtpPasswordRecoverySerializer(serializers.Serializer):
 
         # Intentar enviar OTP por correo
         try:
-            send_email2(user.email, otp_generado, purpose="recover" )
+            send_email2(user.email, otp_generado, purpose="recover",name=user.first_name )
         except Exception as e:
             raise serializers.ValidationError(f"Hubo un problema al enviar el código. Inténtalo más tarde. {e}")
 
