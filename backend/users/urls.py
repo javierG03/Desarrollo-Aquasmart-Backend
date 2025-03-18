@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import CustomUserCreateView, CustomUserListView,UserRegisterAPIView, DocumentTypeView, PersonTypeView, UserInactiveAPIView,UserProfilelView,DocumentTypeListView,PersonTypeListView, AdminUserUpdateAPIView, UserProfileUpdateView, UserActivateAPIView, AssignPermissionToUser, RemovePermissionFromUser, ListUserPermissions
-from .authentication import GenerateOtpPasswordRecoveryView,ResetPasswordView,ValidateOtpView, LoginView, LogoutView, ValidateTokenView, ChangePasswordView
+from .authentication import GenerateOtpPasswordRecoveryView,ResetPasswordView,ValidateOtpView, LoginView, LogoutView, ValidateTokenView, ChangePasswordView,GenerateOtpLoginView
 
 
 urlpatterns = [
@@ -13,6 +13,7 @@ urlpatterns = [
     path('profile', UserProfilelView.as_view(), name='perfil-usuario'),
     path('pre-register', CustomUserCreateView.as_view(), name='customuser-pre-register'),  # Pre-registro de usuarios    
     path('login', LoginView.as_view(), name='login'), # Login
+    path('generate-otp-login',GenerateOtpLoginView.as_view(), name='generate_otp_login_agin'),
     path('generate-otp', GenerateOtpPasswordRecoveryView.as_view(), name='generate_otp_password_recovery'),
     path('validate-otp',ValidateOtpView.as_view(), name='validate-otp'),
     path('reset-password',ResetPasswordView.as_view(), name='reset-password'),
