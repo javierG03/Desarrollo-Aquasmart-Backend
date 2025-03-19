@@ -1,7 +1,7 @@
 #!/bin/sh
 
 echo "🚀 Activando entorno virtual..."
-VIRTUAL_ENV="C:/Users/serda/Documents/Semestre 9/Proyecto Integrador IV/Equipo Pruebas/repositorio/branch/desarrollo-aquasmart-backend/virtualenv"
+VIRTUAL_ENV="virtualenv"
 PATH="$VIRTUAL_ENV/Scripts:$PATH"
 export PATH VIRTUAL_ENV
 
