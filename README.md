@@ -29,6 +29,11 @@ Repositorio de desarrollo del sistema de gestion de distritos de riego acorde a 
     bash setup_hooks.sh
 
 
+## Instalar pre-commit
+    pre-commit install
+    pre-commit run --all-files
+
+
 #### Ejecutar las migraciones
 
     python manage.py migrate
