@@ -53,7 +53,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'users',
     'iot',
-    'plots_lots'
+    'plots_lots',
+    "AquaSmart",
     
 ]
 
