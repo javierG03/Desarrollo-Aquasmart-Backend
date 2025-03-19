@@ -91,13 +91,8 @@ class CustomUserSerializer(serializers.ModelSerializer):
             "drive_folder_id",
             "files",
         ]
-        read_only_fields = (
-            "is_registered",
-            "is_active",
-            "drive_folder_id",
-            "date_joined",
-        )
-
+        read_only_fields = ('is_registered','drive_folder_id','date_joined')
+        
         extra_kwargs = {
             "document": {"validators": []},
             "email": {"validators": []},
@@ -285,7 +280,7 @@ class GenerateOtpLoginSerializer(serializers.Serializer):
 
         # Simulación de envío de correo/SMS
         try:
-            send_email(user.email, otp_generado, purpose="login")
+            send_email2(user.email, otp_generado, purpose="login",name=user.first_name)
         except Exception as e:
             raise serializers.ValidationError(f"Error al enviar el correo: {str(e)}")
 
@@ -341,7 +336,7 @@ class GenerateOtpPasswordRecoverySerializer(serializers.Serializer):
 
         # Intentar enviar OTP por correo
         try:
-            send_email2(user.email, otp_generado, purpose="recover")
+            send_email2(user.email, otp_generado, purpose="recover",name=user.first_name )
         except Exception as e:
             raise serializers.ValidationError(
                 f"Hubo un problema al enviar el código. Inténtalo más tarde. {e}"
@@ -543,17 +538,11 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = [
-            "email",
-            "document",
-            "document_type_name",
-            "first_name",
-            "last_name",
-            "phone",
-            "address",
-            "person_type_name",
-        ]
-
-
+            'email', 'document', 'document_type_name', 
+            'first_name', 'last_name', 'phone', 
+            'address', 'person_type_name','drive_folder_id'
+        ] 
+        
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
     email = serializers.CharField(required=True, allow_blank=False)
     phone = serializers.CharField(required=True, allow_blank=False)
