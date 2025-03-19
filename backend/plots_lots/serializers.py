@@ -59,3 +59,8 @@ class LotDetailSerializer(LotSerializer):
 
     class Meta(LotSerializer.Meta):
         fields = LotSerializer.Meta.fields + ['plot_name', 'plot_owner', 'soil_type_name']
+
+class SoilTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SoilType
+        fields = ['id', 'name']        

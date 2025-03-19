@@ -1,10 +1,11 @@
-from rest_framework import viewsets, generics, status
+from rest_framework import viewsets, generics, status, response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from .models import Plot, Lot
+from .models import Plot, Lot,SoilType
 from .serializers import (
     PlotSerializer, PlotDetailSerializer,
-    LotSerializer, LotDetailSerializer
+    LotSerializer, LotDetailSerializer,
+    SoilTypeSerializer
 )
 from .permissions import IsOwnerOrAdmin
 
@@ -143,3 +144,19 @@ class LotViewSet(BaseModelViewSet):
 
     def active(self, request, *args, **kwargs):
         return self.toggle_active(request, *args, activate=True)
+
+class SoilTypeListCreateView(generics.ListCreateAPIView):
+    queryset = SoilType.objects.all()
+    serializer_class = SoilTypeSerializer
+    permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
+
+
+class SoilTypeRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = SoilType.objects.all()
+    serializer_class = SoilTypeSerializer  
+    permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
+    
+    def delete(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return response.Response({"message": "Eliminado exitosamente"}, status=status.HTTP_200_OK)
