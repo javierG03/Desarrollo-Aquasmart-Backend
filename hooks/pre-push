@@ -1,7 +1,7 @@
 #!/bin/sh
 
 echo "🚀 Activando entorno virtual..."
-VIRTUAL_ENV="virtualenv"
+VIRTUAL_ENV="venv"
 PATH="$VIRTUAL_ENV/Scripts:$PATH"
 export PATH VIRTUAL_ENV
 

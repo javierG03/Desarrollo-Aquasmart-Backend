@@ -4,7 +4,7 @@
 # ID: 138fd403232d2ddd5efb44317e38bf03
 
 # start templated
-INSTALL_PYTHON='virtualenv\scripts\python.exe'
+INSTALL_PYTHON="venv\Scripts\python.exe"
 ARGS=(hook-impl --config=.pre-commit-config.yaml --hook-type=pre-commit)
 # end templated
 

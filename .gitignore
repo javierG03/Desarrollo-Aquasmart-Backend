@@ -9,3 +9,5 @@ Dockerfile
 db.sqlite3-journal
 db.sqlite3
 
+hoooks/pre-commit
+hoooks/pre-push
