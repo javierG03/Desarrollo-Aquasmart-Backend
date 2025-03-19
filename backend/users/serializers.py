@@ -476,7 +476,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         ] 
         
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
-    email = serializers.CharField(required=True, allow_blank=False)
+    email = serializers.EmailField(required=True, allow_blank=False)
     phone = serializers.CharField(required=True, allow_blank=False)
 
     class Meta:
