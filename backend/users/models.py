@@ -83,7 +83,7 @@ class CustomUser(AbstractUser):
     email = models.EmailField(unique=True, db_index=True, verbose_name="Correo Electrónico")
     document_type = models.ForeignKey('DocumentType', on_delete=models.CASCADE, related_name="users_with_document_type", null=True, db_index=True, verbose_name="Tipo de Documento")
     person_type = models.ForeignKey('PersonType', on_delete=models.CASCADE, related_name="users_with_person_type", null=True, db_index=True, verbose_name="Tipo de Persona")
-    phone = models.CharField(max_length=20, db_index=True, verbose_name="Teléfono")
+    phone = models.CharField(max_length=10, db_index=True, verbose_name="Teléfono")
     address = models.CharField(max_length=200, db_index=True, verbose_name="Dirección")
     is_registered = models.BooleanField(default=False, help_text="Indica si el usuario completó el pre-registro", db_index=True, verbose_name="Registrado")
     drive_folder_id = models.CharField(max_length=100, blank=True, null=True, verbose_name="ID Carpeta Google Drive")  
@@ -198,7 +198,7 @@ class LoginRestriction(models.Model):
     def register_attempt(self):
         """Registra un intento fallido de inicio de sesión"""
         if self.is_blocked():
-            return "User is blocked until {}".format(self.blocked_until)
+            return "El usuario está bloqueado hasta {}".format(self.blocked_until)
         
         self.attempts += 1
         self.last_attempt_time = now()
