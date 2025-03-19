@@ -15,6 +15,7 @@ from rest_framework.authentication import TokenAuthentication
 from rest_framework import serializers
 from django.contrib.auth.models import Permission
 from django.shortcuts import get_object_or_404
+from API.sendmsn import send_rejection_email,send_approval_email
 @extend_schema_view(
     post=extend_schema(
         summary="Crear un nuevo usuario",
@@ -42,7 +43,7 @@ class CustomUserCreateView(generics.CreateAPIView):
         """
         user = serializer.save()  # Guarda el usuario primero
         uploaded_files = self.request.FILES.getlist('attachments')
-        # Obtiene los archivos subidos
+        # Obtiene los archivos subidos        
         
         if uploaded_files and user.drive_folder_id:
             
@@ -184,6 +185,8 @@ class UserRegisterAPIView(APIView):
             Response: Estado de la activación del usuario.
         """        
         user = validate_user_exist(document)
+        name = user.get_full_name()
+        send_approval_email(user.email, name)
         # Verificar si ya está registrado
         if user.is_registered:
             return Response({'status': 'el usuario ya se encuentra registrado'}, status=status.HTTP_400_BAD_REQUEST)
@@ -505,3 +508,49 @@ class ListUserPermissions(APIView):
             status=status.HTTP_200_OK
         )
     
+class RejectAndDeleteUserView(APIView):
+    """
+    Vista para rechazar y eliminar un usuario después de enviar un correo de rechazo.
+    """
+    permission_classes = [IsAuthenticated,IsAdminUser]
+    def post(self, request, user_id, format=None):
+        try:
+            # Obtener el usuario
+            user = CustomUser.objects.get(document=user_id)
+            email = user.email
+            name = user.get_full_name()
+
+            # Obtener el mensaje de rechazo del cuerpo de la solicitud
+            mensaje_rechazo = request.data.get('mensaje_rechazo', '')
+            if not mensaje_rechazo:
+                return Response(
+                    {'error': 'El mensaje de rechazo es requerido.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Llamar a la función importada para enviar el correo
+            resultado_correo = send_rejection_email(email, mensaje_rechazo, name)
+
+            # Eliminar al usuario
+            user.delete()
+
+            # Retornar una respuesta exitosa
+            return Response(
+                {
+                    'status': 'success',
+                    'message': 'Usuario rechazado y eliminado correctamente.',
+                    'email_result': resultado_correo
+                },
+                status=status.HTTP_200_OK
+            )
+
+        except CustomUser.DoesNotExist:
+            return Response(
+                {'error': 'El usuario no existe.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {'error': f'Error al procesar la solicitud: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
