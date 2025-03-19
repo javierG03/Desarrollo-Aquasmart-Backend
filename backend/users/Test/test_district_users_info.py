@@ -5,6 +5,7 @@ from rest_framework.test import APIClient
 from users.models import CustomUser, Otp, PersonType
 
 
+
 @pytest.fixture
 def api_client():
     """Cliente API para realizar las solicitudes de prueba."""
@@ -53,50 +54,68 @@ def registered_users(db, person_type):
     ]
 
 
-@pytest.mark.django_db
-def test_list_registered_users(api_client, admin_user, registered_users):
-    """✅ Verifica que la API liste correctamente los usuarios registrados con autenticación real."""
 
-    # 🔹 Paso 1: Intentar iniciar sesión (genera OTP aunque falle el envío de correo)
+
+@pytest.mark.django_db
+def test_list_all_users(api_client, admin_user, registered_users):
+    """✅ Verifica que la API liste correctamente todos los usuarios, incluyendo administradores."""
+
+    # 🔹 Paso 1: Iniciar sesión (recibe OTP pero no token aún)
     login_url = reverse("login")
     login_data = {"document": admin_user.document, "password": "AdminPass123"}
     login_response = api_client.post(login_url, login_data)
 
-    # 🔹 Si la API falla por el envío de correo, verificamos si el OTP fue creado
-    if login_response.status_code == 400 and "send_email" in str(login_response.data):
-        otp_instance = Otp.objects.filter(user=admin_user, is_login=True).first()
-        assert (
-            otp_instance
-        ), "❌ No se generó un OTP en la base de datos a pesar del error en envío de correo."
+    assert login_response.status_code == status.HTTP_200_OK, f"Error en login: {login_response.data}"
+    assert "message" in login_response.data, "❌ No se recibió un mensaje de confirmación de envío de OTP."
 
-    # 🔹 Validar OTP para obtener token
+    # 🔹 Paso 2: Verificar que el OTP ha sido generado en la base de datos
+    otp_instance = Otp.objects.filter(user=admin_user, is_login=True).first()
+    assert otp_instance, "❌ No se generó un OTP en la base de datos."
+
+    # 🔹 Paso 3: Validar OTP para obtener el token
     otp_validation_url = reverse("validate-otp")
-    otp_response = api_client.post(
-        otp_validation_url, {"document": admin_user.document, "otp": otp_instance.otp}
+    otp_data = {"document": admin_user.document, "otp": otp_instance.otp}
+    otp_response = api_client.post(otp_validation_url, otp_data)
+
+    assert otp_response.status_code == status.HTTP_200_OK, f"Error al validar OTP: {otp_response.data}"
+    assert "token" in otp_response.data, "❌ No se recibió un token tras validar el OTP."
+
+    # 🔹 Paso 4: Usar el token para listar todos los usuarios
+    token = otp_response.data["token"]
+    headers = {"HTTP_AUTHORIZATION": f"Token {token}"}
+
+    list_users_url = reverse("customuser-list")
+    response = api_client.get(list_users_url, **headers)
+
+    assert response.status_code == status.HTTP_200_OK, f"Error en la lista de usuarios: {response.data}"
+
+    # 🔹 Obtener la cantidad total de usuarios en la base de datos
+    total_users_db = CustomUser.objects.count()
+    total_users_api = len(response.data)
+
+    # 🔹 Verificar que la API devuelve el mismo número de usuarios que hay en la base de datos
+    assert total_users_api == total_users_db, (
+        f"❌ Se esperaban {total_users_db} usuarios en total, "
+        f"pero la API devolvió {total_users_api}."
     )
 
-    assert (
-        otp_response.status_code == status.HTTP_200_OK
-    ), f"Error en validación de OTP: {otp_response.data}"
-    token = otp_response.data.get("token")
-    assert token, "❌ No se recibió un token tras validar el OTP."
+    # 🔹 Verificar que cada usuario tiene los atributos requeridos
+    required_fields = [
+        "document", "first_name", "last_name", "email", "phone",
+        "address", "person_type", "is_active", "is_registered"
+    ]
+    for user_data in response.data:
+        for field in required_fields:
+            assert field in user_data, f"❌ Falta el campo '{field}' en la respuesta."
 
-    # 🔹 Solicitar lista de usuarios con el token de autenticación
-    list_users_url = reverse("customuser-list")
-    response = api_client.get(list_users_url, HTTP_AUTHORIZATION=f"Bearer {token}")
-
-    assert (
-        response.status_code == status.HTTP_200_OK
-    ), f"Error en la lista de usuarios: {response.data}"
-    assert len(response.data) == len(
-        registered_users
-    ), "❌ No se retornaron todos los usuarios registrados."
+    print("✅ Test completado con éxito. Se listaron correctamente todos los usuarios.")
 
 
 @pytest.mark.django_db
 def test_admin_login(api_client, admin_user):
-    """✅ Verifica que el login de administrador devuelve un token."""
+    """✅ Verifica que el login de administrador devuelve un token tras validar el OTP."""
 
+    # 🔹 Paso 1: Iniciar sesión (genera OTP pero no devuelve token aún)
     login_url = reverse("login")
     login_data = {"document": admin_user.document, "password": "AdminPass123"}
 
@@ -107,6 +126,25 @@ def test_admin_login(api_client, admin_user):
     assert (
         login_response.status_code == status.HTTP_200_OK
     ), f"Error en login: {login_response.data}"
+    
+    assert "message" in login_response.data, "❌ No se recibió mensaje de confirmación de envío de OTP."
+
+    # 🔹 Paso 2: Obtener el OTP generado en la base de datos
+    otp_instance = Otp.objects.filter(user=admin_user, is_login=True).first()
+    assert otp_instance, "❌ No se generó un OTP en la base de datos."
+
+    # 🔹 Paso 3: Validar OTP para obtener el token
+    otp_validation_url = reverse("validate-otp")
+    otp_data = {"document": admin_user.document, "otp": otp_instance.otp}
+    otp_response = api_client.post(otp_validation_url, otp_data)
+
+    print("🔹 OTP VALIDATION RESPONSE:", otp_response.data)  # Depuración
+
     assert (
-        "token" in login_response.data
-    ), "❌ No se recibió un token tras iniciar sesión."
+        otp_response.status_code == status.HTTP_200_OK
+    ), f"Error al validar OTP: {otp_response.data}"
+    
+    assert "token" in otp_response.data, "❌ No se recibió un token tras validar el OTP."
+
+    # ✅ Si se llegó hasta aquí, el flujo de autenticación funciona correctamente.
+    print("✅ Test completado con éxito. El administrador recibió un token tras validar OTP.")
