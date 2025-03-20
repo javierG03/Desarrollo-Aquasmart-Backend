@@ -191,6 +191,14 @@ class SpecialCharValidator:
             "Tu contraseña debe contener al menos un carácter especial (como @, #, $, etc.)."
         )
 
+class ContainsDigitValidator:
+    """Valida que la contraseña contenga al menos un dígito."""
+    def validate(self, password, user=None):
+        if not any(char.isdigit() for char in password):
+            raise ValidationError("La contraseña debe contener al menos un dígito.")
+        
+    def get_help_text(self):
+        return _("Tu contraseña debe contener al menos un dígito.")
 
 # Luego, busca la sección AUTH_PASSWORD_VALIDATORS en tu settings.py y reemplázala con:
 
@@ -234,6 +242,9 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         "NAME": "API.settings.SpecialCharValidator",  # Usa la ruta completa al módulo
+    },
+     {
+        "NAME": "API.settings.ContainsDigitValidator",  # Usa la ruta completa al módulo
     },
 ]
 
