@@ -1,27 +1,14 @@
 from rest_framework import serializers
-from .models import IoTDevice
+from .models import IoTDevice, DeviceType
 from plots_lots.models import Plot, Lot  
 
 class IoTDeviceSerializer(serializers.ModelSerializer):
-    device_id = serializers.CharField(read_only=True) 
+    iot_id = serializers.CharField(read_only=True)  # ID generado automáticamente
+    device_type = serializers.PrimaryKeyRelatedField(queryset=DeviceType.objects.all())  # Referencia a DeviceType
 
     class Meta:
         model = IoTDevice
-        fields = ['id_plot', 'id_lot', 'name', 'device_type', 'is_active', 'characteristics', 'device_id']
-
-    def validate_name(self, value):
-        """ Validación para asegurar que el nombre no esté vacío """
-        if not value:
-            raise serializers.ValidationError("El nombre es obligatorio.")
-        return value
-
-    def validate_characteristics(self, value):
-        """ Validación para características: obligatorio y máximo 300 caracteres """
-        if not value:
-            raise serializers.ValidationError("Las características son obligatorias.")
-        if len(value) > 300:
-            raise serializers.ValidationError("Las características no pueden tener más de 300 caracteres.")
-        return value
+        fields = ['iot_id', 'id_plot', 'id_lot', 'name', 'device_type', 'is_active', 'characteristics']
 
     def validate(self, data):
         """ Validación personalizada """
@@ -34,12 +21,24 @@ class IoTDeviceSerializer(serializers.ModelSerializer):
 
         # Validar que no haya más de un dispositivo del mismo tipo por lote
         if data.get('id_lot'):
-            # Buscar dispositivos en el lote con el mismo tipo de dispositivo
             if IoTDevice.objects.filter(id_lot=data['id_lot'], device_type=data['device_type']).exists():
                 raise serializers.ValidationError(f"Ya existe un dispositivo {data['device_type']} en este lote.")
 
-        # Validar que el estado sea correcto
-        if data.get('is_active') not in [True, False]:
-            raise serializers.ValidationError("El estado del dispositivo es obligatorio.")
-
         return data
+
+class IoTDeviceStatusSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = IoTDevice
+        fields = ['is_active']
+        read_only_fields = ['iot_id']  # iot_id no se puede modificar
+
+class DeviceTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DeviceType
+        fields = '__all__'  # Incluir todos los campos
+
+    def create(self, validated_data):
+        """Genera automáticamente el `device_id`"""
+        instance = DeviceType(**validated_data)
+        instance.save()
+        return instance        
