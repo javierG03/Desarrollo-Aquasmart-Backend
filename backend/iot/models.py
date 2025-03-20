@@ -35,6 +35,7 @@ class IoTDevice(models.Model):
         null=True, blank=True, 
         related_name="iot_devices"
     )
+    owner_name = models.CharField(max_length=255, blank=True, null=True)
     name = models.CharField(max_length=100, verbose_name="Nombre del Dispositivo")
     device_type = models.ForeignKey(DeviceType, on_delete=models.CASCADE, verbose_name="Tipo de Dispositivo")
     is_active = models.BooleanField(default=True, help_text="Indica si el dispositivo está habilitado", db_index=True, verbose_name="Estado del Dispositivo")
@@ -44,6 +45,11 @@ class IoTDevice(models.Model):
         if not self.iot_id:
             random_suffix = f"{random.randint(0, 9999):04d}"  # Números aleatorios de 4 dígitos
             self.iot_id = f"{self.device_type.device_id}-{random_suffix}"  # XX-YYYY
+        
+        if self.id_plot and self.id_plot.owner:
+            self.owner_name = self.id_plot.owner.get_full_name()
+        elif not self.owner_name:
+            self.owner_name = "Sin dueño"  # ✅ Valor predeterminado si está vacío    
 
         super().save(*args, **kwargs)
 
