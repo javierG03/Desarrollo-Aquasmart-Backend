@@ -8,10 +8,10 @@ class IoTDeviceSerializer(serializers.ModelSerializer):
     id_plot = serializers.PrimaryKeyRelatedField(queryset=Plot.objects.all(), allow_null=True, required=False)  # ✅ Permite NULL y no es obligatorio
     id_lot = serializers.PrimaryKeyRelatedField(queryset=Lot.objects.all(), allow_null=True, required=False)  # ✅ Permite NULL y no es obligatorio
     owner_name = serializers.SerializerMethodField(read_only=True)  
-
+    device_type_name = serializers.CharField(source='device_type.name', read_only=True)
     class Meta:
         model = IoTDevice
-        fields = ['iot_id', 'id_plot', 'id_lot', 'name', 'device_type', 'is_active', 'characteristics', 'owner_name']
+        fields = ['iot_id', 'id_plot', 'id_lot', 'name', 'device_type', 'is_active', 'characteristics', 'owner_name','device_type_name']
 
     def get_owner_name(self, obj):
         """ Método para obtener el nombre del dueño del predio """
