@@ -62,10 +62,7 @@ class BaseModelViewSet(viewsets.ModelViewSet):
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            return Response({
-                "error": f"Error al actualizar el {self.model_name}",
-                "detalles": str(e)
-            }, status=status.HTTP_400_BAD_REQUEST)
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
 
     def toggle_active(self, request, *args, **kwargs):
         """
