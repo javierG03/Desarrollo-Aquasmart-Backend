@@ -12,7 +12,7 @@ class PlotSerializer(serializers.ModelSerializer):
     class Meta:
         model = Plot
         fields = ['id_plot', 'owner', 'plot_name', 'latitud', 'longitud', 'plot_extension', 'registration_date', 'is_activate']
-        read_only_fields = ['id_plot', 'registration_date', 'is_activate']
+        read_only_fields = ['id_plot', 'registration_date']
 
     def validate(self, data):
         """Validación personalizada para evitar duplicados en la georeferenciación."""
@@ -29,7 +29,7 @@ class LotSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lot
         fields = ['id_lot', 'plot', 'crop_type', 'crop_variety', 'soil_type', 'is_activate', 'registration_date']
-        read_only_fields = ['id_lot', 'registration_date', 'is_activate']
+        read_only_fields = ['id_lot', 'registration_date']
 
     def validate_plot(self, value):
         """Valida que el predio exista y esté activo."""
