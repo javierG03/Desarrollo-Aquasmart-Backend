@@ -180,8 +180,6 @@ class SpecialCharValidator:
         return _("Tu contraseña debe contener al menos un carácter especial (como @, #, $, etc.).")
 
 
-# Luego, busca la sección AUTH_PASSWORD_VALIDATORS en tu settings.py y reemplázala con:
-
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
