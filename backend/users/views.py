@@ -7,7 +7,7 @@ from drf_spectacular.utils import extend_schema, extend_schema_view,OpenApiParam
 from rest_framework.response import Response
 from django.contrib.auth.models import Permission
 from .validate import validate_user_exist
-from API.google.google_drive import upload_to_drive
+from API.google.google_drive import upload_to_drive,share_folder
 import os
 from django.conf import settings
 from .permissions import PuedeCambiarIsActive,CanRegister,CanAddDocumentType
@@ -59,7 +59,11 @@ class CustomUserCreateView(generics.CreateAPIView):
 
                 # Subir archivo a Google Drive
                 upload_to_drive(temp_file_path, uploaded_file.name, folder_id=user.drive_folder_id)
-                
+                try:
+                    share_folder(folder_id=user.drive_folder_id,email=user.email,role='reader')
+                except Exception as e:
+                    print(f"Ocurrió un error al compartir la carpeta: {e}")
+                    raise Exception(f"Error al compartir la carpeta: {e}")
 
                 # Eliminar el archivo temporal
                 os.remove(temp_file_path)
