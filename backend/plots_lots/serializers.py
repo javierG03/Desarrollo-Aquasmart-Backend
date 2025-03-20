@@ -53,7 +53,7 @@ class LotSerializer(serializers.ModelSerializer):
 
 class PlotDetailSerializer(PlotSerializer):
     """Serializer extendido para ver detalles de predios, incluyendo sus lotes."""
-    lotes = LotSerializer(many=True, read_only=True, source='lot_set')
+    lotes = LotSerializer(many=True, read_only=True)
     owner_name = serializers.CharField(source='owner.get_full_name', read_only=True)
 
     class Meta(PlotSerializer.Meta):
