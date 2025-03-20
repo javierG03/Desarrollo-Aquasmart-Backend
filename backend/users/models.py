@@ -216,7 +216,7 @@ class LoginRestriction(models.Model):
     
     def block_user(self):
         """Bloquea al usuario por 30 minutos"""
-        self.blocked_until = now() + timedelta(hours=0.5)
+        self.blocked_until = now() + timedelta(minutes=1)
         self.attempts = 0  # Reiniciar intentos
         self.save()
     
