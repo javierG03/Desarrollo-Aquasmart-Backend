@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import GroupViewSet, PermissionListView, GroupPermissionsView, GroupedPermissionsView,UserPermissionsView
+from .views import GroupViewSet, PermissionListView, GroupPermissionsView, GroupedPermissionsView,UserPermissionsView,AddUserPermissionsView, RemoveUserPermissionsView
 
 router = DefaultRouter()
 router.register(r'groups', GroupViewSet, basename='group')
@@ -16,5 +16,9 @@ urlpatterns = [
     # Endpoint para ver los permisos de un grupo específico
     path('groups/<int:pk>/permissions', GroupPermissionsView.as_view(), name='group-permissions'),
     path('grouped_permissions', GroupedPermissionsView.as_view(), name='grouped-permissions'),
-    path('users/<int:user_id>/permissions/', UserPermissionsView.as_view(), name='user-permissions'),
+    path('users/<int:user_id>/permissions', UserPermissionsView.as_view(), name='user-permissions'),
+     # Agregar permisos a un usuario
+    path('users/<int:user_id>/add_permissions', AddUserPermissionsView.as_view(), name='add-user-permissions'),
+    # Remover permisos de un usuario
+    path('users/<int:user_id>/remove_permission', RemoveUserPermissionsView.as_view(), name='remove-user-permissions'),
 ]
