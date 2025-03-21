@@ -58,18 +58,29 @@ def validate_create_user_document(value):
 
 def validate_only_number_phone(value):
     """
-    Valida que el número de teléfono solo contenga números.
+    Valida que el número de teléfono cumpla con el formato requerido.
     """
+    # Validar que solo contenga números
     if not re.match(r'^\d+$', value):
         raise serializers.ValidationError("El teléfono debe contener solo números.")
+    
+    # Validar longitud exacta de 10 dígitos
+    if len(value) != 10:
+        raise serializers.ValidationError("El teléfono debe tener exactamente 10 dígitos.")
+    
     return value
 
 def validate_create_user_email(value):
     """
-    Valida si el email ya existe y maneja el mensaje personalizado.
+    Valida si el email ya existe y sus características.
     """
     if CustomUser.objects.filter(email=value).exists():
         raise serializers.ValidationError("Este correo ya está registrado.")
+    
+    # Validar longitud del email
+    if len(value) < 10 or len(value) > 50:
+        raise serializers.ValidationError("El correo debe tener entre 10 y 50 caracteres.")
+    
     return value
 
 def validate_user_password(value):
@@ -88,4 +99,4 @@ def validate_user_current_password(value, user):
     """
     if not user.check_password(value):
         raise serializers.ValidationError("La contraseña actual es incorrecta.")
-    return value   
+    return value
