@@ -40,20 +40,22 @@ if RENDER_EXTERNAL_HOSTNAME:
 # Application definition
 
 INSTALLED_APPS = [
-    "django.contrib.admin",
-    "django.contrib.auth",
-    "django.contrib.contenttypes",
-    "django.contrib.sessions",
-    "django.contrib.messages",
-    "django.contrib.staticfiles",
-    "corsheaders",
-    "drf_spectacular",
-    "storages",
-    "rest_framework.authtoken",
-    "rest_framework",
-    "users",
-    "iot",
-    "plots_lots",
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'corsheaders',
+    'drf_spectacular',
+    'storages',
+    'rest_framework.authtoken',
+    'rest_framework',
+    'users',
+    'iot',
+    'plots_lots',
+    "AquaSmart",
+    
 ]
 
 AUTH_USER_MODEL = "users.CustomUser"

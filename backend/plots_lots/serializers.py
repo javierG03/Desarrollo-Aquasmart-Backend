@@ -12,7 +12,7 @@ class PlotSerializer(serializers.ModelSerializer):
     class Meta:
         model = Plot
         fields = ['id_plot', 'owner', 'plot_name', 'latitud', 'longitud', 'plot_extension', 'registration_date', 'is_activate']
-        read_only_fields = ['id_plot', 'registration_date', 'is_activate']
+        read_only_fields = ['id_plot', 'registration_date']
 
     def validate(self, data):
         """Validación personalizada para evitar duplicados en la georeferenciación."""
@@ -26,15 +26,23 @@ class PlotSerializer(serializers.ModelSerializer):
 
 class LotSerializer(serializers.ModelSerializer):
     """Serializer base para lotes con campos básicos."""
+    plot = serializers.PrimaryKeyRelatedField(
+        queryset=Plot.objects.all(),
+        error_messages={
+            'does_not_exist': 'El predio asignado no está registrado.',
+            'incorrect_type': 'Dato inválido para el predio.'
+        }
+    )
+
     class Meta:
         model = Lot
         fields = ['id_lot', 'plot', 'crop_type', 'crop_variety', 'soil_type', 'is_activate', 'registration_date']
-        read_only_fields = ['id_lot', 'registration_date', 'is_activate']
+        read_only_fields = ['id_lot', 'registration_date']
 
     def validate_plot(self, value):
-        """Valida que el predio exista y esté activo."""
-        if not Plot.objects.filter(id_plot=value.id_plot, is_activate=True).exists():
-            raise serializers.ValidationError("El predio no existe o está inactivo.")
+        """Valida que el predio esté activo."""
+        if not value.is_activate:
+            raise serializers.ValidationError("El predio asociado se encuentra inactivo.")
         return value
 
     def validate_soil_type(self, value):
@@ -45,7 +53,7 @@ class LotSerializer(serializers.ModelSerializer):
 
 class PlotDetailSerializer(PlotSerializer):
     """Serializer extendido para ver detalles de predios, incluyendo sus lotes."""
-    lotes = LotSerializer(many=True, read_only=True, source='lot_set')
+    lotes = LotSerializer(many=True, read_only=True)
     owner_name = serializers.CharField(source='owner.get_full_name', read_only=True)
 
     class Meta(PlotSerializer.Meta):
@@ -59,3 +67,8 @@ class LotDetailSerializer(LotSerializer):
 
     class Meta(LotSerializer.Meta):
         fields = LotSerializer.Meta.fields + ['plot_name', 'plot_owner', 'soil_type_name']
+
+class SoilTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SoilType
+        fields = ['id', 'name']        

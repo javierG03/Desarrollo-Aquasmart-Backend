@@ -104,26 +104,10 @@ class CustomUser(AbstractUser):
     )
     first_name = models.CharField(max_length=50, db_index=True, verbose_name="Nombre")
     last_name = models.CharField(max_length=50, db_index=True, verbose_name="Apellido")
-    email = models.EmailField(
-        unique=True, db_index=True, verbose_name="Correo Electrónico"
-    )
-    document_type = models.ForeignKey(
-        "DocumentType",
-        on_delete=models.CASCADE,
-        related_name="users_with_document_type",
-        null=True,
-        db_index=True,
-        verbose_name="Tipo de Documento",
-    )
-    person_type = models.ForeignKey(
-        "PersonType",
-        on_delete=models.CASCADE,
-        related_name="users_with_person_type",
-        null=True,
-        db_index=True,
-        verbose_name="Tipo de Persona",
-    )
-    phone = models.CharField(max_length=20, db_index=True, verbose_name="Teléfono")
+    email = models.EmailField(unique=True, db_index=True, verbose_name="Correo Electrónico")
+    document_type = models.ForeignKey('DocumentType', on_delete=models.CASCADE, related_name="users_with_document_type", null=True, db_index=True, verbose_name="Tipo de Documento")
+    person_type = models.ForeignKey('PersonType', on_delete=models.CASCADE, related_name="users_with_person_type", null=True, db_index=True, verbose_name="Tipo de Persona")
+    phone = models.CharField(max_length=10, db_index=True, verbose_name="Teléfono")
     address = models.CharField(max_length=200, db_index=True, verbose_name="Dirección")
     is_registered = models.BooleanField(
         default=False,
@@ -271,8 +255,8 @@ class LoginRestriction(models.Model):
     def register_attempt(self):
         """Registra un intento fallido de inicio de sesión"""
         if self.is_blocked():
-            return "User is blocked until {}".format(self.blocked_until)
-
+            return "El usuario está bloqueado hasta {}".format(self.blocked_until)
+        
         self.attempts += 1
         self.last_attempt_time = now()
 
@@ -289,7 +273,7 @@ class LoginRestriction(models.Model):
 
     def block_user(self):
         """Bloquea al usuario por 30 minutos"""
-        self.blocked_until = now() + timedelta(hours=0.5)
+        self.blocked_until = now() + timedelta(minutes=1)
         self.attempts = 0  # Reiniciar intentos
         self.save()
 

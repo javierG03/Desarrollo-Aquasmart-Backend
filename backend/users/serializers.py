@@ -185,11 +185,7 @@ class LoginSerializer(serializers.Serializer):
 
         user = validate_user_exist(document)
         if not user.is_registered:
-            raise serializers.ValidationError(
-                {
-                    "detail": "Usuerio en espera de validar su pre-registro. Póngase en contacto con soprte para mas informacion"
-                }
-            )
+            raise serializers.ValidationError({"detail": "Usuario en espera de validar su pre-registro. Póngase en contacto con soporte para mas información."})     
 
         if not user.is_active:
             raise PermissionDenied(
@@ -544,7 +540,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         ] 
         
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
-    email = serializers.CharField(required=True, allow_blank=False)
+    email = serializers.EmailField(required=True, allow_blank=False)
     phone = serializers.CharField(required=True, allow_blank=False)
 
     class Meta:
