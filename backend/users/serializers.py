@@ -509,7 +509,12 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
         return value
 
     def validate_phone(self, value):
-        """Evita que el número de teléfono sea el mismo, contenga letras o esté vacío."""               
+        """Evita que el número de teléfono sea el mismo, contenga letras o esté vacío."""   
+        actual_phone = self.instance.phone       
+        
+        if actual_phone == value:
+            raise serializers.ValidationError("El telefono a actualizar no puede ser el mismo que el actual.")
+                       
         validate_only_number_phone(value)        
         return value
 
