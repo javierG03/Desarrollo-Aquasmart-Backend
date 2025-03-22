@@ -238,6 +238,8 @@ class UserUpdateLog(models.Model):
 
     def can_update(self):
         """Verifica si el usuario puede realizar una actualización dentro de su semana personalizada."""
+        if self.user.is_staff:
+            return True, "Datos actualizados con éxito. No tienes restricciones de actualización."
         today = date.today()
 
         # Si es la primera actualización, inicializa la fecha de la primera actualización
