@@ -493,7 +493,7 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
         # Verifica si el usuario puede realizar una actualización
         user = self.instance
         update_log, created = UserUpdateLog.objects.get_or_create(user=user)
-        can_update, message = update_log.can_update(self.context["request"].user)
+        can_update, message = update_log.can_update(updating_user=self.context["request"].user)
         if not can_update:
             raise serializers.ValidationError(message)
         
