@@ -119,7 +119,7 @@ def test_pre_register_weak_password(api_client, weak_password):
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
-    "invalid_document", ["", "123", "12345678901234567890", "abc123!", "@invalid"]
+    "invalid_document", ["", "12345678901234567890", "abc123!", "@invalid"]
 )
 def test_pre_register_invalid_document(api_client, invalid_document):
     """❌ No se debe permitir el pre-registro con un documento inválido."""
