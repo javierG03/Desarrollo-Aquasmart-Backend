@@ -54,7 +54,7 @@ INSTALLED_APPS = [
     'users',
     'iot',
     'plots_lots',
-    "AquaSmart",
+    "aquasmart",
     'auditlog',
 ]
 
