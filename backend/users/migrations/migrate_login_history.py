@@ -28,7 +28,6 @@ def reverse_migrate_login_history(apps, schema_editor):
 class Migration(migrations.Migration):
     dependencies = [
         ('users', '0001_initial'),
-        ('auditlog', '0015_alter_logentry_changes'),
         ('contenttypes', '0002_remove_content_type_name'),
     ]
 
