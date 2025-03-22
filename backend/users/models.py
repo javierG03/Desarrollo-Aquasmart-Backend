@@ -234,12 +234,20 @@ class UserUpdateLog(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='update_log')
     update_count = models.IntegerField(default=0)
     last_update_date = models.DateField(auto_now=True)
-    first_update_date = models.DateField(null=True, blank=True)  # Nueva campo para la primera actualización
+    first_update_date = models.DateField(null=True, blank=True)  # Nuevo campo para la primera actualización
 
-    def can_update(self):
-        """Verifica si el usuario puede realizar una actualización dentro de su semana personalizada."""
-        if self.user.is_staff:
+    def can_update(self, updating_user):
+        """
+        Verifica si el usuario que está realizando la actualización tiene permisos.
+        
+        - Si el usuario que realiza la actualización es staff, no hay restricciones.
+        - Si es un usuario normal, se aplican las reglas de límite semanal.
+        """
+        
+        # Si el usuario que está actualizando (updating_user) es staff, permitir sin restricciones
+        if updating_user.is_staff:
             return True, "Datos actualizados con éxito. No tienes restricciones de actualización."
+
         today = date.today()
 
         # Si es la primera actualización, inicializa la fecha de la primera actualización
@@ -248,7 +256,8 @@ class UserUpdateLog(models.Model):
             self.save()
 
         # Calcula el final de la semana personalizada (7 días después de la primera actualización)
-        end_of_week = self.first_update_date + timedelta(days=6)
+        #end_of_week = self.first_update_date + timedelta(days=6)
+        end_of_week = self.first_update_date + timedelta(seconds=1)
 
         # Si la fecha actual está fuera de la semana personalizada, reinicia el contador
         if today > end_of_week:
@@ -262,7 +271,7 @@ class UserUpdateLog(models.Model):
         elif self.update_count == 2:
             return True, "Datos actualizados con éxito. Te queda 0 cambio más esta semana."
         elif self.update_count == 1:
-            return True, "Datos actualizados con éxito. Te quedan 1 cambios más esta semana."
+            return True, "Datos actualizados con éxito. Te queda 1 cambio más esta semana."
         else:
             return True, "Datos actualizados con éxito."
 
