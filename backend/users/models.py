@@ -257,7 +257,7 @@ class UserUpdateLog(models.Model):
 
         # Calcula el final de la semana personalizada (7 días después de la primera actualización)
         #end_of_week = self.first_update_date + timedelta(days=6)
-        end_of_week = self.first_update_date + timedelta(seconds=1)
+        end_of_week = self.first_update_date + timedelta(seconds=10)
 
         # Si la fecha actual está fuera de la semana personalizada, reinicia el contador
         if today > end_of_week:
