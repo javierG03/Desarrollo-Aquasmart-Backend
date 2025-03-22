@@ -7,6 +7,7 @@ from rest_framework.authtoken.models import Token
 from django.utils import timezone
 from django.utils.timezone import now
 from datetime import timedelta
+import time
 
 @pytest.fixture
 def api_client():
@@ -36,7 +37,7 @@ def test_user(db, person_type):
 @pytest.fixture
 def authenticated_client(api_client, test_user):
     """Cliente API autenticado manualmente."""
-    # Crear token manualmente
+
     token, _ = Token.objects.get_or_create(user=test_user)
     
     # Configurar cliente con token
@@ -50,7 +51,6 @@ class TestUserProfileUpdate:
         """Prueba validación de formato de correo según Django."""
         update_url = reverse('profile-update')
         
-        # Casos de prueba basados en validaciones de Django
         validations = [
             # Correos completamente inválidos
             {"email": "correo_invalido", "expected_status": status.HTTP_400_BAD_REQUEST},
@@ -77,12 +77,17 @@ class TestUserProfileUpdate:
         
         for case in validations:
             response = authenticated_client.patch(update_url, {"email": case["email"]})
+            update_log, _ = UserUpdateLog.objects.get_or_create(user=test_user)
+            update_log.update_count = 0 # Reiniciar conteo de actualizaciones
+            update_log.save() # Guardar cambios
+            if response.status_code != case["expected_status"]:
+                print(f"Failed for {case['email']}")
+                print(f"Response: {response.data}")
             assert response.status_code == case["expected_status"], f"Falló para {case['email']}"
 
     def test_phone_validation(self, authenticated_client, test_user):
         """Prueba validación de formato de teléfono."""
         update_url = reverse('profile-update')
-        
         # Verificar comportamiento actual con teléfonos
         validations = [
             # Casos que deberían fallar
@@ -92,11 +97,17 @@ class TestUserProfileUpdate:
             
             # Casos que deberían pasar
             {"phone": "3201234567", "expected_status": status.HTTP_200_OK},
-            {"phone": "12345678", "expected_status": status.HTTP_200_OK}
+            {"phone": "12345678", "expected_status": status.HTTP_200_OK},
         ]
         
         for case in validations:
+            update_log, _ = UserUpdateLog.objects.get_or_create(user=test_user)
+            update_log.update_count = 0
+            update_log.save()
             response = authenticated_client.patch(update_url, {"phone": case["phone"]})
+            if response.status_code != case["expected_status"]: # Imprimir mensaje de error
+                print(f"Failed for {case['phone']}")
+                print(f"Response: {response.data}")
             assert response.status_code == case["expected_status"], f"Falló para {case['phone']}"
 
     def test_weekly_update_limit(self, authenticated_client, test_user):
