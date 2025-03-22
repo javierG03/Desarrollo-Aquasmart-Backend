@@ -36,7 +36,7 @@ def test_user(db, person_type):
 @pytest.fixture
 def authenticated_client(api_client, test_user):
     """Cliente API autenticado manualmente."""
-    # Crear token manualmente
+
     token, _ = Token.objects.get_or_create(user=test_user)
     
     # Configurar cliente con token
@@ -50,7 +50,6 @@ class TestUserProfileUpdate:
         """Prueba validación de formato de correo según Django."""
         update_url = reverse('profile-update')
         
-        # Casos de prueba basados en validaciones de Django
         validations = [
             # Correos completamente inválidos
             {"email": "correo_invalido", "expected_status": status.HTTP_400_BAD_REQUEST},
