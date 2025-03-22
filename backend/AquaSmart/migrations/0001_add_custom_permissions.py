@@ -47,12 +47,13 @@ def crear_permisos(apps, schema_editor):
         ("ver_historial_facturas_usuarios", "Permite ver el historial de facturación de los usuarios"),
         ("pagar_online_pse", "Permite realizar pagos en línea mediante PSE"),
         ("ver_facturas_pagadas", "Permite ver las facturas pagadas"),
-        ("ver_facturas_vencidas", "Permite ver las facturas vencidas"),        
-        ("solicitar_prediccion_de_consumo","permite solicitar predicciones de consumo"),        
-        ("ver_solicitudes_prediccion_cultivos_del distrito","permite ver las solicitudes de prediccion de consumo realizada por los usuarios"),
-        ("ver_solicitudes_prediccion_cultivos_individual","permite ver las solicitudes de prediccion de consumo que yo como usuario realice"),
-        ("aceptar_solicitudes_prediccion_comsumo_por_usuario","permite aceptar las solicitudes de prediccion de consumo realizadas por los usuarios"),
-        ("denegar_solicitudes_prediccion_comsumo_por_usuario","permite denegar las solicitudes de prediccion de consumo realizadas por los usuarios"),
+        ("ver_facturas_vencidas", "Permite ver las facturas vencidas"),
+        ("solicitar_aumentar_caudal_lote","Permite solicitar el aumento del caudal para un lote"),        
+        ("solicitar_prediccion_de_consumo","Permite solicitar predicciones de consumo"),        
+        ("ver_solicitudes_prediccion_cultivos_distrito","Permite ver las solicitudes de predicción de consumo realizadas por los usuarios"),
+        ("ver_solicitudes_prediccion_cultivos_individual","Permite ver las solicitudes de predicción de consumo realizadas por el usuario actual"),
+        ("aceptar_solicitudes_prediccion_consumo_por_usuario","Permite aceptar las solicitudes de predicción de consumo realizadas por los usuarios"),
+        ("denegar_solicitudes_prediccion_consumo_por_usuario","Permite denegar las solicitudes de predicción de consumo realizadas por los usuarios"),
         ("solicitar_limitar_caudal_lote", "Permite solicitar la limitación de caudal para un lote"),
         ("aumentar_caudal_predio", "Permite aumentar el caudal de un predio"),
         ("cortar_caudal_predio", "Permite cortar el caudal de un predio"),
@@ -77,7 +78,8 @@ def crear_permisos(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        
+        ("auth", "0012_alter_user_first_name_max_length"),  # Última migración de Django auth
+        ("contenttypes", "0002_remove_content_type_name"),
     ]
 
     operations = [

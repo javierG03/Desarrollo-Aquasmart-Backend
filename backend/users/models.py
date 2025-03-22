@@ -4,7 +4,8 @@ from django.utils.timezone import now, timedelta
 from datetime import datetime, date
 import secrets
 import string
-
+from auditlog.registry import auditlog
+from auditlog.models import LogEntry
 
 class UserManager(BaseUserManager):
     """
@@ -215,31 +216,7 @@ class PersonType(models.Model):
 
     def __str__(self):
         return f"{self.personTypeId} - {self.typeName}"
-
-
-class LoginHistory(models.Model):
-    """
-    Modelo para registrar el historial de inicio de sesión de los usuarios.
-    """
-
-    user = models.ForeignKey(
-        CustomUser,
-        on_delete=models.CASCADE,
-        related_name="login_history",
-        verbose_name="Usuario",
-    )
-    timestamp = models.DateTimeField(
-        default=now, verbose_name="Fecha y Hora de Inicio de Sesión"
-    )
-
-    def __str__(self):
-        return f"{self.user.document} - {self.timestamp}"
-
-    class Meta:
-        verbose_name = "Historial de Inicio de Sesión"
-        verbose_name_plural = "Historiales de Inicio de Sesión"
-
-
+    
 class LoginRestriction(models.Model):
     user = models.ForeignKey(
         CustomUser,
@@ -294,12 +271,20 @@ class UserUpdateLog(models.Model):
     )
     update_count = models.IntegerField(default=0)
     last_update_date = models.DateField(auto_now=True)
-    first_update_date = models.DateField(
-        null=True, blank=True
-    )  # Nueva campo para la primera actualización
+    first_update_date = models.DateField(null=True, blank=True)  # Nuevo campo para la primera actualización
 
-    def can_update(self):
-        """Verifica si el usuario puede realizar una actualización dentro de su semana personalizada."""
+    def can_update(self, updating_user):
+        """
+        Verifica si el usuario que está realizando la actualización tiene permisos.
+        
+        - Si el usuario que realiza la actualización es staff, no hay restricciones.
+        - Si es un usuario normal, se aplican las reglas de límite semanal.
+        """
+        
+        # Si el usuario que está actualizando (updating_user) es staff, permitir sin restricciones
+        if updating_user.is_staff:
+            return True, "Datos actualizados con éxito. No tienes restricciones de actualización."
+
         today = date.today()
 
         # Si es la primera actualización, inicializa la fecha de la primera actualización
@@ -308,7 +293,8 @@ class UserUpdateLog(models.Model):
             self.save()
 
         # Calcula el final de la semana personalizada (7 días después de la primera actualización)
-        end_of_week = self.first_update_date + timedelta(days=6)
+        #end_of_week = self.first_update_date + timedelta(days=6)
+        end_of_week = self.first_update_date + timedelta(seconds=10)
 
         # Si la fecha actual está fuera de la semana personalizada, reinicia el contador
         if today > end_of_week:
@@ -328,10 +314,7 @@ class UserUpdateLog(models.Model):
                 "Datos actualizados con éxito. Te queda 0 cambio más esta semana.",
             )
         elif self.update_count == 1:
-            return (
-                True,
-                "Datos actualizados con éxito. Te quedan 1 cambios más esta semana.",
-            )
+            return True, "Datos actualizados con éxito. Te queda 1 cambio más esta semana."
         else:
             return True, "Datos actualizados con éxito."
 
@@ -340,3 +323,10 @@ class UserUpdateLog(models.Model):
         self.update_count += 1
         self.last_update_date = date.today()
         self.save()
+
+# Registrar modelos para auditoría
+auditlog.register(CustomUser)  # El registro de campos excluidos se maneja de otra manera
+auditlog.register(DocumentType)
+auditlog.register(PersonType)
+auditlog.register(LoginRestriction)
+auditlog.register(UserUpdateLog)

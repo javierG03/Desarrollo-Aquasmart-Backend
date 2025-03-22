@@ -1,14 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
 from API.sendmsn import send_email2
-from .models import (
-    DocumentType,
-    PersonType,
-    CustomUser,
-    LoginHistory,
-    Otp,
-    UserUpdateLog,
-)
+from .models import DocumentType, PersonType, CustomUser, Otp, UserUpdateLog, LoginRestriction
 from django.contrib.auth.hashers import make_password, check_password
 from django.contrib.auth.password_validation import validate_password
 from .validate import (
@@ -24,12 +17,11 @@ from rest_framework.exceptions import NotFound, PermissionDenied
 from django.contrib.auth.signals import user_logged_in
 from django.utils import timezone
 from django.core.exceptions import ValidationError as DjangoValidationError
-from .models import LoginRestriction
 from rest_framework.authtoken.models import Token
 from API.google.google_drive import create_folder, share_folder
 import os
 import re
-
+from auditlog.models import LogEntry
 
 class DocumentTypeSerializer(serializers.ModelSerializer):
     """
@@ -136,17 +128,14 @@ class CustomUserSerializer(serializers.ModelSerializer):
 
         return user
 
-
-class LoginHistorySerializer(serializers.ModelSerializer):
+class LogEntrySerializer(serializers.ModelSerializer):
     """
-    Serializer para el modelo LoginHistory.
-    Almacena los registros de inicio de sesión de los usuarios.
+    Serializer para el modelo LogEntry de auditlog.
     """
 
     class Meta:
-        model = LoginHistory
-        fields = ["timestamp", "user"]
-
+        model = LogEntry
+        fields = ['timestamp', 'actor', 'action', 'changes', 'remote_addr']
 
 class LoginSerializer(serializers.Serializer):
     """
@@ -557,7 +546,7 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
         # Verifica si el usuario puede realizar una actualización
         user = self.instance
         update_log, created = UserUpdateLog.objects.get_or_create(user=user)
-        can_update, message = update_log.can_update()
+        can_update, message = update_log.can_update(self.context["request"].user)
         if not can_update:
             raise serializers.ValidationError(message)
 

@@ -79,9 +79,18 @@ class CustomUserCreateView(generics.CreateAPIView):
             user.save()
 
     def create(self, request, *args, **kwargs):
-        """
-        Sobrescribe create para manejar la respuesta personalizada.
-        """
+        """Sobrescribe create para validar campos y manejar la respuesta personalizada."""
+        # Validar campos inexistentes
+        received_fields = set(request.data.keys()) - {'attachments'}  # Excluir attachments
+        serializer_fields = set(self.get_serializer().fields.keys())
+        invalid_fields = received_fields - serializer_fields
+        
+        if invalid_fields:
+            return Response(
+                {"error": f"Los siguientes campos no existen: {', '.join(invalid_fields)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         response = super().create(request, *args, **kwargs)
         return Response(
             {"message": "Usuario Pre-registrado exitosamente.", "user": response.data},
@@ -374,14 +383,42 @@ class AdminUserUpdateAPIView(generics.RetrieveUpdateAPIView):
         return super().get_queryset().select_related("person_type", "document_type")
 
     def perform_update(self, serializer):
-        """Manejo especial para actualización de contraseña"""
-        password = serializer.validated_data.pop("password", None)
+        """Manejo especial para validación de campos y actualización"""
+        instance = self.get_object()
+        data = self.request.data
+        
+        # Validar campos inexistentes
+        serializer_fields = set(serializer.fields.keys())
+        received_fields = set(data.keys())
+        invalid_fields = received_fields - serializer_fields
+        
+        if invalid_fields:
+            raise serializers.ValidationError(
+                {"error": f"Los siguientes campos no existen: {', '.join(invalid_fields)}"}
+            )
+
+        # Verificar si hay cambios reales
+        has_changes = any(
+            str(getattr(instance, field)) != str(value)
+            for field, value in data.items()
+            if field in serializer_fields
+        )
+        
+        if not has_changes:
+            raise serializers.ValidationError(
+                {"error": "No se detectaron cambios en los datos del usuario"}
+            )
+
+        # Manejar la contraseña si está presente
+        password = serializer.validated_data.pop('password', None)
         instance = serializer.save()
 
         if password:
             instance.set_password(password)
-            instance.save(update_fields=["password"])
-
+            instance.save(update_fields=['password'])
+        
+        return instance
+    
     def patch(self, request, *args, **kwargs):
         """Maneja actualizaciones parciales con formato de respuesta consistente"""
 
