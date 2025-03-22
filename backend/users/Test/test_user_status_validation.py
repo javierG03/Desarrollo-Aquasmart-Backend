@@ -196,7 +196,7 @@ class TestUserValidationAndStatusManagement:
 
         # Verificaciones
         assert response.status_code == status.HTTP_400_BAD_REQUEST, "No se rechazó el inicio de sesión para usuario no registrado"
-        assert "Usuerio en espera de validar su pre-registro" in str(response.data['error']['detail']), "Mensaje de error incorrecto para usuario no registrado"
+        assert "Usuario en espera de validar su pre-registro" in str(response.data['error']['detail']), "Mensaje de error incorrecto para usuario no registrado"
 
     @pytest.mark.django_db
     def test_multiple_failed_login_attempts(self, api_client, registered_user):
