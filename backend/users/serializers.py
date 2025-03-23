@@ -546,7 +546,7 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
         # Verifica si el usuario puede realizar una actualización
         user = self.instance
         update_log, created = UserUpdateLog.objects.get_or_create(user=user)
-        can_update, message = update_log.can_update(self.context["request"].user)
+        can_update, message = update_log.can_update(updating_user=self.context["request"].user)
         if not can_update:
             raise serializers.ValidationError(message)
 
@@ -566,8 +566,13 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
         return value
 
     def validate_phone(self, value):
-        """Evita que el número de teléfono sea el mismo, contenga letras o esté vacío."""
-        validate_only_number_phone(value)
+        """Evita que el número de teléfono sea el mismo, contenga letras o esté vacío."""   
+        actual_phone = self.instance.phone       
+        
+        if actual_phone == value:
+            raise serializers.ValidationError("El telefono a actualizar no puede ser el mismo que el actual.")
+                       
+        validate_only_number_phone(value)        
         return value
 
     def update(self, instance, validated_data):

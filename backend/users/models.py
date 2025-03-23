@@ -270,8 +270,8 @@ class UserUpdateLog(models.Model):
         CustomUser, on_delete=models.CASCADE, related_name="update_log"
     )
     update_count = models.IntegerField(default=0)
-    last_update_date = models.DateField(auto_now=True)
-    first_update_date = models.DateField(null=True, blank=True)  # Nuevo campo para la primera actualización
+    last_update_date = models.DateTimeField(auto_now=True)
+    first_update_date = models.DateTimeField(null=True, blank=True)  # Nuevo campo para la primera actualización
 
     def can_update(self, updating_user):
         """
@@ -285,7 +285,7 @@ class UserUpdateLog(models.Model):
         if updating_user.is_staff:
             return True, "Datos actualizados con éxito. No tienes restricciones de actualización."
 
-        today = date.today()
+        today = now()
 
         # Si es la primera actualización, inicializa la fecha de la primera actualización
         if self.first_update_date is None:
@@ -321,8 +321,11 @@ class UserUpdateLog(models.Model):
     def increment_update_count(self):
         """Incrementa el contador de actualizaciones y actualiza la fecha."""
         self.update_count += 1
-        self.last_update_date = date.today()
+        self.last_update_date = now()
         self.save()
+        
+    def __str__(self):
+        return f"Update profil {self.user} - Updates: {self.update_count}"
 
 # Registrar modelos para auditoría
 auditlog.register(CustomUser)  # El registro de campos excluidos se maneja de otra manera

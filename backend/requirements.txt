@@ -12,7 +12,7 @@ coreschema==0.0.4
 distlib==0.3.9
 dj-database-url==2.3.0
 Django==5.1.6
-django-auditlog==2.2.1
+django-auditlog==3.0.0
 django-cors-headers==4.7.0
 django-restframework==0.0.1
 django-storages==1.14.5
