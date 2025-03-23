@@ -20,6 +20,7 @@ class GroupSerializer(serializers.ModelSerializer):
 class ContentTypeSerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField()
 
+
     class Meta:
         model = ContentType
         fields = ['id', 'app_label', 'model', 'name']

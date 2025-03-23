@@ -100,7 +100,9 @@ class GroupedPermissionsView(APIView):
 class UserPermissionsView(APIView):
     """
     Obtener los permisos de un usuario agrupados por grupo.
-    """
+    """   
+    permission_classes = [IsAdminUser, IsAuthenticated]
+
     def get(self, request, user_id):
         try:
             user = CustomUser.objects.get(document=user_id)
@@ -128,8 +130,8 @@ class UserPermissionsView(APIView):
 
         return Response({
             "Permisos_Usuario": direct_permissions_data,
-            "Permisos_Rol": grouped_permissions
-            
+            "Permisos_Rol": grouped_permissions          
+
         })
 class AddUserPermissionsView(APIView):
     """
@@ -201,6 +203,7 @@ class RemoveUserPermissionsView(APIView):
         # Remover permisos del usuario
         user.user_permissions.remove(*permissions)
         
+
         return Response({"detail": "Permisos removidos correctamente."}, status=status.HTTP_200_OK)   
     
 class AssignGroupToUserView(APIView):
@@ -226,3 +229,4 @@ class AssignGroupToUserView(APIView):
         user.groups.add(group)
 
         return Response({"detail": f"Grupo '{group.name}' asignado al usuario '{user.username}' correctamente."}, status=status.HTTP_200_OK)
+

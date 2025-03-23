@@ -31,4 +31,5 @@ urlpatterns = [
     path('users/<int:user_id>/remove_permission', RemoveUserPermissionsView.as_view(), name='remove-user-permissions'),
         # Endpoint para darle un grupo(rol) a un usuario
     path('users/<int:user_id>/assign_group', AssignGroupToUserView.as_view(), name='assign-group-to-user'),
+
 ]
