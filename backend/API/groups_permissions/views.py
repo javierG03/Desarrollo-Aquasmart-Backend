@@ -98,31 +98,37 @@ class GroupedPermissionsView(APIView):
     
 class UserPermissionsView(APIView):
     """
-    Obtener los permisos de un usuario (directos y de grupo).
+    Obtener los permisos de un usuario agrupados por grupo.
     """
-    permission_classes = [IsAdminUser, IsAuthenticated]
     def get(self, request, user_id):
         try:
             user = CustomUser.objects.get(document=user_id)
         except CustomUser.DoesNotExist:
-            return Response({"detail": "Usuario no encontrado."}, status=status.HTTP_404_NOT_FOUND)
-
+            return Response({"detail": "Usuario no encontrado."}, status=404)
+        
         # Permisos directos del usuario
         direct_permissions = user.user_permissions.all()
-        direct_permissions_data = PermissionSerializer(direct_permissions, many=True).data
+        direct_permissions_data = GroupPermissionSerializer(direct_permissions, many=True).data
 
-        # Permisos de grupo del usuario
-        group_permissions = Permission.objects.filter(group__user=user)
-        group_permissions_data = GroupPermissionSerializer(group_permissions, many=True).data
 
-        # Combinar y eliminar duplicados (si es necesario)
-        all_permissions = direct_permissions | group_permissions
-        all_permissions_data = PermissionSerializer(all_permissions, many=True).data
+        # Obtener los grupos a los que pertenece el usuario
+        groups = user.groups.all()
+
+        # Diccionario para agrupar permisos por nombre de grupo
+        grouped_permissions = {}
+
+        for group in groups:
+            # Obtener los permisos del grupo
+            permissions = group.permissions.all()
+            # Serializar los permisos
+            permissions_data = GroupPermissionSerializer(permissions, many=True).data
+            # Agregar al diccionario
+            grouped_permissions[group.name] = permissions_data
 
         return Response({
-            "direct_permissions": direct_permissions_data,
-            "group_permissions": group_permissions_data,
-            "all_permissions": all_permissions_data
+            "Permisos_Usuario": direct_permissions_data,
+            "Permisos_Rol": grouped_permissions
+            
         })
 class AddUserPermissionsView(APIView):
     """
