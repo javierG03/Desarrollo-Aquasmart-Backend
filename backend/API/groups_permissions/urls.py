@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import GroupViewSet, PermissionListView, GroupPermissionsView, GroupedPermissionsView,UserPermissionsView,AddUserPermissionsView, RemoveUserPermissionsView, AssignGroupToUserView
+from .views import GroupViewSet, PermissionListView, GroupPermissionsView, GroupedPermissionsView,UserPermissionsView,AddUserPermissionsView, RemoveUserPermissionsView, AssignGroupToUserView, RemoveGroupFromUserView
 
 router = DefaultRouter()
 
@@ -15,6 +15,8 @@ urlpatterns = [
     path('groups/<int:pk>/remove_permissions', GroupViewSet.as_view({'post': 'remove_permissions'}), name='remove-permissions'),   
         # Endpoint para ver los permisos de un grupo específico
     path('groups/<int:pk>/permissions', GroupPermissionsView.as_view(), name='group-permissions'),
+    path('groups/delete/<int:pk>',GroupViewSet.as_view({'delete': 'destroy'}), name='group-delete'),
+    
     
     #Permisos
         # Endpoint para listar todos los permisos disponibles
@@ -31,5 +33,7 @@ urlpatterns = [
     path('users/<int:user_id>/remove_permission', RemoveUserPermissionsView.as_view(), name='remove-user-permissions'),
         # Endpoint para darle un grupo(rol) a un usuario
     path('users/<int:user_id>/assign_group', AssignGroupToUserView.as_view(), name='assign-group-to-user'),
+        # Endpoint para remover un grupo(rol) a un usuario
+    path('users/<int:user_id>/remove_group', RemoveGroupFromUserView.as_view(), name='remove-group-from-user'),
 
 ]
