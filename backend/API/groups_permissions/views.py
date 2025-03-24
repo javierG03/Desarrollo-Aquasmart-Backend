@@ -228,5 +228,29 @@ class AssignGroupToUserView(APIView):
         # Asignar el grupo al usuario
         user.groups.add(group)
 
-        return Response({"detail": f"Grupo '{group.name}' asignado al usuario '{user.username}' correctamente."}, status=status.HTTP_200_OK)
+        return Response({"detail": f"Grupo '{group.name}' asignado al usuario '{user.first_name}' correctamente."}, status=status.HTTP_200_OK)
+
+class RemoveGroupFromUserView(APIView):
+    """
+    Quitar un grupo de un usuario.
+    """
+    def post(self, request, user_id):
+        try:
+            user = CustomUser.objects.get(document=user_id)
+        except CustomUser.DoesNotExist:
+            return Response({"detail": "Usuario no encontrado."}, status=status.HTTP_404_NOT_FOUND)
+
+        group_id = request.data.get('group_id')
+        if not group_id:
+            return Response({"detail": "El campo 'group_id' es requerido."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            group = Group.objects.get(id=group_id)
+        except Group.DoesNotExist:
+            return Response({"detail": "Grupo no encontrado."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Quitar el grupo del usuario
+        user.groups.remove(group)
+
+        return Response({"detail": f"Grupo '{group.name}' quitado del usuario '{user.first_name}' correctamente."}, status=status.HTTP_200_OK)    
 
