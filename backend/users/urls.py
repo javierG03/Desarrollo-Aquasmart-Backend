@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import CustomUserCreateView, CustomUserListView,UserRegisterAPIView, DocumentTypeView, PersonTypeView, UserInactiveAPIView,UserProfilelView,DocumentTypeListView,PersonTypeListView, AdminUserUpdateAPIView, UserProfileUpdateView, UserActivateAPIView, AssignPermissionToUser, RemovePermissionFromUser, ListUserPermissions, UserDetailsView,RejectAndDeleteUserView
+from .views import CustomUserCreateView, CustomUserListView,UserRegisterAPIView, DocumentTypeView, PersonTypeView, UserInactiveAPIView,UserProfilelView,DocumentTypeListView,PersonTypeListView, AdminUserUpdateAPIView, UserProfileUpdateView, UserActivateAPIView, UserDetailsView,RejectAndDeleteUserView
 from .authentication import GenerateOtpPasswordRecoveryView,ResetPasswordView,ValidateOtpView, LoginView, LogoutView, ValidateTokenView, ChangePasswordView,GenerateOtpLoginView
 
 
@@ -23,10 +23,7 @@ urlpatterns = [
     path('list-person-type',PersonTypeListView.as_view(),name='listed-person-type'),
     path('change-password', ChangePasswordView.as_view(), name='change-password'),
     path('admin/update/<str:document>', AdminUserUpdateAPIView.as_view(), name='admin-user-update'),
-    path('profile/update',UserProfileUpdateView.as_view(), name='profile-update'),
-    path('custom-permissions/assign/', AssignPermissionToUser.as_view(), name='assign-permission'),
-    path('custom-permissions/remove/', RemovePermissionFromUser.as_view(), name='remove-permission'),
-    path('custom-permissions/user/<str:document>/', ListUserPermissions.as_view(), name='user-permissions'),
+    path('profile/update',UserProfileUpdateView.as_view(), name='profile-update'),    
     path('details/<str:document>', UserDetailsView.as_view(), name='user-details'),
     path('reject-user/<int:user_id>', RejectAndDeleteUserView.as_view(), name='reject_user'),
 ]
