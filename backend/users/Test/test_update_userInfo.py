@@ -94,10 +94,10 @@ class TestUserProfileUpdate:
             {"phone": "abcd1234", "expected_status": status.HTTP_400_BAD_REQUEST},
             {"phone": "123-456-7890", "expected_status": status.HTTP_400_BAD_REQUEST},
             {"phone": "3201234567890123456", "expected_status": status.HTTP_400_BAD_REQUEST},
+            {"phone": "12345678", "expected_status": status.HTTP_400_BAD_REQUEST},
             
             # Casos que deberían pasar
             {"phone": "3201234567", "expected_status": status.HTTP_200_OK},
-            {"phone": "12345678", "expected_status": status.HTTP_200_OK},
         ]
         
         for case in validations:
