@@ -8,7 +8,7 @@ router = DefaultRouter()
 urlpatterns = [
     #Grupos(Roles)
         # Endpoint para listar grupo
-    path('groups',GroupViewSet.as_view({'get': 'list'})),
+    path('groups',GroupViewSet.as_view({'get': 'list','post':'create'})),
         # Endpoint para asignar permisos a un grupo
     path('groups/<int:pk>/assign_permissions', GroupViewSet.as_view({'post': 'assign_permissions'}), name='assign-permissions'),
         # Endpoint para quitar permisos de un grupo
