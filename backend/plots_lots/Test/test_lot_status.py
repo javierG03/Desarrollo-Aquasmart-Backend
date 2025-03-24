@@ -316,9 +316,9 @@ class TestLotAlerts:
             inactive_lot.refresh_from_db()
             assert inactive_lot.is_activate is False, "El lote debería seguir inactivo después de la operación"
             
-            # Comprobamos que la operación se realizó correctamente
-            assert "crop_variety" in response.data, "La respuesta debería incluir el campo actualizado"
-            assert response.data["crop_variety"] == "Nueva Variedad", "El valor del campo debería haberse actualizado"
+            assert "data" in response.data, "La respuesta debería incluir un campo 'data'"
+            assert "crop_variety" in response.data["data"], "La respuesta debería incluir el campo actualizado en 'data'"
+            assert response.data["data"]["crop_variety"] == "Nueva Variedad", "El valor del campo debería haberse actualizado"
     
     def test_confirmation_alert_when_deactivating_lot(self, authenticated_admin_client, active_lot):
         """
