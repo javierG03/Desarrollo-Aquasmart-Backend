@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     'plots_lots',
     "AquaSmart",
     'auditlog',
+    'caudal',
 ]
 
 AUTH_USER_MODEL ='users.CustomUser'
