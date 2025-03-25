@@ -40,6 +40,7 @@ def test_user(db, person_type, document_type):
         address="Calle 123",
         person_type=person_type,
         document_type=document_type,
+        drive_folder_id="1234567890",
         is_active=True,
         is_registered=True,
     )
