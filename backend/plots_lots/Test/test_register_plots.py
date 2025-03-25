@@ -20,7 +20,7 @@ def person_type(db):
 def admin_user(db, person_type):
     """Crea un usuario administrador de prueba y refresca desde la base de datos."""
     user = CustomUser.objects.create_superuser(
-        document="admin",
+        document="123456789012",
         first_name="Admin",
         last_name="User",
         email="admin@example.com",
@@ -39,7 +39,7 @@ def admin_user(db, person_type):
 def normal_user(db, person_type):
     """Crea un usuario normal sin permisos administrativos."""
     return CustomUser.objects.create(
-        document="123456789012",
+        document="123456789013",
         first_name="John",
         last_name="Doe",
         email="johndoe@example.com",
