@@ -6,7 +6,7 @@ def crear_permisos(apps, schema_editor):
     Permission = apps.get_model("auth", "Permission")
     ContentType = apps.get_model("contenttypes", "ContentType")
 
-    content_type, created = ContentType.objects.get_or_create(model="aquasmart_permission", app_label="AquaSmart")
+    content_type, created = ContentType.objects.get_or_create(model="aquasmart_permission", app_label="aquasmart")
 
     permisos = [
         ("ver_pre_registros", "Permite visualizar los pre-registros"),
