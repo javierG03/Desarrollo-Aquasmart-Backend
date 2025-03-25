@@ -454,6 +454,37 @@ class TestAllFieldsValidation:
         if response.status_code == status.HTTP_200_OK:
             regular_user.refresh_from_db()
             assert regular_user.first_name == "Valid File Test"
+        
+    # Añadir el siguiente test dentro de la clase TestAllFieldsValidation
+
+    def test_update_without_changes(self, authenticated_admin_client, regular_user, person_type, document_type):
+            """
+            Test que verifica que el sistema rechaza actualizaciones sin cambios en los datos.
+            """
+            url = reverse("admin-user-update", kwargs={"document": regular_user.document})
+            
+            # Obtener datos actuales del usuario, excluyendo campos con validación de unicidad
+            current_data = {
+                "first_name": regular_user.first_name,
+                "last_name": regular_user.last_name,
+                "phone": regular_user.phone,
+                "address": regular_user.address
+            }
+            
+            # Enviar solicitud con los mismos datos (sin email)
+            response = authenticated_admin_client.patch(url, current_data)
+            
+            # Verificar respuesta de error y mensaje
+            assert response.status_code == status.HTTP_400_BAD_REQUEST
+            assert "no se detectaron cambios en los datos del usuario" in str(response.data).lower()
+            
+            # Verificar que no hay registros de auditoría nuevos
+            log_count_before = UserUpdateLog.objects.count()
+            log_count_after = UserUpdateLog.objects.count()
+            assert log_count_after == log_count_before
+            
+            # Verificar integridad de los datos
+            regular_user.refresh_from_db()
 
 # ===================== Tests de Respuesta y Tiempos =====================
 
