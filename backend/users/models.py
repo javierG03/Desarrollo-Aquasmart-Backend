@@ -79,7 +79,7 @@ class CustomUser(AbstractUser):
     Modelo de usuario personalizado con autenticación basada en el documento.
     """
 
-    document = models.CharField(max_length=12, primary_key=True, db_index=True, verbose_name="Documento")
+    document = models.CharField(max_length=15, primary_key=True, db_index=True, verbose_name="Documento")
     first_name = models.CharField(max_length=50, db_index=True, verbose_name="Nombre")
     last_name = models.CharField(max_length=50, db_index=True, verbose_name="Apellido")
     email = models.EmailField(unique=True, db_index=True, verbose_name="Correo Electrónico")
