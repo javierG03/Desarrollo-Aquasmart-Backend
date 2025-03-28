@@ -300,3 +300,52 @@ class TestUserProfileUpdate:
         for email in edge_case_emails:
             response = authenticated_client.patch(update_url, {"email": email})
             assert response.status_code in [status.HTTP_200_OK, status.HTTP_400_BAD_REQUEST]
+
+@pytest.mark.django_db
+def test_complete_profile_update(authenticated_client, test_user):
+    """
+    Prueba de integración que verifica el flujo completo de actualización de perfil.
+    Confirma que todos los campos permitidos se actualizan correctamente,
+    persisten en la base de datos y que los campos protegidos no se modifican.
+    """
+    update_url = reverse('profile-update')
+    
+    # Datos originales a preservar para verificación posterior
+    original_document = test_user.document
+    original_first_name = test_user.first_name
+    original_last_name = test_user.last_name
+    original_address = test_user.address
+    
+    # Datos nuevos para la actualización
+    new_data = {
+        "email": "updated.email@example.com",
+        "phone": "9876543210"  # 10 dígitos para cumplir con la validación
+    }
+    
+    # Limpiar cualquier registro previo de actualizaciones
+    UserUpdateLog.objects.filter(user=test_user).delete()
+    
+    # Realizar la actualización
+    response = authenticated_client.patch(update_url, new_data)
+    
+    # Verificar respuesta exitosa
+    assert response.status_code == status.HTTP_200_OK, f"La actualización falló: {response.data}"
+    assert "message" in response.data, "No se encontró mensaje de éxito en la respuesta"
+    assert "éxito" in response.data["message"].lower(), f"Mensaje inesperado: {response.data['message']}"
+    
+    # Refrescar el objeto de usuario desde la base de datos
+    test_user.refresh_from_db()
+    
+    # Verificar que los campos se actualizaron correctamente
+    assert test_user.email == new_data["email"], "El email no se actualizó correctamente"
+    assert test_user.phone == new_data["phone"], "El teléfono no se actualizó correctamente"
+    
+    # Verificar que los campos protegidos no cambiaron
+    assert test_user.document == original_document, "El documento no debería cambiar"
+    assert test_user.first_name == original_first_name, "El nombre no debería cambiar"
+    assert test_user.last_name == original_last_name, "El apellido no debería cambiar"
+    assert test_user.address == original_address, "La dirección no debería cambiar"
+    
+    # Verificar que se registró la actualización en el log
+    update_log = UserUpdateLog.objects.get(user=test_user)
+    assert update_log.update_count == 1, "El contador de actualizaciones no se incrementó correctamente"
