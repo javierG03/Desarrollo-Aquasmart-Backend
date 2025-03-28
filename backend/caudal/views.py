@@ -1,6 +1,7 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
+from rest_framework.views import APIView
 from .models import FlowMeasurement, FlowMeasurementPredio, FlowMeasurementLote,FlowInconsistency
 from .serializers import FlowMeasurementSerializer,FlowMeasurementLoteSerializer, FlowMeasurementPredioSerializer,FlowInconsistencySerializer
 
@@ -42,3 +43,19 @@ class FlowInconsistencyViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = FlowInconsistency.objects.all()
     serializer_class = FlowInconsistencySerializer
     permission_classes=[AllowAny]
+
+class MedicionesPredioView(APIView):
+    """Lista todas las mediciones de caudal de un predio específico"""
+    
+    def get(self, request, predio_id):
+        mediciones = FlowMeasurementPredio.objects.filter(plot_id=predio_id).order_by('-timestamp')
+        serializer = FlowMeasurementPredioSerializer(mediciones, many=True)
+        return Response(serializer.data)
+
+class MedicionesLoteView(APIView):
+    """Lista todas las mediciones de caudal de un lote específico"""
+    
+    def get(self, request, lote_id):
+        mediciones = FlowMeasurementLote.objects.filter(lot_id=lote_id).order_by('-timestamp')
+        serializer = FlowMeasurementLoteSerializer(mediciones, many=True)
+        return Response(serializer.data)    
