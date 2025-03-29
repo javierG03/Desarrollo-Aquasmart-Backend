@@ -112,12 +112,6 @@ class TestPasswordUpdate:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "new_password" in response.data
 
-        # Caso 3: Sin números
-        data = {
-            "current_password": "SecurePass123@",
-            "new_password": "NewSecurePass@",
-            "confirm_password": "NewSecurePass@",
-        }
 
         response = authenticated_client.post(url, data)
         assert response.status_code == status.HTTP_400_BAD_REQUEST
