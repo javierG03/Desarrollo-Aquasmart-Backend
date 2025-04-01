@@ -7,3 +7,6 @@ db.sqlite3
 docker-compose.yml
 Dockerfile
 backend/db.sqlite3
+
+docker-compose.yml
+Dockerfile

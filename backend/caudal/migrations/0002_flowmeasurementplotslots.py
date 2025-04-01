@@ -5,66 +5,28 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
+
     dependencies = [
-        ("caudal", "0001_initial"),
-        ("iot", "0008_iotdevice_owner_name"),
-        ("plots_lots", "0007_alter_plot_plot_extension"),
+        ('caudal', '0001_initial'),
+        ('iot', '0008_iotdevice_owner_name'),
+        ('plots_lots', '0007_alter_plot_plot_extension'),
     ]
 
     operations = [
         migrations.CreateModel(
-            name="FlowMeasurementPlotsLots",
+            name='FlowMeasurementPlotsLots',
             fields=[
-                (
-                    "id",
-                    models.BigAutoField(
-                        auto_created=True,
-                        primary_key=True,
-                        serialize=False,
-                        verbose_name="ID",
-                    ),
-                ),
-                (
-                    "timestamp",
-                    models.DateTimeField(
-                        auto_now_add=True, verbose_name="Fecha y Hora"
-                    ),
-                ),
-                ("flow_rate", models.FloatField(verbose_name="Caudal (m³/s)")),
-                (
-                    "device",
-                    models.ForeignKey(
-                        on_delete=django.db.models.deletion.CASCADE,
-                        related_name="flow_measurements_plots_lots",
-                        to="iot.iotdevice",
-                        verbose_name="Dispositivo IoT",
-                    ),
-                ),
-                (
-                    "lot",
-                    models.ForeignKey(
-                        blank=True,
-                        null=True,
-                        on_delete=django.db.models.deletion.SET_NULL,
-                        related_name="flow_measurements_plots_lots",
-                        to="plots_lots.lot",
-                        verbose_name="Lote",
-                    ),
-                ),
-                (
-                    "plot",
-                    models.ForeignKey(
-                        on_delete=django.db.models.deletion.CASCADE,
-                        related_name="flow_measurements_plots_lots",
-                        to="plots_lots.plot",
-                        verbose_name="Parcela",
-                    ),
-                ),
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('timestamp', models.DateTimeField(auto_now_add=True, verbose_name='Fecha y Hora')),
+                ('flow_rate', models.FloatField(verbose_name='Caudal (m³/s)')),
+                ('device', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='flow_measurements_plots_lots', to='iot.iotdevice', verbose_name='Dispositivo IoT')),
+                ('lot', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='flow_measurements_plots_lots', to='plots_lots.lot', verbose_name='Lote')),
+                ('plot', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='flow_measurements_plots_lots', to='plots_lots.plot', verbose_name='Parcela')),
             ],
             options={
-                "verbose_name": "Medición de Caudal",
-                "verbose_name_plural": "Mediciones de Caudal",
-                "ordering": ["-timestamp"],
+                'verbose_name': 'Medición de Caudal',
+                'verbose_name_plural': 'Mediciones de Caudal',
+                'ordering': ['-timestamp'],
             },
         ),
     ]

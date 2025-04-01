@@ -14,60 +14,19 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name="Plot",
+            name='Plot',
             fields=[
-                (
-                    "id_plot",
-                    models.AutoField(
-                        primary_key=True, serialize=False, verbose_name="ID de predio"
-                    ),
-                ),
-                (
-                    "plot_name",
-                    models.CharField(
-                        db_index=True, max_length=20, verbose_name="Nombre de predio"
-                    ),
-                ),
-                (
-                    "latitud",
-                    models.DecimalField(
-                        decimal_places=6,
-                        max_digits=9,
-                        verbose_name="Longitud de predio",
-                    ),
-                ),
-                (
-                    "longitud",
-                    models.DecimalField(
-                        decimal_places=6, max_digits=9, verbose_name="Latitud de predio"
-                    ),
-                ),
-                (
-                    "plot_extension",
-                    models.DecimalField(
-                        decimal_places=2,
-                        max_digits=4,
-                        verbose_name="Extensión de tierra",
-                    ),
-                ),
-                (
-                    "registration_date",
-                    models.DateTimeField(
-                        auto_now_add=True, verbose_name="Fecha de registro"
-                    ),
-                ),
-                (
-                    "owner",
-                    models.ForeignKey(
-                        on_delete=django.db.models.deletion.CASCADE,
-                        related_name="Dueño_depredio",
-                        to=settings.AUTH_USER_MODEL,
-                    ),
-                ),
+                ('id_plot', models.AutoField(primary_key=True, serialize=False, verbose_name='ID de predio')),
+                ('plot_name', models.CharField(db_index=True, max_length=20, verbose_name='Nombre de predio')),
+                ('latitud', models.DecimalField(decimal_places=6, max_digits=9, verbose_name='Longitud de predio')),
+                ('longitud', models.DecimalField(decimal_places=6, max_digits=9, verbose_name='Latitud de predio')),
+                ('plot_extension', models.DecimalField(decimal_places=2, max_digits=4, verbose_name='Extensión de tierra')),
+                ('registration_date', models.DateTimeField(auto_now_add=True, verbose_name='Fecha de registro')),
+                ('owner', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='Dueño_depredio', to=settings.AUTH_USER_MODEL)),
             ],
             options={
-                "verbose_name": "Predio",
-                "verbose_name_plural": "Predios",
+                'verbose_name': 'Predio',
+                'verbose_name_plural': 'Predios',
             },
         ),
     ]

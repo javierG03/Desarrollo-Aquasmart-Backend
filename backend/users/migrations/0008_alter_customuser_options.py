@@ -4,22 +4,14 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
+
     dependencies = [
-        ("users", "0007_customuser_drive_folder_id"),
+        ('users', '0007_customuser_drive_folder_id'),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name="customuser",
-            options={
-                "permissions": [
-                    ("can_toggle_is_active", "Puede cambiar el estado de is_active"),
-                    (
-                        "can_toggle_is_registered",
-                        "Puede cambiar el estado de is_registered",
-                    ),
-                    ("can_toggle_is_staff", "Puede cambiar el estado de is_staff"),
-                ]
-            },
+            name='customuser',
+            options={'permissions': [('can_toggle_is_active', 'Puede cambiar el estado de is_active'), ('can_toggle_is_registered', 'Puede cambiar el estado de is_registered'), ('can_toggle_is_staff', 'Puede cambiar el estado de is_staff')]},
         ),
     ]

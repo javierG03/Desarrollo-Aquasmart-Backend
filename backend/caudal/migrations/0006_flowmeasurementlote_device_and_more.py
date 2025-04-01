@@ -5,34 +5,21 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
+
     dependencies = [
-        ("caudal", "0005_alter_flowmeasurementlote_timestamp_and_more"),
-        ("iot", "0008_iotdevice_owner_name"),
+        ('caudal', '0005_alter_flowmeasurementlote_timestamp_and_more'),
+        ('iot', '0008_iotdevice_owner_name'),
     ]
 
     operations = [
         migrations.AddField(
-            model_name="flowmeasurementlote",
-            name="device",
-            field=models.ForeignKey(
-                blank=True,
-                null=True,
-                on_delete=django.db.models.deletion.SET_NULL,
-                related_name="flow_measurements_lote",
-                to="iot.iotdevice",
-                verbose_name="Dispositivo IoT",
-            ),
+            model_name='flowmeasurementlote',
+            name='device',
+            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='flow_measurements_lote', to='iot.iotdevice', verbose_name='Dispositivo IoT'),
         ),
         migrations.AddField(
-            model_name="flowmeasurementpredio",
-            name="device",
-            field=models.ForeignKey(
-                blank=True,
-                null=True,
-                on_delete=django.db.models.deletion.SET_NULL,
-                related_name="flow_measurements_predio",
-                to="iot.iotdevice",
-                verbose_name="Dispositivo IoT",
-            ),
+            model_name='flowmeasurementpredio',
+            name='device',
+            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='flow_measurements_predio', to='iot.iotdevice', verbose_name='Dispositivo IoT'),
         ),
     ]

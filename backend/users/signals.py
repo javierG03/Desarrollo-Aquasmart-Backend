@@ -4,7 +4,6 @@ from auditlog.models import LogEntry
 from django.contrib.contenttypes.models import ContentType
 from django.utils.timezone import now
 
-
 @receiver(user_logged_in)
 def log_login(sender, request, user, **kwargs):
     """
@@ -25,10 +24,10 @@ def log_login(sender, request, user, **kwargs):
         actor=user,
         action=0,  # 0 = CREATE - Creando un nuevo registro de inicio de sesión
         changes={
-            "ip_address": request.META.get("REMOTE_ADDR", ""),
-            "user_agent": request.META.get("HTTP_USER_AGENT", ""),
-            "timestamp": now().isoformat(),
-            "event": "login",
-        },
+            'ip_address': request.META.get('REMOTE_ADDR', ''),
+            'user_agent': request.META.get('HTTP_USER_AGENT', ''),
+            'timestamp': now().isoformat(),
+            'event': 'login'
+        }
     )
     print(f"User {user.document} logged in successfully!")

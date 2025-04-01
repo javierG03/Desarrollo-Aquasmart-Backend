@@ -5,35 +5,25 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
+
     dependencies = [
-        ("plots_lots", "0005_lot_is_activate"),
+        ('plots_lots', '0005_lot_is_activate'),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name="lot",
-            name="id",
+            model_name='lot',
+            name='id',
         ),
         migrations.AddField(
-            model_name="lot",
-            name="registration_date",
-            field=models.DateTimeField(
-                auto_now_add=True,
-                default=django.utils.timezone.now,
-                verbose_name="Fecha de registro",
-            ),
+            model_name='lot',
+            name='registration_date',
+            field=models.DateTimeField(auto_now_add=True, default=django.utils.timezone.now, verbose_name='Fecha de registro'),
             preserve_default=False,
         ),
         migrations.AlterField(
-            model_name="lot",
-            name="id_lot",
-            field=models.CharField(
-                editable=False,
-                max_length=15,
-                primary_key=True,
-                serialize=False,
-                unique=True,
-                verbose_name="ID de lote",
-            ),
+            model_name='lot',
+            name='id_lot',
+            field=models.CharField(editable=False, max_length=15, primary_key=True, serialize=False, unique=True, verbose_name='ID de lote'),
         ),
     ]

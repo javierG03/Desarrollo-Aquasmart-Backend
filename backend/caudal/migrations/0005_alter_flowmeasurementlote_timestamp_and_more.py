@@ -4,19 +4,20 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
+
     dependencies = [
-        ("caudal", "0004_alter_flowmeasurementpredio_plot"),
+        ('caudal', '0004_alter_flowmeasurementpredio_plot'),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name="flowmeasurementlote",
-            name="timestamp",
-            field=models.DateTimeField(verbose_name="Fecha y Hora"),
+            model_name='flowmeasurementlote',
+            name='timestamp',
+            field=models.DateTimeField(verbose_name='Fecha y Hora'),
         ),
         migrations.AlterField(
-            model_name="flowmeasurementpredio",
-            name="timestamp",
-            field=models.DateTimeField(verbose_name="Fecha y Hora"),
+            model_name='flowmeasurementpredio',
+            name='timestamp',
+            field=models.DateTimeField(verbose_name='Fecha y Hora'),
         ),
     ]

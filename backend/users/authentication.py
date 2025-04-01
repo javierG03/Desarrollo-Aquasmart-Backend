@@ -3,37 +3,27 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework import status
 from drf_spectacular.utils import extend_schema, OpenApiExample, OpenApiResponse
-from .models import Otp, CustomUser
-from .serializers import (
-    GenerateOtpPasswordRecoverySerializer,
-    ValidateOtpSerializer,
-    ResetPasswordSerializer,
-    LoginSerializer,
-    GenerateOtpLoginSerializer,
-)
-from rest_framework.exceptions import ValidationError, NotFound, PermissionDenied
+from .models import Otp,CustomUser
+from .serializers import  GenerateOtpPasswordRecoverySerializer, ValidateOtpSerializer, ResetPasswordSerializer, LoginSerializer,GenerateOtpLoginSerializer
+from rest_framework.exceptions import ValidationError, NotFound,PermissionDenied
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import IsAuthenticated
 from API.custom_auth import CustomTokenAuthentication
 from .serializers import ChangePasswordSerializer
 from API.sendmsn import send_email2
-
-
 class LoginView(APIView):
     """
     Endpoint para la autenticación de usuarios con generación de OTP.
-
+    
     Permite a los usuarios autenticarse con su documento y contraseña.
     Si la autenticación es exitosa, se genera un OTP y se asocia al usuario.
     """
-
     permission_classes = [AllowAny]
-
     @extend_schema(
         tags=["Autenticación"],
         summary="Login",
         description="Este endpoint permite a los usuarios autenticarse con su documento y contraseña. "
-        "Si la autenticación es exitosa, se genera un OTP para la verificación.",
+                    "Si la autenticación es exitosa, se genera un OTP para la verificación.",
         request=LoginSerializer,
         responses={
             200: OpenApiResponse(
@@ -42,13 +32,10 @@ class LoginView(APIView):
                 examples=[
                     OpenApiExample(
                         "Ejemplo de respuesta exitosa",
-                        value={
-                            "document": "123456789012",
-                            "message": "Se ha enviado un msn con el OTP para poder iniciar sesión.",
-                        },  # Ejemplo correcto
-                        response_only=True,
+                        value={"document": "123456789012", "message": "Se ha enviado un msn con el OTP para poder iniciar sesión."},  # Ejemplo correcto
+                        response_only=True
                     )
-                ],
+                ]
             ),
             400: OpenApiResponse(
                 response=LoginSerializer,
@@ -57,18 +44,18 @@ class LoginView(APIView):
                     OpenApiExample(
                         "Intentos fallidos",
                         value={
-                            "error": {
-                                "detail": [
-                                    "Credenciales inválidas.",
-                                    "Último intento antes de ser bloqueado.",
-                                    "Usuario bloqueado por 30 minutos.",
-                                    "Too many failed attempts. Try again after 2025-03-06 02:09:37.980678.",
-                                ]
-                            }
+                        "error": {
+                            "detail": [
+                            "Credenciales inválidas.",
+                            "Último intento antes de ser bloqueado.",
+                            "Usuario bloqueado por 30 minutos.",
+                            "Too many failed attempts. Try again after 2025-03-06 02:09:37.980678."
+                            ]
+                        }
                         },
-                        response_only=True,
+                        response_only=True
                     )
-                ],
+                ]
             ),
             403: OpenApiResponse(
                 response=LoginSerializer,
@@ -77,13 +64,13 @@ class LoginView(APIView):
                     OpenApiExample(
                         "Cuenta deshabilitada",
                         value={
-                            "error": {
-                                "detail": "Your account is inactive. Please contact support."
-                            }
+                        "error": {
+                            "detail": "Your account is inactive. Please contact support."
+                        }
                         },
-                        response_only=True,
+                        response_only=True
                     )
-                ],
+                ]
             ),
             404: OpenApiResponse(
                 response=LoginSerializer,
@@ -91,10 +78,12 @@ class LoginView(APIView):
                 examples=[
                     OpenApiExample(
                         "Usuario inexistente",
-                        value={"error": {"details": "User not found"}},
-                        response_only=True,
+                        value={"error": {
+                        "details": "User not found"
+                    }},
+                        response_only=True
                     )
-                ],
+                ]
             ),
             500: OpenApiResponse(
                 response=LoginSerializer,
@@ -102,21 +91,19 @@ class LoginView(APIView):
                 examples=[
                     OpenApiExample(
                         "Fallo interno",
-                        value={
-                            "error": "Unexpected error.",
-                            "detail": "Internal server error",
-                        },
-                        response_only=True,
+                        value={"error": "Unexpected error.", "detail": "Internal server error"},
+                        response_only=True
                     )
-                ],
-            ),
+                ]
+            )
         },
+        
         examples=[
             OpenApiExample(
                 "Ejemplo de solicitud",
                 summary="Ejemplo de entrada válida",
                 value={"document": "123456789012", "password": "mypassword"},
-                request_only=True,
+                request_only=True
             )
         ],
     )
@@ -132,10 +119,10 @@ class LoginView(APIView):
         """
         try:
             serializer = LoginSerializer(data=request.data)
-
+            
             if serializer.is_valid(raise_exception=True):
                 data = serializer.validated_data
-                document = data.get("document")
+                document = data.get('document')
 
                 # Buscar usuario y eliminar token previo
                 user_instance = CustomUser.objects.filter(document=document).first()
@@ -153,24 +140,21 @@ class LoginView(APIView):
         except NotFound as e:
             return Response({"error": e.detail}, status=status.HTTP_404_NOT_FOUND)
         except PermissionDenied as e:
-            return Response({"error": e.detail}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"error": e.detail}, status=status.HTTP_403_FORBIDDEN) 
         except Exception as e:
             return Response(
                 {"error": "Unexpected error.", "detail": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            ) 
+            
 class GenerateOtpLoginView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
         try:
-            serializer = GenerateOtpLoginSerializer(data=request.data)
+            serializer = GenerateOtpLoginSerializer(data=request.data)  
             if serializer.is_valid(raise_exception=True):
-                user = serializer.validated_data[
-                    "document"
-                ]  # Usuario validado en `validate_document`
+                user = serializer.validated_data['document']  # Usuario validado en `validate_document`
 
                 # Eliminar OTPs previos que sean para login
                 Otp.objects.filter(user=user.document, is_login=True).delete()
@@ -178,35 +162,30 @@ class GenerateOtpLoginView(APIView):
                 # Crear nuevo OTP
                 nuevo_otp = Otp.objects.create(user=user, is_login=True)
                 otp_generado = nuevo_otp.generate_otp()
-                user_instance = CustomUser.objects.filter(
-                    document=user.document
-                ).first()
+                user_instance = CustomUser.objects.filter(document=user.document).first()
                 # Enviar OTP por correo
                 try:
-                    send_email2(
-                        user.email,
-                        otp_generado,
-                        purpose="login",
-                        name=user_instance.first_name,
-                    )
+                    send_email2(user.email, otp_generado, purpose="login",name=user_instance.first_name)
                 except Exception as e:
                     return Response(
                         {"error": f"Error al enviar el correo: {str(e)}"},
-                        status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
                     )
 
                 return Response(
                     {"message": "Se ha enviado el código OTP para iniciar sesión."},
-                    status=status.HTTP_200_OK,
+                    status=status.HTTP_200_OK
                 )
 
         except ValidationError as e:
-            return Response({"error": e.detail}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": e.detail}, status=status.HTTP_400_BAD_REQUEST)      
         except Exception as e:
             return Response(
                 {"error": "Unexpected error.", "detail": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+         
 
 
 class GenerateOtpPasswordRecoveryView(APIView):
@@ -216,71 +195,71 @@ class GenerateOtpPasswordRecoveryView(APIView):
     Permite a un usuario recibir un código OTP en su correo o teléfono
     para poder recuperar su cuenta.
     """
-
     permission_classes = [AllowAny]
-
     @extend_schema(
-        tags=["Autenticación"],
-        summary="Generar OTP para recuperación de contraseña",
-        description="Este endpoint permite generar un código OTP para recuperar la contraseña de un usuario.",
-        request=GenerateOtpPasswordRecoverySerializer,
-        responses={
-            200: OpenApiResponse(
+    tags=["Autenticación"],
+    summary="Generar OTP para recuperación de contraseña",
+    description="Este endpoint permite generar un código OTP para recuperar la contraseña de un usuario.",
+    request=GenerateOtpPasswordRecoverySerializer,
+    responses={
+        200: OpenApiResponse(
                 response=GenerateOtpPasswordRecoverySerializer,  # Aquí se indica que la respuesta sigue la estructura del serializer
                 description="Respuesta exitosa",
                 examples=[
                     OpenApiExample(
                         "Ejemplo de respuesta exitosa",
-                        value={
-                            "document": "123456789012",
-                            "message": "Se ha enviado un msn con el OTP para poder iniciar sesión.",
-                        },  # Ejemplo correcto
-                        response_only=True,
+                        value={"document": "123456789012", "message": "Se ha enviado un msn con el OTP para poder iniciar sesión."},  # Ejemplo correcto
+                        response_only=True
                     )
-                ],
+                ]
             ),
-            400: OpenApiResponse(
+        400: OpenApiResponse(
                 response=GenerateOtpPasswordRecoverySerializer,  # Aquí se indica que la respuesta sigue la estructura del serializer
                 description="Error de validación",
                 examples=[
                     OpenApiExample(
                         "Error de validación",
                         value={
-                            "error": [
-                                "El número de teléfono no coincide con el registrado.",
-                                "Error al enviar el OTP: problema con el servicio de mensajeria",
-                            ]
-                        },
-                        response_only=True,
+                        "error": [
+                            "El número de teléfono no coincide con el registrado.",
+                            "Error al enviar el OTP: problema con el servicio de mensajeria"
+                        ]
+                        },  
+                        response_only=True
                     )
-                ],
+                ]
             ),
-            404: OpenApiResponse(
+        
+        404: OpenApiResponse(
                 response=GenerateOtpPasswordRecoverySerializer,  # Aquí se indica que la respuesta sigue la estructura del serializer
                 description="Usuario no encontrado",
                 examples=[
                     OpenApiExample(
                         "Ejemplo de respuesta exitosa",
                         value={
-                            "error": "No se encontró un usuario con este documento."
-                        },
-                        response_only=True,
+                        "error": "No se encontró un usuario con este documento."
+                        },  
+                        response_only=True
                     )
-                ],
+                ]
             ),
-            500: OpenApiResponse(
+        
+        500: OpenApiResponse(
                 response=GenerateOtpPasswordRecoverySerializer,  # Aquí se indica que la respuesta sigue la estructura del serializer
                 description="Error en el envío del OTP",
                 examples=[
                     OpenApiExample(
-                        "Error en el envío del OTP",
-                        value={"error": "Error al enviar el OTP: Detalles del error"},
-                        response_only=True,
+                         "Error en el envío del OTP",
+                        value={
+                        "error": "Error al enviar el OTP: Detalles del error"
+                        },  
+                        response_only=True
                     )
-                ],
+                ]
             ),
-        },
-    )
+    }
+)
+
     def post(self, request):
         """
         Método POST para generar y enviar un código OTP al usuario.
@@ -300,13 +279,11 @@ class GenerateOtpPasswordRecoveryView(APIView):
         except ValidationError as e:
             return Response({"error": e.detail}, status=status.HTTP_400_BAD_REQUEST)
         except NotFound as e:
-            return Response({"error": e.detail}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": e.detail}, status=status.HTTP_404_NOT_FOUND)        
         except Exception as e:
-            return Response(
-                {"error": "Unexpected error.", "detail": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+            return Response({"error": "Unexpected error.", "detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+  
 
 class ValidateOtpView(APIView):
     """
@@ -328,22 +305,26 @@ class ValidateOtpView(APIView):
 
     permission_classes = [AllowAny]
 
+    permission_classes = [AllowAny]
+
     @extend_schema(
         tags=["Autenticación"],
         summary="Validación de OTP",
         description="Recibe un número de documento y un código OTP. "
-        "Si el OTP es válido, se autentica al usuario o se marca como validado.",
+                    "Si el OTP es válido, se autentica al usuario o se marca como validado.",
         request=ValidateOtpSerializer,
         responses={
             200: OpenApiResponse(
-                response=ValidateOtpSerializer,
+                response=ValidateOtpSerializer,  
                 description="OTP Valido",
                 examples=[
                     OpenApiExample(
                         "Ejemplo de respuesta exitosa",
-                        value={"message": "OTP validado correctamente"},
+                        value={
+                        "message": "OTP validado correctamente"
+                        },
                     )
-                ],
+                ]
             ),
             400: OpenApiResponse(
                 response=LoginSerializer,
@@ -352,17 +333,17 @@ class ValidateOtpView(APIView):
                     OpenApiExample(
                         "Intentos fallidos",
                         value={
-                            "error": {
-                                "detail": [
-                                    "El OTP ha expirado.",
-                                    "OTP inválido o ya ha sido utilizado.",
-                                    "No hay un OTP validado para este usuario.",
-                                ]
-                            }
+                        "error": {
+                            "detail": [
+                            "El OTP ha expirado.",
+                            "OTP inválido o ya ha sido utilizado.",
+                             "No hay un OTP validado para este usuario."
+                            ]
+                        }
                         },
-                        response_only=True,
+                        response_only=True
                     )
-                ],
+                ]
             ),
         },
         examples=[
@@ -370,28 +351,27 @@ class ValidateOtpView(APIView):
                 "Ejemplo de solicitud",
                 summary="Ejemplo de entrada válida",
                 value={"document": "123456789012", "otp": "154687"},
-                request_only=True,
+                request_only=True
             )
-        ],
+        ]
     )
     def post(self, request):
         """
         Procesa la validación del OTP y devuelve una respuesta con el token de autenticación o un mensaje de éxito.
         """
-        serializer = ValidateOtpSerializer(
-            data=request.data, context={"request": request}
-        )
+        serializer = ValidateOtpSerializer(data=request.data, context={"request": request})
         if serializer.is_valid():
             return Response(serializer.validated_data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
+    
+    
 class ResetPasswordView(APIView):
     permission_classes = [AllowAny]
     """
     Vista para restablecer la contraseña de un usuario.
 
-    Permite a los usuarios restablecer su contraseña proporcionando su documento
+    Permite a los usuarios restablecer su contraseña proporcionando su documento 
     y habiendo validado un OTP previamente. No requiere autenticación para `POST`.
 
     Métodos:
@@ -402,7 +382,7 @@ class ResetPasswordView(APIView):
         request=ResetPasswordSerializer,
         responses={
             200: {"message": "Contraseña restablecida correctamente."},
-            400: {"message": "Errores de validación."},
+            400: {"message": "Errores de validación."}
         },
         description="Restablece la contraseña de un usuario si ha validado un OTP.",
         summary="Restablecer contraseña",
@@ -411,7 +391,7 @@ class ResetPasswordView(APIView):
         """
         Procesa el restablecimiento de la contraseña.
 
-        Recibe un documento y una nueva contraseña en el cuerpo de la solicitud.
+        Recibe un documento y una nueva contraseña en el cuerpo de la solicitud. 
         Si el OTP fue validado previamente, la contraseña se actualiza.
 
         Parámetros:
@@ -429,7 +409,6 @@ class ResetPasswordView(APIView):
                 status=status.HTTP_200_OK,
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 class LogoutView(APIView):
     """
@@ -457,16 +436,10 @@ class LogoutView(APIView):
         try:
             # Eliminar el token del usuario autenticado
             request.user.auth_token.delete()
-            return Response(
-                {"message": "Sesión cerrada correctamente."}, status=status.HTTP_200_OK
-            )
-
+            return Response({"message": "Sesión cerrada correctamente."}, status=status.HTTP_200_OK)
+        
         except Exception as e:
-            return Response(
-                {"error": "No se pudo cerrar la sesión.", "detail": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
+            return Response({"error": "No se pudo cerrar la sesión.", "detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class ValidateTokenView(APIView):
     authentication_classes = [CustomTokenAuthentication]
@@ -487,9 +460,9 @@ class ValidateTokenView(APIView):
 
         except Token.DoesNotExist:
             return Response(
-                {"detail": "Su sesión se cerró."}, status=status.HTTP_401_UNAUTHORIZED
+                {"detail": "Su sesión se cerró."},
+                status=status.HTTP_401_UNAUTHORIZED
             )
-
 
 @extend_schema(
     tags=["Seguridad"],
@@ -498,75 +471,66 @@ class ValidateTokenView(APIView):
     request=ChangePasswordSerializer,
     responses={
         200: OpenApiResponse(
-            response=ChangePasswordSerializer,
-            description="Contraseña actualizada correctamente",
-            examples=[{"message": "Actualización de contraseña exitosa"}],
-        ),
+                response=ChangePasswordSerializer,
+                description="Contraseña actualizada correctamente",
+                examples=[
+                    {"message": "Actualización de contraseña exitosa"}
+                ]
+            ),
         400: OpenApiResponse(
-            response=ChangePasswordSerializer,
-            description="Error de validación",
-            examples=[
-                {
-                    "current_password": ["La contraseña actual es incorrecta."],
-                    "new_password": [
-                        "La contraseña debe contener al menos una letra mayúscula."
-                    ],
-                    "confirm_password": [
-                        "Las contraseñas no coinciden, por favor, verifíquelas."
-                    ],
-                }
-            ],
-        ),
+                response=ChangePasswordSerializer,
+                description="Error de validación",
+                examples=[
+                    {
+                        "current_password": ["La contraseña actual es incorrecta."],
+                        "new_password": ["La contraseña debe contener al menos una letra mayúscula."],
+                        "confirm_password": ["Las contraseñas no coinciden, por favor, verifíquelas."]
+                    }
+                ]
+            ),
         401: OpenApiResponse(
-            response=ChangePasswordSerializer,
-            description="No autenticado",
-            examples=[
-                {"detail": "Las credenciales de autenticación no se proveyeron."}
-            ],
-        ),
+                response=ChangePasswordSerializer,
+                description="No autenticado",
+                examples=[
+                    {"detail": "Las credenciales de autenticación no se proveyeron."}
+                ]
+            ),
         500: OpenApiResponse(
-            response=ChangePasswordSerializer,
-            description="Error en el sistema",
-            examples=[
-                {
-                    "error": "ERROR, error en envío de formulario, por favor intente más tarde"
-                }
-            ],
-        ),
-    },
+                response=ChangePasswordSerializer,
+                description="Error en el sistema",
+                examples=[
+                    {"error": "ERROR, error en envío de formulario, por favor intente más tarde"}
+                ]
+            ),
+    }
 )
 class ChangePasswordView(APIView):
     """
     Vista para que un usuario autenticado cambie su contraseña.
-
+    
     Requiere autenticación y valida:
     - Que la contraseña actual sea correcta
     - Que la nueva contraseña cumpla con los requisitos de seguridad
     - Que la confirmación de contraseña coincida con la nueva
     """
-
     permission_classes = [IsAuthenticated]
-
+    
     def post(self, request):
         """
         Procesa la solicitud de cambio de contraseña.
         """
         try:
-            serializer = ChangePasswordSerializer(
-                data=request.data, context={"request": request}
-            )
+            serializer = ChangePasswordSerializer(data=request.data, context={'request': request})
             if serializer.is_valid():
                 serializer.save()
                 return Response(
-                    {"message": "Actualización de contraseña exitosa"},
-                    status=status.HTTP_200_OK,
+                    {"message": "Actualización de contraseña exitosa"}, 
+                    status=status.HTTP_200_OK
                 )
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             # Captura cualquier error inesperado
             return Response(
-                {
-                    "error": "ERROR, error en envío de formulario, por favor intente más tarde"
-                },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                {"error": "ERROR, error en envío de formulario, por favor intente más tarde"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
