@@ -1,6 +1,6 @@
 from rest_framework import viewsets
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from .models import FlowMeasurement, FlowMeasurementPredio, FlowMeasurementLote,FlowInconsistency
 from .serializers import FlowMeasurementSerializer,FlowMeasurementLoteSerializer, FlowMeasurementPredioSerializer,FlowInconsistencySerializer
@@ -13,7 +13,6 @@ class FlowMeasurementViewSet(viewsets.ModelViewSet):
     queryset = FlowMeasurement.objects.all()
     serializer_class = FlowMeasurementSerializer 
     permission_classes=[IsAuthenticated]
-
     def get_queryset(self):
         """
         Permite filtrar por dispositivo si se pasa como parámetro en la URL.
@@ -47,6 +46,7 @@ class FlowInconsistencyViewSet(viewsets.ReadOnlyModelViewSet):
 class MedicionesPredioView(APIView):
     """Lista todas las mediciones de caudal de un predio específico"""
     permission_classes =[IsAuthenticated]
+    
     def get(self, request, predio_id):
         mediciones = FlowMeasurementPredio.objects.filter(plot_id=predio_id).order_by('-timestamp')
         serializer = FlowMeasurementPredioSerializer(mediciones, many=True)
@@ -54,8 +54,10 @@ class MedicionesPredioView(APIView):
 
 class MedicionesLoteView(APIView):
     """Lista todas las mediciones de caudal de un lote específico"""
+    
     permission_classes =[IsAuthenticated]
     def get(self, request, lote_id):
         mediciones = FlowMeasurementLote.objects.filter(lot_id=lote_id).order_by('-timestamp')
         serializer = FlowMeasurementLoteSerializer(mediciones, many=True)
         return Response(serializer.data)    
+
