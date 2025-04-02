@@ -9,10 +9,13 @@ class IoTDeviceSerializer(serializers.ModelSerializer):
     id_lot = serializers.PrimaryKeyRelatedField(queryset=Lot.objects.all(), allow_null=True, required=False)  
     owner_name = serializers.CharField(required=False, allow_blank=True)  # ✅ Permite que se envíe en la petición
     device_type_name = serializers.CharField(source='device_type.name', read_only=True)
+    actual_flow = serializers.FloatField(required=False, allow_null=True)
 
     class Meta:
         model = IoTDevice
-        fields = ['iot_id', 'id_plot', 'id_lot', 'name', 'device_type', 'is_active', 'characteristics', 'owner_name', 'device_type_name']
+        fields = ['iot_id', 'id_plot', 'id_lot', 'name',
+                'device_type', 'is_active', 'characteristics',
+                'owner_name', 'device_type_name', 'actual_flow']
 
     def validate(self, data):
         """ Validación personalizada """
