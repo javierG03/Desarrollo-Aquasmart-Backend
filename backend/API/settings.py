@@ -58,7 +58,7 @@ INSTALLED_APPS = [
     'auditlog',
     'caudal',
     'servo',
-
+]
 
 AUTH_USER_MODEL ='users.CustomUser'
 
