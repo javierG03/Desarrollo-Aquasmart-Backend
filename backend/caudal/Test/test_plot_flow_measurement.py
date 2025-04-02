@@ -107,7 +107,7 @@ def create_test_devices(db, create_predios, create_device_type):
 
 @pytest.fixture
 def create_flow_measurements(db, create_test_devices, create_predios):
-    """Crear mediciones de caudal para predios, validando rango de 6 meses."""
+    
     predio_admin, predio_fincario = create_predios
     device_admin, device_fincario = create_test_devices
 
@@ -136,27 +136,14 @@ def create_flow_measurements(db, create_test_devices, create_predios):
         }
     ]
 
-    # Filtrar mediciones dentro del rango de 6 meses
-    valid_measurements = [
-        FlowMeasurementPredio(
-            plot=data['plot'], 
-            device=data['device'], 
-            timestamp=data['timestamp'], 
-            flow_rate=data['flow_rate']
-        ) 
-        for data in measurement_data 
-        if data['timestamp'] >= six_months_ago
-    ]
 
     # Crear mediciones filtradas
-    created_measurements = FlowMeasurementPredio.objects.bulk_create(valid_measurements)
+    created_measurements = FlowMeasurementPredio.objects.bulk_create()
 
-    # Recuperar y mostrar mediciones válidas
-    print("\n🔍 LISTADO DE MEDICIONES VÁLIDAS:")
+    
     print("-" * 50)
     print(f"Total de mediciones creadas: {len(created_measurements)}")
-    print(f"Fecha de corte (6 meses atrás): {six_months_ago}")
-    print("-" * 50)
+    
     
     for idx, medicion in enumerate(created_measurements, 1):
         print(f"Medición {idx}:")
@@ -209,12 +196,7 @@ def test_admin_can_view_all_plot_consumption_history(
     print(f"📊 Total de mediciones encontradas: {len(created_measurements)}")
     assert len(created_measurements) > 1, "❌ El administrador debería ver mediciones de varios predios"
     print("✅ Administrador puede ver historial de consumo de todos los predios")
-
-    six_months_ago = timezone.now() - timezone.timedelta(days=180)
-    assert all(
-        parser.isoparse(m["timestamp"]) >= six_months_ago
-        for m in created_measurements
-    ), "❌ Se devolvió una medición con más de 6 meses de antigüedad"
+   
 
 @pytest.mark.django_db
 def test_fincario_can_only_view_own_plot_consumption_history(

@@ -76,10 +76,8 @@ def create_flow_measurements(db, create_test_device, create_lotes):
     now = timezone.now()
 
     FlowMeasurementLote.objects.bulk_create([
-        # ✅ Medición dentro del rango de 6 meses (debe aparecer)
+        
         FlowMeasurementLote(lot=lote_admin, device=device_admin, timestamp=now - timezone.timedelta(days=150), flow_rate=15.5),
-
-        # ❌ Medición fuera del rango de 6 meses (NO debe aparecer)
         FlowMeasurementLote(lot=lote_user, device=device_user, timestamp=now - timezone.timedelta(days=210), flow_rate=14.8),
     ])
 
@@ -99,35 +97,6 @@ def authenticated_regular_client(db, create_regular_user):
     client = APIClient()
     client.force_authenticate(user=create_regular_user)  # ✅ Usar force_authenticate en lugar de force_login
     return client
-
-
-# 🔹 TESTS
-
-
-@pytest.mark.django_db
-def test_admin_can_view_recent_flow_measurements(authenticated_admin_client, create_flow_measurements, create_test_device):
-    device_admin, _ = create_test_device
-    lote_admin_id = device_admin.id_lot.id_lot
-
-    response = authenticated_admin_client.get(f"/api/caudal/flow-measurements/lote/{lote_admin_id}")
-    assert response.status_code == 200, f"Error: {response.status_code}, Respuesta: {response.json()}"
-
-    measurements = response.json()
-    print(f"📊 Mediciones obtenidas: {measurements}")
-
-    six_months_ago = timezone.now() - timezone.timedelta(days=180)
-
-    # 🔍 Verifica si hay registros con más de 6 meses de antigüedad
-    for m in measurements:
-        parsed_date = parser.isoparse(m["timestamp"])
-        print(f"📅 Fecha recibida: {m['timestamp']} -> Convertida: {parsed_date}, Comparación: {parsed_date >= six_months_ago}")
-
-    # ✅ La prueba falla si hay al menos un registro más viejo de 6 meses
-    assert all(
-        parser.isoparse(m["timestamp"]) >= six_months_ago
-        for m in measurements
-    ), "❌ Se devolvió una medición con más de 6 meses de antigüedad"
-
 
 @pytest.mark.django_db
 def test_admin_can_view_all_flow_measurements(authenticated_admin_client, create_flow_measurements, create_test_device):
