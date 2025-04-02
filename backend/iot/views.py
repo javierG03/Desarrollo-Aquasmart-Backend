@@ -1,11 +1,13 @@
+from rest_framework.decorators import action
 from rest_framework.views import APIView
-from rest_framework import generics
+from rest_framework import generics, viewsets
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import IoTDeviceSerializer
-from .models import IoTDevice,DeviceType
-from .serializers import DeviceTypeSerializer
+from .serializers import IoTDeviceSerializer, DeviceTypeSerializer, UpdateValveFlowSerializer
+from .models import IoTDevice, DeviceType, VALVE_48_ID, VALVE_4_ID
 from django.shortcuts import get_object_or_404
+from rest_framework.permissions import IsAuthenticated
+
 class RegisterIoTDeviceView(APIView):
     def post(self, request, *args, **kwargs):
         serializer = IoTDeviceSerializer(data=request.data)
@@ -67,15 +69,36 @@ class IoTDeviceUpdateView(generics.UpdateAPIView):
     queryset = IoTDevice.objects.all()
     serializer_class = IoTDeviceSerializer
     lookup_field = 'iot_id'  # Buscar por iot_id
+    permission_classes = [IsAuthenticated]
 
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=True)  # Permite actualizar parcialmente
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response({"message": "Dispositivo actualizado exitosamente."}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+# 🔹 Actualizar el caudal de una válvula por iot_id
+class UpdateValveFlowView(generics.UpdateAPIView):
+    queryset = IoTDevice.objects.all()
+    serializer_class = UpdateValveFlowSerializer
+    lookup_field = 'iot_id'  # Buscar por iot_id
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        
+        # Validar que el dispositivo es una válvula antes de actualizar
+        if instance.device_type.device_id not in [VALVE_48_ID, VALVE_4_ID]:
+            return Response(
+                {"error": "Este endpoint solo es válido para válvulas"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"message": "Caudal actualizado exitosamente."}, status=status.HTTP_200_OK)
 
 # 🔹 Listar todos los tipos de dispositivos y crear uno nuevo
 class DeviceTypeListCreateView(generics.ListCreateAPIView):
@@ -103,4 +126,4 @@ class DeviceTypeDeleteView(generics.DestroyAPIView):
     def delete(self, request, *args, **kwargs):
         instance = self.get_object()
         self.perform_destroy(instance)
-        return Response({"message": "Tipo de dispositivo eliminado exitosamente."}, status=status.HTTP_204_NO_CONTENT)                
+        return Response({"message": "Tipo de dispositivo eliminado exitosamente."}, status=status.HTTP_204_NO_CONTENT)
