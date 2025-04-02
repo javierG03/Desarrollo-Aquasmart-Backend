@@ -60,4 +60,3 @@ class MedicionesLoteView(APIView):
         mediciones = FlowMeasurementLote.objects.filter(lot_id=lote_id).order_by('-timestamp')
         serializer = FlowMeasurementLoteSerializer(mediciones, many=True)
         return Response(serializer.data)    
-
