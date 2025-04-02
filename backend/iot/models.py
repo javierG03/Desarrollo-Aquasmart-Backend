@@ -22,7 +22,7 @@ class DeviceType(models.Model):
         return f"{self.name} ({self.device_id})"
 
 # Constantes para tipos de válvulas
-VALVE_48_ID = '3' # ID para válvula de 48"
+VALVE_48_ID = '03' # ID para válvula de 48"
 VALVE_4_ID = '14' # ID para válvula de 4"
 
 class IoTDevice(models.Model):
