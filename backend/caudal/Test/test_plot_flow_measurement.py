@@ -3,14 +3,25 @@ from rest_framework.test import APIClient
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 from dateutil import parser
+from django.urls import reverse
 from caudal.models import FlowMeasurementPredio
 from plots_lots.models import Plot, SoilType
 from iot.models import IoTDevice, DeviceType
+from rest_framework.test import APIClient
 from django.contrib.auth.models import Group
+
+
+
 
 User = get_user_model()
 
 # 🔹 FIXTURES
+
+
+@pytest.fixture
+def api_client():
+    """Devuelve un cliente de prueba para hacer solicitudes a la API."""
+    return APIClient()
 
 @pytest.fixture
 def ensure_groups_exist(db):
@@ -140,6 +151,13 @@ def create_flow_measurements(db, create_test_devices, create_predios):
     return created_measurements
 
 
+@pytest.fixture
+def authenticated_client(api_client, create_admin_user):
+    """Autentica al usuario administrador y devuelve un cliente con sesión activa."""
+    api_client.force_authenticate(user=create_admin_user)
+    print("✅ Cliente autenticado correctamente")
+    return api_client
+
 
 @pytest.fixture
 def authenticated_admin_client(db, create_admin_user):
@@ -177,50 +195,72 @@ def test_admin_can_view_all_plot_consumption_history(
     
     
     created_measurements = response.json()
+    
     print(f"📊 Total de mediciones encontradas: {len(created_measurements)}")
     assert len(created_measurements) > 1, "❌ El administrador debería ver mediciones de varios predios"
     print("✅ Administrador puede ver historial de consumo de todos los predios")
    
 
 @pytest.mark.django_db
-def test_fincario_can_only_view_own_plot_consumption_history(
-    authenticated_fincario_client, 
-    create_flow_measurements, 
-    create_test_devices,
-    create_predios
-):
+def test_admin_can_access_all_flow_measurements(authenticated_admin_client, create_flow_measurements):
     """
-    Prueba que un fincario solo pueda ver el historial de consumo de sus propios predios.
+    Prueba que el administrador pueda acceder a TODAS las mediciones de flujo de los predios.
     """
-    print("\n📋 Iniciando prueba: Fincario - Historial de Consumo Solo de sus Predios")
-    
-    # Obtener los predios
-    _, predio_fincario = create_predios
+    print("\n📋 Iniciando prueba: Administrador - Ver TODAS las mediciones")
 
-    # Solicitar todas las mediciones
-    response = authenticated_fincario_client.get("/api/caudal/flow-measurements/predio/listar")
-    
+    # 📌 1️⃣ Intentar acceder a la lista general de mediciones
+    response = authenticated_admin_client.get("/api/caudal/flow-measurements/predio/listar")
+
+    # 📌 2️⃣ Verificar respuesta correcta
     print(f"🔍 Código de respuesta: {response.status_code}")
     assert response.status_code == 200, f"❌ Error: {response.status_code}, Respuesta: {response.json()}"
-    
+
+    # 📌 3️⃣ Verificar cantidad de mediciones
     created_measurements = response.json()
-    
     print(f"📊 Total de mediciones encontradas: {len(created_measurements)}")
+    assert len(created_measurements) > 1, "❌ El administrador debería ver mediciones de varios predios"
 
-    assert len(created_measurements) > 0, "❌ El fincario debería ver al menos sus propias mediciones"
-    
-    # Verificar que todas las mediciones son de su predio
-    for m in created_measurements:
-        assert m["plot"] == predio_fincario.id_plot, "❌ Solo debe ver mediciones de su propio predio"
+    print("✅ Administrador puede ver TODAS las mediciones de flujo correctamente.")
 
-    # Intentar ver medición de otro predio debe ser denegado
-    _, predio_admin = create_predios
-    response_otro_predio = authenticated_fincario_client.get(f"/api/caudal/flow-measurements/predio/{predio_admin.id_plot}")
-    
-    print(f"🔒 Intento de acceso a predio ajeno - Código de respuesta: {response_otro_predio.status_code}")
-    assert response_otro_predio.status_code == 403, "❌ No debería poder ver mediciones de otros predios"
-    
-    print("✅ Fincario solo puede ver historial de consumo de sus propios predios")
+
+@pytest.mark.django_db
+def test_user_can_access_own_flow_measurements(authenticated_fincario_client, create_flow_measurements, create_predios):
+    """
+    Prueba que un usuario normal pueda acceder solo a su historial de consumo y NO a la lista general.
+    """
+    print("\n📋 Iniciando prueba: Usuario Normal - Ver solo su historial de consumo")
+
+    # 📌 1️⃣ Intentar acceder a la lista general (NO debería poder)
+    response_general = authenticated_fincario_client.get("/api/caudal/flow-measurements/predio/listar")
+
+    # 📌 2️⃣ El usuario normal NO debería poder acceder a todas las mediciones
+    print(f"🔍 Código de respuesta: {response_general.status_code}")
+    assert response_general.status_code == 403, f"❌ Usuario normal NO debería acceder a la lista general, pero obtuvo {response_general.status_code}"
+
+    print("🚫 Acceso denegado correctamente a la lista general de mediciones.")
+
+    # 📌 3️⃣ Acceder a su propio historial de consumo
+    _, predio_usuario = create_predios
+    history_url = f"/api/caudal/flow-measurements/predio/{predio_usuario.id_plot}"
+    response = authenticated_fincario_client.get(history_url)
+
+    # 📌 4️⃣ Verificar que el usuario pueda ver su propio historial
+    print(f"🔍 Código de respuesta: {response.status_code}")
+    assert response.status_code == 200, f"❌ Error: {response.status_code}, Respuesta: {response.json()}"
+
+    # 📌 5️⃣ Verificar que solo ve sus propios datos
+    data = response.json()
+    print(f"📊 Total de mediciones encontradas: {len(data)}")
+    assert len(data) > 0, "❌ No se encontraron mediciones para el usuario normal"
+
+    for record in data:
+        assert record["plot"] == predio_usuario.id_plot, "❌ Se encontraron mediciones de otro predio"
+        print(f"   📅 Fecha: {record.get('timestamp', 'N/A')} | 💧 Caudal: {record.get('flow_rate', 'N/A')} m³/s")
+
+    print("✅ Usuario normal puede ver SOLO su historial de consumo correctamente.")
+
+
+
 
 @pytest.mark.django_db
 def test_plot_consumption_history_details(

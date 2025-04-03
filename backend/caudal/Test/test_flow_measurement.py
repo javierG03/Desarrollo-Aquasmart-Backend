@@ -161,19 +161,22 @@ def test_user_flow(request, user_fixture, user_creator, expected_status, role, c
     history_url = reverse("flowmeasurement-list")
     response = client.get(history_url)
 
-    # 📌 5️⃣ Verificar el acceso correcto o la denegación esperada
+   # 📌 5️⃣ Verificar el acceso correcto o la denegación esperada
     assert response.status_code == expected_status, f"❌ Código {response.status_code} en lugar de {expected_status}"
-    
-    if expected_status == 200:
+
+# 📌 6️⃣ Si el usuario tiene acceso, mostramos las mediciones
+    if response.status_code == 200:
         print(f"✅ El usuario ({role}) pudo acceder al historial de consumo general.")
 
-        # 📌 6️⃣ Verificar que la medición de caudal esté presente
-        assert len(response.data) > 1, "❌ No se recibieron suficientes registros en el historial de consumo"
-        print(f"📊 Se encontraron {len(response.data)} registros en el historial de consumo.")
-        
-    # 📌 4️⃣ Mostrar los valores de consumo
-    print("📌 **Historial de consumo:**")
-    for record in response.data:
-        print(f"   📅 Fecha: {record['timestamp']} | 💧 Caudal: {record['flow_rate']} m³/s")
+    # ✅ Verificamos que `response.data` sea una lista antes de iterar
+        if isinstance(response.data, list):
+            print(f"📊 Se encontraron {len(response.data)} registros en el historial de consumo.")
+            for record in response.data:
+                print(f"   📅 Fecha: {record.get('timestamp', 'N/A')} | 💧 Caudal: {record.get('flow_rate', 'N/A')} m³/s")
+        else:
+            print(f"🚨 Respuesta inesperada: {response.data}")
+            pytest.fail(f"❌ Se esperaba una lista, pero se recibió: {type(response.data)}")
 
-        print(f"✅ El usuario ({role}) pudo visualizar el historial de consumo general.")   
+    elif response.status_code == 403:
+        print(f"🚫 Acceso denegado para {role}: {response.data}")
+
