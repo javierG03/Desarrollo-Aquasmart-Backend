@@ -33,8 +33,7 @@ def create_admin_user(db, ensure_groups_exist):
         is_active=True,
         is_registered=True
     )
-    group = Group.objects.get(name="Administrador")
-    user.groups.add(group)
+    
     print(f"✅ Usuario administrador creado: {user.document}")
     return user
 
@@ -52,8 +51,7 @@ def create_fincario_user(db, ensure_groups_exist):
         is_active=True,
         is_registered=True
     )
-    group = Group.objects.get(name="Fincario")
-    user.groups.add(group)
+    
     print(f"✅ Usuario fincario creado: {user.document}")
     return user
 

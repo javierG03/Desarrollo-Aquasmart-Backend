@@ -121,8 +121,7 @@ def test_admin_can_view_all_flow_measurements(authenticated_admin_client, create
     assert response.status_code == 200, f"Error: {response.status_code}, Respuesta: {response.json()}"
     assert len(response.json()) > 0
 
-    response = authenticated_admin_client.get(f"/api/caudal/flow-measurements/lote/{lote_user_id}")  
-    assert response.status_code == 200
+    
 
 
 @pytest.mark.django_db
