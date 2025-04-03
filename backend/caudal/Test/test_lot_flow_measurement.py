@@ -103,30 +103,22 @@ def test_admin_can_view_all_flow_measurements(authenticated_admin_client, create
     print(f"🔑 Usuario autenticado: {authenticated_admin_client.handler._force_user}")
 
     device_admin, device_user = create_test_device
-    
-    
-    # Extraer solo la parte numérica del id_lot (antes del "-")
-    lote_admin_id = device_admin.id_lot.id_lot  # Usa el ID completo
 
-    lote_user_id = device_user.id_lot.id_lot  # Usa el ID completo
+    lote_admin_id = device_admin.id_lot.id_lot # Usa el ID real del lote
+    lote_user_id = device_user.id_lot.id_lot  # Usa el ID real del lote
 
-    print(f"🔗 URL Probada: /flow-measurements/lote/{lote_admin_id}")
-    
-
+    print(f"🔗 URL Probada: /api/caudal/flow-measurements/lote/{lote_admin_id}")
 
     print(f"📊 Total mediciones en la BD: {FlowMeasurementLote.objects.count()}")
     for measurement in FlowMeasurementLote.objects.all():
         print(f"Lote: {measurement.lot.id_lot}, Flow Rate: {measurement.flow_rate}")
 
-    print(f"📌 ID real del lote: {device_admin.id_lot.id_lot}")
-    print(f"📌 ID extraído: {lote_admin_id}")
-
+    print(f"📌 ID real del lote: {lote_admin_id}")
 
     response = authenticated_admin_client.get(f"/api/caudal/flow-measurements/lote/{lote_admin_id}")
     print(f"🔍 Todas las mediciones: {response.json()}")
 
     assert response.status_code == 200, f"Error: {response.status_code}, Respuesta: {response.json()}"
-
     assert len(response.json()) > 0
 
     response = authenticated_admin_client.get(f"/api/caudal/flow-measurements/lote/{lote_user_id}")  
@@ -136,13 +128,18 @@ def test_admin_can_view_all_flow_measurements(authenticated_admin_client, create
 @pytest.mark.django_db
 def test_regular_user_can_only_view_own_flow_measurements(authenticated_regular_client, create_flow_measurements, create_test_device):
     device_admin, device_user = create_test_device
-    print(f"🔗 URL Probada: /flow-measurements/lote/{device_admin.id_lot.id_lot}")
 
+    lote_admin_id = device_admin.id_lot.id_lot
+    lote_user_id = device_user.id_lot.id_lot
 
-    response = authenticated_regular_client.get(f"/api/caudal/flow-measurements/lote/{device_user.id_lot.id_lot}")  # ✅ Corregido
+    print(f"🔗 URL Probada: /flow-measurements/lote/{lote_admin_id}")
+
+    print(f"👤 Propietario del lote admin: {device_admin.id_lot.plot.owner}")
+    print(f"👤 Propietario del lote usuario: {device_user.id_lot.plot.owner}")
+
+    response = authenticated_regular_client.get(f"/api/caudal/flow-measurements/lote/{lote_user_id}")  
     assert response.status_code == 200
     assert len(response.json()) > 0
-    
 
-    response = authenticated_regular_client.get(f"/api/caudal/flow-measurements/lote/{device_admin.id_lot.id_lot}")  # ✅ Corregido
+    response = authenticated_regular_client.get(f"/api/caudal/flow-measurements/lote/{lote_admin_id}")  
     assert response.status_code == 403  # No tiene permiso para ver otras mediciones

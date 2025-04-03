@@ -6,7 +6,7 @@ __pycache__
 db.sqlite3
 docker-compose.yml
 Dockerfile
-backend/db.sqlite3
 backend/Reportes
 docker-compose.yml
 Dockerfile
+backend/db.sqlite3

@@ -185,17 +185,35 @@ def test_admin_can_update_iot_device(api_client, admin_user, admin_devices):
     token = otp_response.data["token"]
     headers = {"HTTP_AUTHORIZATION": f"Token {token}"}
 
+
+
+    print(f"Dispositivos del admin: {admin_devices}")  # Verificar si la lista está vacía
+    print(f"ID del primer dispositivo: {admin_devices[0].iot_id if admin_devices else 'Ninguno'}")
+
     # 🔹 Intentar actualizar el dispositivo
     iot_device = admin_devices[0]
+    print(f"Device Type del IoTDevice: {iot_device.device_type}")  # Esto debe imprimir un objeto válido
+
+    if not iot_device.device_type:
+        print("❌ ERROR: El dispositivo IoT no tiene un device_type asignado en la base de datos.")
+
+
     update_url = reverse("update_iot_device", kwargs={"iot_id": iot_device.iot_id})
+    print(f"URL de actualización: {update_url}")  # Asegúrate de que la URL es válida
+    print(f"Dispositivo a actualizar: {iot_device}")
+    
+    print(IoTDevice.objects.filter(iot_id=iot_device.iot_id).exists())  # Debe imprimir True
 
     update_data = {
         "name": "Sensor de Temperatura",
         "is_active": False,
         "characteristics": "Actualizado por el admin",
+        "device_type": admin_devices[0].device_type.device_id,  # 👈 Asegurar que device_type se envía
     }
 
+
     response = api_client.patch(update_url, update_data, format="json", **headers)
+    print(f"Respuesta de actualización: {response.status_code} - {response.data}")
 
     assert (
         response.status_code == status.HTTP_200_OK

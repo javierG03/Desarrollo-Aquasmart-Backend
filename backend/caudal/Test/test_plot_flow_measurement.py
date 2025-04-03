@@ -107,54 +107,40 @@ def create_test_devices(db, create_predios, create_device_type):
 
 @pytest.fixture
 def create_flow_measurements(db, create_test_devices, create_predios):
-    
     predio_admin, predio_fincario = create_predios
     device_admin, device_fincario = create_test_devices
 
     now = timezone.now()
-    six_months_ago = now - timezone.timedelta(days=180)
 
-    # Preparar lista de mediciones a crear
-    measurement_data = [
-        {
-            'plot': predio_admin, 
-            'device': device_admin, 
-            'timestamp': now - timezone.timedelta(days=150), 
-            'flow_rate': 15.5
-        },
-        {
-            'plot': predio_fincario, 
-            'device': device_fincario, 
-            'timestamp': now - timezone.timedelta(days=150), 
-            'flow_rate': 14.8
-        },
-        {
-            'plot': predio_admin, 
-            'device': device_admin, 
-            'timestamp': now - timezone.timedelta(days=210), 
-            'flow_rate': 13.2
-        }
+    # Crear instancias de FlowMeasurementPredio
+    measurements = [
+        FlowMeasurementPredio(
+            plot=predio_admin, 
+            device=device_admin, 
+            timestamp=now - timezone.timedelta(days=150), 
+            flow_rate=15.5
+        ),
+        FlowMeasurementPredio(
+            plot=predio_fincario, 
+            device=device_fincario, 
+            timestamp=now - timezone.timedelta(days=150), 
+            flow_rate=14.8
+        ),
+        FlowMeasurementPredio(
+            plot=predio_admin, 
+            device=device_admin, 
+            timestamp=now - timezone.timedelta(days=210), 
+            flow_rate=13.2
+        )
     ]
 
+    # Insertar en la base de datos
+    created_measurements = FlowMeasurementPredio.objects.bulk_create(measurements)
 
-    # Crear mediciones filtradas
-    created_measurements = FlowMeasurementPredio.objects.bulk_create()
-
-    
-    print("-" * 50)
-    print(f"Total de mediciones creadas: {len(created_measurements)}")
-    
-    
-    for idx, medicion in enumerate(created_measurements, 1):
-        print(f"Medición {idx}:")
-        print(f"   ID: {medicion.id}")
-        print(f"   Predio: {medicion.plot.plot_name}")
-        print(f"   Dispositivo: {medicion.device.name}")
-        print(f"   Caudal: {medicion.flow_rate} m³/s")
-        print(f"   Timestamp: {medicion.timestamp}")
-        print("-" * 50)
+    print(f"✅ {len(created_measurements)} mediciones de flujo creadas correctamente")
     
     return created_measurements
+
 
 
 @pytest.fixture
