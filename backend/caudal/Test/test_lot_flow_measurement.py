@@ -126,19 +126,45 @@ def test_admin_can_view_all_flow_measurements(authenticated_admin_client, create
 
 @pytest.mark.django_db
 def test_regular_user_can_only_view_own_flow_measurements(authenticated_regular_client, create_flow_measurements, create_test_device):
+    """
+    Prueba que un usuario normal solo pueda ver sus propias mediciones y NO las de otros.
+    """
+    print("\n📋 Iniciando prueba: Usuario Normal - Ver solo sus propias mediciones")
+
+    # 📌 Obtener dispositivos de prueba
     device_admin, device_user = create_test_device
 
-    lote_admin_id = device_admin.id_lot.id_lot
-    lote_user_id = device_user.id_lot.id_lot
+    lote_admin_id = device_admin.id_lot.id_lot  # Lote del admin
+    lote_user_id = device_user.id_lot.id_lot  # Lote del usuario normal
 
-    print(f"🔗 URL Probada: /flow-measurements/lote/{lote_admin_id}")
+    print(f"🔗 URL Probada (Lote Usuario): /api/caudal/flow-measurements/lote/{lote_user_id}")
+    print(f"🔗 URL Probada (Lote Admin): /api/caudal/flow-measurements/lote/{lote_admin_id}")
 
-    print(f"👤 Propietario del lote admin: {device_admin.id_lot.plot.owner}")
-    print(f"👤 Propietario del lote usuario: {device_user.id_lot.plot.owner}")
+    # 📌 Verificar propietarios
+    print(f"👤 Propietario del lote usuario: {device_user.id_lot.plot.owner.email}")
+    print(f"👤 Propietario del lote admin: {device_admin.id_lot.plot.owner.email}")
 
-    response = authenticated_regular_client.get(f"/api/caudal/flow-measurements/lote/{lote_user_id}")  
-    assert response.status_code == 200
-    assert len(response.json()) > 0
+    # 📌 1️⃣ Intentar ver las mediciones de su propio lote
+    response_own = authenticated_regular_client.get(f"/api/caudal/flow-measurements/lote/{lote_user_id}")
+    print(f"🔍 Código de respuesta (propias mediciones): {response_own.status_code}")
+    
+    assert response_own.status_code == 200, f"❌ Error inesperado al ver mediciones propias: {response_own.json()}"
+    
+    own_measurements = response_own.json()
+    print(f"📊 Mediciones propias encontradas: {len(own_measurements)}")
+    assert len(own_measurements) > 0, "❌ No se encontraron mediciones para el usuario normal"
 
-    response = authenticated_regular_client.get(f"/api/caudal/flow-measurements/lote/{lote_admin_id}")  
-    assert response.status_code == 403  # No tiene permiso para ver otras mediciones
+    for record in own_measurements:
+        print(f"   📅 Fecha: {record.get('timestamp', 'N/A')} | 💧 Caudal: {record.get('flow_rate', 'N/A')} L/s")
+        assert record["lot"] == lote_user_id, "❌ Se encontraron mediciones de otro lote"
+
+    print("✅ Usuario normal puede ver SOLO su historial de consumo correctamente.")
+
+    # 📌 2️⃣ Intentar ver las mediciones del administrador (NO debería poder)
+    response_forbidden = authenticated_regular_client.get(f"/api/caudal/flow-measurements/lote/{lote_admin_id}")
+    print(f"🚫 Código de respuesta (intento de ver mediciones ajenas): {response_forbidden.status_code}")
+
+    assert response_forbidden.status_code == 403, f"❌ El usuario normal NO debería ver mediciones del admin, pero recibió {response_forbidden.status_code}"
+    print("✅ Se denegó correctamente el acceso a mediciones de otro usuario.")
+
+    print("\n🎯 Test completado exitosamente.")

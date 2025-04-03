@@ -255,7 +255,7 @@ def test_user_can_access_own_flow_measurements(authenticated_fincario_client, cr
 
     for record in data:
         assert record["plot"] == predio_usuario.id_plot, "❌ Se encontraron mediciones de otro predio"
-        print(f"   📅 Fecha: {record.get('timestamp', 'N/A')} | 💧 Caudal: {record.get('flow_rate', 'N/A')} m³/s")
+        print(f"   📅 Fecha: {record.get('timestamp', 'N/A')} | 💧 Caudal: {record.get('flow_rate', 'N/A')} L/s")
 
     print("✅ Usuario normal puede ver SOLO su historial de consumo correctamente.")
 

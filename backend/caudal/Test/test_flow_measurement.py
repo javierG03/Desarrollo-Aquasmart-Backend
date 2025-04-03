@@ -172,7 +172,7 @@ def test_user_flow(request, user_fixture, user_creator, expected_status, role, c
         if isinstance(response.data, list):
             print(f"📊 Se encontraron {len(response.data)} registros en el historial de consumo.")
             for record in response.data:
-                print(f"   📅 Fecha: {record.get('timestamp', 'N/A')} | 💧 Caudal: {record.get('flow_rate', 'N/A')} m³/s")
+                print(f"   📅 Fecha: {record.get('timestamp', 'N/A')} | 💧 Caudal: {record.get('flow_rate', 'N/A')} L/s")
         else:
             print(f"🚨 Respuesta inesperada: {response.data}")
             pytest.fail(f"❌ Se esperaba una lista, pero se recibió: {type(response.data)}")

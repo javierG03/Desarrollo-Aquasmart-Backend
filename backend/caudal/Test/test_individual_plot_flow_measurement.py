@@ -121,36 +121,75 @@ def authenticated_other_client(db, create_other_user):
 
 @pytest.mark.django_db
 def test_user_can_view_own_plot_flow_history(authenticated_client, create_flow_measurements, create_test_device):
+    """Verifica que el usuario pueda ver el historial de consumo de su propio predio."""
     
+    print("\n📋 Iniciando test: Ver historial del propio predio.")
+
+    # 📌 Obtener ID del lote del usuario
     device_user = create_test_device
     lote_id = device_user.id_lot.id_lot
 
+    print(f"🔗 URL Probada: /api/caudal/flow-measurements/lote/{lote_id}")
+
     response = authenticated_client.get(f"/api/caudal/flow-measurements/lote/{lote_id}")
     
-    assert response.status_code == 200, f"Error: {response.status_code}, Respuesta: {response.json()}"
+    print(f"🔍 Código de respuesta: {response.status_code}")
+
+    assert response.status_code == 200, f"❌ Error inesperado: {response.status_code}, Respuesta: {response.json()}"
 
     measurements = response.json()
-    print(f"📊 Mediciones obtenidas: {measurements}")
+    
+    print(f"📊 Mediciones obtenidas: {len(measurements)} registros")
+
+    assert len(measurements) > 0, "❌ No se encontraron mediciones para el usuario."
+
+    for record in measurements:
+        print(f"   📅 Fecha: {record.get('timestamp', 'N/A')} | 💧 Caudal: {record.get('flow_rate', 'N/A')} L/s")
+        assert record["lot"] == lote_id, "❌ Se encontraron mediciones de otro lote."
+
+    print("✅ Usuario pudo ver su historial correctamente.")
+
 
 
 
 @pytest.mark.django_db
 def test_user_cannot_view_other_plot_flow_history(authenticated_client, create_other_test_device):
     """Verifica que el usuario no pueda ver el historial de consumo de otro predio."""
+    
+    print("\n📋 Iniciando test: Restringir acceso a mediciones de otro usuario.")
+
+    # 📌 Obtener ID del lote de otro usuario
     device_other = create_other_test_device
     lote_id = device_other.id_lot.id_lot
 
+    print(f"🔗 URL Probada: /api/caudal/flow-measurements/lote/{lote_id}")
+
     response = authenticated_client.get(f"/api/caudal/flow-measurements/lote/{lote_id}")
     
+    print(f"🔍 Código de respuesta: {response.status_code}")
+
     assert response.status_code == 403, f"❌ El usuario pudo acceder a un predio ajeno. Respuesta: {response.json()}"
+
+    print("✅ Se bloqueó correctamente el acceso a mediciones de otro usuario.")
+
 
 @pytest.mark.django_db
 def test_other_user_cannot_view_user_plot_flow_history(authenticated_other_client, create_test_device):
     """Verifica que otro usuario no pueda ver el historial del usuario original."""
+    
+    print("\n📋 Iniciando test: Bloquear acceso a otro usuario.")
+
+    # 📌 Obtener ID del lote del usuario original
     device_user = create_test_device
     lote_id = device_user.id_lot.id_lot
 
+    print(f"🔗 URL Probada: /api/caudal/flow-measurements/lote/{lote_id}")
+
     response = authenticated_other_client.get(f"/api/caudal/flow-measurements/lote/{lote_id}")
     
+    print(f"🔍 Código de respuesta: {response.status_code}")
+
     assert response.status_code == 403, f"❌ Otro usuario pudo acceder a un predio ajeno. Respuesta: {response.json()}"
+
+    print("✅ Se denegó correctamente el acceso a otro usuario.")
 
