@@ -136,13 +136,6 @@ class IoTDevice(models.Model):
     class Meta:
         verbose_name = "Dispositivo IoT"
         verbose_name_plural = "Dispositivos IoT"
-        constraints = [
-            models.UniqueConstraint(
-                fields=['device_type'],
-                condition=models.Q(device_type_id=VALVE_48_ID),
-                name='unique_valve_48'
-            ),
-        ]
 
     def save(self, *args, **kwargs):
         if not self.iot_id:
