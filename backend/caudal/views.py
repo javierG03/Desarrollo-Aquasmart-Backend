@@ -46,15 +46,15 @@ class FlowInconsistencyViewSet(viewsets.ReadOnlyModelViewSet):
 
 class MedicionesPredioView(APIView):
     """Lista todas las mediciones de caudal de un predio específico"""
-    permission_classes =[IsAuthenticated]
+    permission_classes =[IsAuthenticated]    
     
     def get(self, request, predio_id):
-        predio = get_object_or_404(Plot,plot_id=predio_id)
+        predio = get_object_or_404(Plot,id_plot=predio_id)
 
         # Verificar que el usuario autenticado es el dueño del predio
         if predio.owner != request.user:
             return Response({"detail": "No tienes permiso para ver estas mediciones."}, status=status.HTTP_403_FORBIDDEN)
-    def get(self, request, predio_id):
+        
         mediciones = FlowMeasurementPredio.objects.filter(plot_id=predio_id).order_by('-timestamp')
         serializer = FlowMeasurementPredioSerializer(mediciones, many=True)
         return Response(serializer.data)
@@ -64,13 +64,13 @@ class MedicionesLoteView(APIView):
     
     permission_classes =[IsAuthenticated]
     # Verificar que el usuario autenticado es el dueño del predio
+    
     def get(self, request, lote_id):
-        lote = get_object_or_404(Lot, lot_id=lote_id)
+        lote = get_object_or_404(Lot, id_lot=lote_id)
         plot = lote.plot
         # Verificar que el usuario autenticado es el dueño del lote
         if plot.owner != request.user:
-            return Response({"detail": "No tienes permiso para ver estas mediciones."}, status=status.HTTP_403_FORBIDDEN)
-    def get(self, request, lote_id):
+            return Response({"detail": "No tienes permiso para ver estas mediciones."}, status=status.HTTP_403_FORBIDDEN)        
         mediciones = FlowMeasurementLote.objects.filter(lot_id=lote_id).order_by('-timestamp')
         serializer = FlowMeasurementLoteSerializer(mediciones, many=True)
         return Response(serializer.data)    
