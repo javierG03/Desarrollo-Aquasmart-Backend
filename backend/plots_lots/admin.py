@@ -24,7 +24,7 @@ class CropTypeAdmin(admin.ModelAdmin):
 
 @admin.register(Lot)
 class LotAdmin(admin.ModelAdmin):
-    list_display = ('id_lot', 'plot', 'crop_type', 'crop_variety', 'soil_type', 'registration_date', 'is_activate')
+    list_display = ('id_lot', 'plot', 'crop_name', 'crop_type', 'crop_variety', 'soil_type', 'registration_date', 'is_activate')
     list_filter = ('plot', 'soil_type')
     search_fields = ('id_lot', 'crop_type', 'crop_variety')
     ordering = ('registration_date',)
