@@ -27,8 +27,8 @@ class DeviceType(models.Model):
         verbose_name_plural = "Tipos de dispositivos IoT"
 
 # Constantes para tipos de válvulas
-VALVE_48_ID = '6' # ID para válvula de 48"
-VALVE_4_ID = '7' # ID para válvula de 4"
+VALVE_48_ID = '05' # ID para válvula de 48"
+VALVE_4_ID = '06' # ID para válvula de 4"
 
 class IoTDevice(models.Model):
     iot_id = models.CharField(max_length=7, primary_key=True, editable=False)  # Formato XX-YYYY
