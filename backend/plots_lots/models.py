@@ -50,12 +50,23 @@ class SoilType(models.Model):
         verbose_name_plural = "Tipos de suelo"
     
     def __str__(self):
-        return self.name    
+        return self.name
+    
+class CropType(models.Model):
+    name = models.CharField(max_length=50, unique=True, verbose_name="Tipo de cultivo")
+    
+    class Meta:
+        verbose_name = "Tipo de cultivo"
+        verbose_name_plural = "Tipos de cultivo"
+    
+    def __str__(self):
+        return self.name
     
 class Lot(models.Model):
     plot = models.ForeignKey(Plot, on_delete=models.CASCADE, related_name="lotes", verbose_name="Predio")
     id_lot = models.CharField(primary_key=True, max_length=15, unique=True, editable=False, verbose_name="ID de lote")  # Campo para almacenar el ID único
-    crop_type = models.CharField(max_length=20, null=False, blank=False, verbose_name="Tipo de cultivo")
+    crop_name = models.CharField(max_length=20, default="Sin nombre", null=False, blank=False, verbose_name="Nombre del cultivo")
+    crop_type = models.ForeignKey(CropType, on_delete=models.CASCADE, verbose_name="Tipo de cultivo")
     crop_variety = models.CharField(max_length=20, null=True, blank=True, verbose_name="Variedad del cultivo")
     soil_type = models.ForeignKey(SoilType, on_delete=models.CASCADE, verbose_name="Tipo de suelo")
     is_activate = models.BooleanField(default=True, help_text="Indica si el lote esta habilitado", db_index=True, verbose_name="estado lote")

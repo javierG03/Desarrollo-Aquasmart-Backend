@@ -4,7 +4,7 @@ from rest_framework import generics, viewsets
 from rest_framework.response import Response
 from rest_framework import status
 from .serializers import IoTDeviceSerializer, DeviceTypeSerializer, UpdateValveFlowSerializer
-from .models import IoTDevice, DeviceType, VALVE_48_ID, VALVE_4_ID
+from .models import IoTDevice, DeviceType
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 
@@ -86,15 +86,7 @@ class UpdateValveFlowView(generics.UpdateAPIView):
     lookup_field = 'iot_id'  # Buscar por iot_id
 
     def update(self, request, *args, **kwargs):
-        instance = self.get_object()
-        
-        # Validar que el dispositivo es una válvula antes de actualizar
-        if instance.device_type.device_id not in [VALVE_48_ID, VALVE_4_ID]:
-            return Response(
-                {"error": "Este endpoint solo es válido para válvulas"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
+        instance = self.get_object()        
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -127,65 +119,3 @@ class DeviceTypeDeleteView(generics.DestroyAPIView):
         instance = self.get_object()
         self.perform_destroy(instance)
         return Response({"message": "Tipo de dispositivo eliminado exitosamente."}, status=status.HTTP_204_NO_CONTENT)
-
-
-# class ValveViewSet(viewsets.ModelViewSet):
-#     """
-#     ViewSet para gestionar válvulas.
-#     Permite actualizar el caudal actual (actual_flow) en m³/s.
-#     """
-#     queryset = Valve.objects.all()
-#     serializer_class = ValveSerializer
-#     permission_classes = [IsAuthenticated]  # Requiere autenticación
-#     lookup_field = 'id_valve'  # Usar id_valve como campo de búsqueda
-
-#     def update(self, request, *args, **kwargs):
-#         """Actualizar el caudal de la válvula"""
-#         instance = self.get_object()
-        
-#         # Verificar que solo se está actualizando actual_flow
-#         if len(request.data) != 1 or 'actual_flow' not in request.data:
-#             return Response(
-#                 {"error": "Solo se permite actualizar el caudal actual (actual_flow)"},
-#                 status=status.HTTP_400_BAD_REQUEST
-#             )
-
-#         # Validar que el valor sea un número positivo
-#         new_flow = request.data['actual_flow']
-#         if not isinstance(new_flow, (int, float)) or new_flow < 0:
-#             return Response(
-#                 {"error": "actual_flow debe ser un número positivo"},
-#                 status=status.HTTP_400_BAD_REQUEST
-#             )
-
-#         # Actualizar el valor
-#         instance.actual_flow = float(new_flow)
-#         instance.save()
-
-#         # Aquí iría la lógica para enviar la señal al ESP32
-#         try:
-#             self._send_to_esp32(instance)
-#         except Exception as e:
-#             # Log el error pero no fallar la actualización
-#             print(f"Error al comunicarse con ESP32: {e}")
-
-#         serializer = self.get_serializer(instance)
-#         return Response(serializer.data)
-
-#     def _send_to_esp32(self, valve_instance):
-#         """Envía comando al ESP32"""
-#         command = {
-#             "action": "set_flow",
-#             "flow": valve_instance.actual_flow,
-#             "valve_id": valve_instance.id_valve
-#         }
-        
-#         # Usar el comunicador ESP32
-#         esp32_comm = ESP32Communication()
-#         success = async_to_sync(esp32_comm.send_command)(
-#             valve_instance.id_valve, 
-#             command
-#         )
-        
-#         if not success:
-#             raise ConnectionError("No se pudo conectar con el ESP32")
