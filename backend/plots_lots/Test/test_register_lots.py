@@ -1,7 +1,7 @@
 import pytest
 from django.urls import reverse
 from rest_framework import status
-from plots_lots.models import Lot, Plot, SoilType
+from plots_lots.models import Lot, Plot, SoilType, CropType
 from users.models import CustomUser, Otp, PersonType
 from rest_framework.test import APIClient
 
@@ -73,9 +73,13 @@ def soil_type(db):
     """Crea un tipo de suelo válido en la base de datos."""
     return SoilType.objects.create(name="Arcilloso")  # 🔥 Asegura que exista en la DB
 
+@pytest.fixture
+def crop_type(db):
+    return CropType.objects.create(name="Maíz")
+
 
 @pytest.mark.django_db
-def test_admin_can_register_lot(api_client, admin_user, soil_type, registered_plot):
+def test_admin_can_register_lot(api_client, admin_user, soil_type, registered_plot, crop_type):
     """✅ Verifica que un administrador pueda registrar un lote exitosamente."""
 
     # 🔹 Paso 1: Iniciar sesión como administrador
@@ -110,13 +114,14 @@ def test_admin_can_register_lot(api_client, admin_user, soil_type, registered_pl
     lot_data = {
         "lot_name": "Lote de Prueba",
         "owner": admin_user.document,
-        "crop_type": "Maíz",
+        "crop_type": crop_type.id,  # ✅ Ahora es el ID válido
         "soil_type": soil_type_id,
         "plot": plot_id,
         "is_activate": True,
         "latitud": -74.00597,
         "longitud": 40.712776,
     }
+
 
     response = api_client.post(register_lot_url, lot_data, format="json", **headers)
 

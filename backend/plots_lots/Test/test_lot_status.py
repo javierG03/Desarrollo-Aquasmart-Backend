@@ -2,7 +2,7 @@ import pytest
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
-from plots_lots.models import Plot, Lot, SoilType
+from plots_lots.models import Plot, Lot, SoilType, CropType
 from users.models import CustomUser, Otp, PersonType
 import time
 
@@ -25,6 +25,10 @@ def person_type(db):
 def soil_type(db):
     """Crea un tipo de suelo para las pruebas."""
     return SoilType.objects.create(name="Arcilloso")
+
+@pytest.fixture
+def crop_type(db):
+    return CropType.objects.create(name="Maíz")
 
 
 @pytest.fixture
@@ -72,31 +76,26 @@ def active_plot(db, regular_user):
     )
     return plot
 
-
 @pytest.fixture
-def active_lot(db, active_plot, soil_type):
-    """Crea un lote activo para las pruebas."""
-    lot = Lot.objects.create(
+def active_lot(db, active_plot, soil_type, crop_type):
+    return Lot.objects.create(
         plot=active_plot,
-        crop_type="Maíz",
+        crop_type=crop_type,  # ✅ Instancia correcta
         crop_variety="Criollo",
         soil_type=soil_type,
         is_activate=True,
     )
-    return lot
-
 
 @pytest.fixture
-def inactive_lot(db, active_plot, soil_type):
-    """Crea un lote inactivo para las pruebas."""
-    lot = Lot.objects.create(
+def inactive_lot(db, active_plot, soil_type, crop_type):
+    return Lot.objects.create(
         plot=active_plot,
-        crop_type="Frijol",
+        crop_type=crop_type,  # ✅ Instancia correcta
         crop_variety="Negro",
         soil_type=soil_type,
         is_activate=False,
     )
-    return lot
+
 
 
 @pytest.fixture

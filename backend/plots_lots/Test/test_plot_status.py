@@ -2,7 +2,7 @@ import pytest
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
-from plots_lots.models import Plot, Lot, SoilType
+from plots_lots.models import Plot, Lot, SoilType, CropType
 from users.models import CustomUser, Otp, PersonType
 import time
 
@@ -25,6 +25,11 @@ def person_type(db):
 def soil_type(db):
     """Crea un tipo de suelo para las pruebas."""
     return SoilType.objects.create(name="Arcilloso")
+
+
+@pytest.fixture
+def crop_type(db):
+    return CropType.objects.create(name="Maíz")
 
 
 @pytest.fixture
@@ -528,8 +533,15 @@ class TestPlotActivationAdvanced:
     ):
         """Verifica el comportamiento con lotes cuando se desactiva un predio."""
         # Crear un lote asociado al predio
+        crop_type = CropType.objects.create(name="Maíz")
+
         lot = Lot.objects.create(
-            plot=active_plot, crop_type="Maíz", soil_type=soil_type
+            plot=active_plot,
+            crop_type=crop_type,  # ✅ ahora sí es una instancia válida
+            soil_type=soil_type,
+            crop_name="Lote Maíz",
+            crop_variety="Variedad Amarilla",
+            is_activate=True
         )
 
         # Desactivar el predio

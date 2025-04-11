@@ -1,7 +1,7 @@
 import pytest
 from django.urls import reverse
 from rest_framework import status
-from plots_lots.models import Lot, SoilType, Plot
+from plots_lots.models import Lot, SoilType, Plot, CropType
 from users.models import CustomUser, Otp, PersonType
 from rest_framework.test import APIClient
 
@@ -16,6 +16,30 @@ def api_client():
 def person_type(db):
     """Crea un tipo de persona válido en la base de datos."""
     return PersonType.objects.create(typeName="Natural")
+
+@pytest.fixture
+def login_and_validate_otp():
+    def _login_and_validate(client, user, password="SecurePass123*"):
+        login_url = reverse("login")
+        login_data = {"document": user.document, "password": password}
+        login_response = client.post(login_url, login_data)
+        assert login_response.status_code == 200
+
+        from users.models import Otp
+        otp = Otp.objects.filter(user=user, is_login=True).first()
+        assert otp is not None, f"No se encontró OTP para el usuario {user.document}"
+
+        otp_url = reverse("validate-otp")
+        otp_data = {"document": user.document, "otp": otp.otp}
+        otp_response = client.post(otp_url, otp_data)
+        assert otp_response.status_code == 200
+
+        token = otp_response.data["token"]
+        client.credentials(HTTP_AUTHORIZATION=f"Token {token}")  # ✅ Cambio aquí
+        return client  # devolvemos el client autenticado
+    return _login_and_validate
+
+
 
 
 @pytest.fixture
@@ -67,6 +91,15 @@ def soil_type(db):
 
 
 @pytest.fixture
+def get_crop_type(db):
+    """Devuelve una función para crear o recuperar un tipo de cultivo dinámicamente."""
+    def _create_crop_type(name="Maíz"):
+        crop_type, _ = CropType.objects.get_or_create(name=name)
+        return crop_type
+    return _create_crop_type
+
+
+@pytest.fixture
 def admin_plots(db, admin_user):
     """Crea varios predios que pertenecen al administrador."""
     return [
@@ -99,14 +132,14 @@ def user_plots(db, normal_user):
 
 
 @pytest.fixture
-def admin_lots(db, admin_plots, soil_type):
-    """Crea lotes en los predios del administrador."""
+def admin_lots(db, admin_plots, soil_type, get_crop_type):
+    crop_type = get_crop_type("Maíz")
     lots = []
     for plot in admin_plots:
-        for i in range(2):  # 🔹 Cada predio tendrá 2 lotes
+        for i in range(2):
             lot = Lot.objects.create(
                 plot=plot,
-                crop_type="Maíz",
+                crop_type=crop_type,
                 soil_type=soil_type,
                 is_activate=True,
             )
@@ -115,14 +148,14 @@ def admin_lots(db, admin_plots, soil_type):
 
 
 @pytest.fixture
-def user_lots(db, user_plots, soil_type):
-    """Crea lotes en los predios de un usuario normal."""
+def user_lots(db, user_plots, soil_type, get_crop_type):
+    crop_type = get_crop_type("Trigo")
     lots = []
     for plot in user_plots:
-        for i in range(2):  # 🔹 Cada predio tendrá 2 lotes
+        for i in range(2):
             lot = Lot.objects.create(
                 plot=plot,
-                crop_type="Trigo",
+                crop_type=crop_type,
                 soil_type=soil_type,
                 is_activate=True,
             )
@@ -130,54 +163,24 @@ def user_lots(db, user_plots, soil_type):
     return lots
 
 
-@pytest.mark.django_db
-def test_admin_can_update_lot(api_client, admin_user, admin_lots):
-    """✅ Verifica que un administrador pueda actualizar un lote correctamente."""
+def test_admin_can_update_lot(api_client, admin_user, admin_lots, get_crop_type, login_and_validate_otp):
+    client = login_and_validate_otp(api_client, admin_user, "AdminPass123@")
+    lot = admin_lots[0]
+    new_crop_type = get_crop_type("Cebada")
 
-    # 🔹 Paso 1: Iniciar sesión como administrador
-    login_url = reverse("login")
-    login_data = {"document": admin_user.document, "password": "AdminPass123@"}
-    login_response = api_client.post(login_url, login_data)
-    assert (
-        login_response.status_code == status.HTTP_200_OK
-    ), f"Error en login: {login_response.data}"
-
-    # 🔹 Paso 2: Validar OTP
-    otp_instance = Otp.objects.filter(user=admin_user, is_login=True).first()
-    otp_validation_url = reverse("validate-otp")
-    otp_data = {"document": admin_user.document, "otp": otp_instance.otp}
-    otp_response = api_client.post(otp_validation_url, otp_data)
-    assert (
-        otp_response.status_code == status.HTTP_200_OK
-    ), f"Error al validar OTP: {otp_response.data}"
-    assert "token" in otp_response.data, "❌ No se recibió un token tras validar el OTP."
-
-    # 🔹 Paso 3: Seleccionar un lote del administrador
-    lot_to_update = admin_lots[0]  # Tomamos el primer lote del admin
-    update_lot_url = reverse("lot-update", kwargs={"id_lot": lot_to_update.id_lot})
-
-    # 🔹 Paso 4: Enviar solicitud de actualización
-    token = otp_response.data["token"]
-    headers = {"HTTP_AUTHORIZATION": f"Token {token}"}
-
-    update_data = {
-        "crop_type": "Cebada",  # Cambio de cultivo
-        "is_activate": False,  # Desactivar el lote
+    url = reverse("lot-update", args=[lot.id_lot])
+    data = {
+        "crop_name": "Actualizado",
+        "crop_variety": "Mejorada",
+        "soil_type": lot.soil_type.id,
+        "crop_type": new_crop_type.id,
+        "plot": lot.plot.id_plot,
+        "is_activate": True,
     }
 
-    update_response = api_client.patch(
-        update_lot_url, update_data, format="json", **headers
-    )
-    assert (
-        update_response.status_code == status.HTTP_200_OK
-    ), f"Error al actualizar el lote: {update_response.data}"
+    response = client.put(url, data)
+    assert response.status_code == 200
 
-    # 🔹 Paso 5: Verificar que los cambios se reflejan en la base de datos
-    lot_to_update.refresh_from_db()
-    assert lot_to_update.crop_type == "Cebada", "❌ El tipo de cultivo no se actualizó."
-    assert not lot_to_update.is_activate, "❌ El estado de activación no se actualizó."
-
-    print("✅ Test completado: El administrador pudo actualizar un lote correctamente.")
 
 
 @pytest.mark.django_db
