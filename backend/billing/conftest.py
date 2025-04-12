@@ -1,6 +1,7 @@
 import pytest
 from django.urls import reverse
 from users.models import Otp, CustomUser, PersonType
+from billing.company.models import Company
 
 @pytest.fixture
 def api_client():
@@ -25,7 +26,30 @@ def admin_user(db, person_type):
     )
     return user
 
+@pytest.fixture
+def regular_user(db, person_type):
+    """Crea un usuario normal (no administrador)"""
+    user = CustomUser.objects.create_user(
+        document="user123",
+        first_name="Regular",
+        last_name="User",
+        email="user@example.com",
+        phone="3000000000",
+        password="UserPass123@",
+        person_type=person_type,
+        is_registered=True
+    )
+    return user
 
+@pytest.fixture
+def create_company(db):
+    """Crea una empresa para las pruebas"""
+    company = Company.objects.create(
+        nombre="AquaSmart", 
+        nit="123456789", 
+        ciudad="Bogotá"
+    )
+    return company
 
 @pytest.fixture
 def login_and_validate_otp():
