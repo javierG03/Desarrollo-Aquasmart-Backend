@@ -95,12 +95,14 @@ def test_company_update_with_invalid_field(
 
     payload = {
         "company": {
-            "nit": "abc",  # NIT inválido
+
+            "nit": 1234567890,  # NIT Válido
             "ciudad": 12345,  # Ciudad inválida
             "campo_invalido": "valor_invalido",  # Campo inválido
-            "nombre": "AquaSmart 2"
+            "nombre": "AquaSmart 2" #Campo Inválido
         }
     }
 
     response = client.patch(url, payload, format="json")
+    print (f"Respuesta: {response.data}, Código de estado: {response.status_code}")
     assert response.status_code == status.HTTP_400_BAD_REQUEST, f"❌ El código de respuesta - {response.status_code} - no coincide con el esperado HTTP_400_BAD_REQUEST al ingresar los datos inválidos: {payload}. La respuesta de la aplicación es: {response.data}"

@@ -45,9 +45,9 @@ def regular_user(db, person_type):
 def create_company(db):
     """Crea una empresa para las pruebas"""
     company = Company.objects.create(
-        nombre="AquaSmart", 
+        
         nit="123456789", 
-        ciudad="Bogotá"
+        
     )
     return company
 
