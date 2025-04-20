@@ -1,6 +1,6 @@
 from rest_framework import serializers
-from bill.models import Bill
-from rates.models import FixedConsumptionRate, VolumetricConsumptionRate
+from .models import Bill
+from billing.rates.models import FixedConsumptionRate, VolumetricConsumptionRate
 from plots_lots.models import CropType
 
 # Serializer del modelo de Factura (Bill)
@@ -10,7 +10,7 @@ class BillSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = [
             'id_bill', 'code', 'total_fixed_rate', 'total_volumetric_rate', 'total_amount',
-            'pdf_bill_name', 'creation_date', 'due_payment_date'
+            'pdf_bill_name', 'creation_date', 'due_payment_date',#FALTABA UNA COMA
             'company_name', 'company_nit', 'company_address', 'company_phone', 'company_email',
             'client', 'client_name', 'client_document', 'client_address',
             'lot_code', 'plot_name',
