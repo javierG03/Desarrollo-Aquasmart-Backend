@@ -27,5 +27,9 @@ urlpatterns = [
     path("api/iot/",include("iot.urls"), name="app-iot"),
     path("api/admin/",include("API.groups_permissions.urls"),name="Permisos_roles"),
     path("api/caudal/",include("caudal.urls"),name="app-caudal"),
+<<<<<<< HEAD
     path("api/billing/", include("billing.bill.urls")), 
+=======
+    path("api/billing/", include("billing.urls")), 
+>>>>>>> origin/develop
 ]
