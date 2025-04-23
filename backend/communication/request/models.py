@@ -29,23 +29,23 @@ class FlowChangeRequest(models.Model):
         return f"Solicitud de {self.user.get_full_name()} para {self.lot} ({self.requested_flow} L/s) - {self.status}"
 
     def clean(self):
-        # Validar que el dispositivo sea válvula 4"
-        if self.device and hasattr(self.device, 'device_type'):
-            if self.device.device_type.device_id not in VALVE_4_ID:
-                raise ValueError("Solo se puede solicitar cambios de caudal en dispositivos de tipo Válvula 4\"")
-
+        # Validar que el lote tenga un dispositivo IoT de tipo válvula 4"
+        device = IoTDevice.objects.filter(id_lot=self.lot, device_type__device_id=VALVE_4_ID).first()
+        if not device:
+            raise ValueError("El lote no tiene una válvula 4\" asociada.")
         # Validar caudal igual al actual
-        if self.device and self.requested_flow is not None:
-            if self.device.actual_flow == self.requested_flow:
-                raise ValueError("Ya tienes un caudal activo con ese valor. Debes solicitar un valor diferente.")
+        if self.requested_flow is not None and device.actual_flow == self.requested_flow:
+            raise ValueError("Ya tienes un caudal activo con ese valor. Debes solicitar un valor diferente.")
 
     def save(self, *args, **kwargs):
-        # Asignar lot y plot automáticamente
-        if self.device:
-            if not self.lot and hasattr(self.device, 'id_lot'):
-                self.lot = self.device.id_lot
-            if not self.plot and hasattr(self.device, 'id_plot'):
-                self.plot = self.device.id_plot
+        # Asignar plot y device automáticamente desde el lote
+        if self.lot:
+            self.plot = self.lot.plot
+            # Buscar el dispositivo IoT de tipo válvula 4" asociado al lote
+            device = IoTDevice.objects.filter(id_lot=self.lot, device_type__device_id=VALVE_4_ID).first()
+            if not device:
+                raise ValueError("El lote no tiene una válvula 4\" asociada.")
+            self.device = device
 
         # Detectar si es una actualización (ya existe en BD)
         if self.pk:
@@ -66,4 +66,7 @@ class FlowChangeRequest(models.Model):
                 self.reviewed_at = None
             elif self.status in ['aprobada', 'rechazada']:
                 self.reviewed_at = timezone.now()
+                if self.status == 'aprobada':
+                    self.device.actual_flow = self.requested_flow
+                    self.device.save()
         super().save(*args, **kwargs)

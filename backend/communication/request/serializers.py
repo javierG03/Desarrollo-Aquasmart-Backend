@@ -1,7 +1,7 @@
 from django.utils import timezone
 from rest_framework import serializers
 from .models import FlowChangeRequest
-from iot.models import VALVE_4_ID
+from iot.models import IoTDevice, VALVE_4_ID
 
 class FlowChangeRequestSerializer(serializers.ModelSerializer):
     """Serializer para crear solicitudes de cambio de caudal."""
@@ -9,41 +9,30 @@ class FlowChangeRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = FlowChangeRequest
         fields = '__all__'
-        read_only_fields = ['user', 'lot', 'plot', 'status', 'created_at', 'reviewed_at']
+        read_only_fields = ['user', 'device', 'plot', 'status', 'created_at', 'reviewed_at']
 
     def validate(self, attrs):
-        device = attrs.get('device')
+        lot = attrs.get('lot')
+        requested_flow = attrs.get('requested_flow')
         user = self.context['request'].user
 
-        # Asignar lote y predio automáticamente
-        if device:
-            if not attrs.get('lot') and hasattr(device, 'id_lot'):
-                attrs['lot'] = device.id_lot
-            if not attrs.get('plot') and hasattr(device, 'id_plot'):
-                attrs['plot'] = device.id_plot
+        # Validar dueño del predio
+        if lot and lot.plot.owner != user:
+            raise serializers.ValidationError("Solo el dueño del predio puede solicitar el cambio de caudal para este lote.")
 
-        # Validar que las solicitudes sean para válvulas de 4"
-        device_type = device.device_type
-        if device_type.device_id not in VALVE_4_ID:
+        # Buscar el dispositivo IoT de tipo válvula 4" asociado al lote
+        device = IoTDevice.objects.filter(id_lot=lot, device_type__device_id=VALVE_4_ID).first()
+        if not device:
+            raise serializers.ValidationError("El lote no tiene una válvula 4\" asociada.")
+
+        # Validar caudal igual al actual
+        if requested_flow is not None and device.actual_flow == requested_flow:
             raise serializers.ValidationError(
-                {"error": "Solo se puede solicitar cambios de caudal en dispositivos de tipo Válvula 4\""}
+                {"requested_flow": "Ya tienes un caudal activo con ese valor. Debes solicitar un valor diferente."}
             )
 
-        # Validar que el usuario sea dueño del predio
-        plot = attrs.get('plot')
-        if plot and hasattr(plot, 'owner'):
-            if plot.owner != user:
-                raise serializers.ValidationError(
-                    {"error": "Solo el dueño del predio puede solicitar el cambio de caudal para este dispositivo."}
-                )
-
-        # Validación de caudal igual al actual
-        requested_flow = attrs.get('requested_flow')
-        if device and requested_flow is not None:
-            if device.actual_flow == requested_flow:
-                raise serializers.ValidationError(
-                    {"requested_flow": "Ya tienes un caudal activo con ese valor. Debes solicitar un valor diferente."}
-                )
+        attrs['plot'] = lot.plot
+        attrs['device'] = device
         return attrs
 
     def create(self, validated_data):
