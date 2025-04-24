@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Plot, Lot, SoilType
+from .models import Plot, Lot, SoilType, CropType
 from users.models import CustomUser
 
 class PlotSerializer(serializers.ModelSerializer):
@@ -36,7 +36,7 @@ class LotSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Lot
-        fields = ['id_lot', 'plot', 'crop_type', 'crop_variety', 'soil_type', 'is_activate', 'registration_date']
+        fields = ['id_lot', 'plot', 'crop_name', 'crop_type', 'crop_variety', 'soil_type', 'is_activate', 'registration_date']
         read_only_fields = ['id_lot', 'registration_date']
 
     def validate_plot(self, value):
@@ -66,9 +66,15 @@ class LotDetailSerializer(LotSerializer):
     soil_type_name = serializers.CharField(source='soil_type.name', read_only=True)
 
     class Meta(LotSerializer.Meta):
-        fields = LotSerializer.Meta.fields + ['plot_name', 'plot_owner', 'soil_type_name']
+        fields = LotSerializer.Meta.fields + ['plot_name', 'plot_owner', 'soil_type_name', 'crop_name']
 
 class SoilTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = SoilType
-        fields = ['id', 'name']        
+        fields = '__all__'
+
+# Serializar para el tipo de cultivo
+class CropTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CropType
+        fields = '__all__'

@@ -57,6 +57,7 @@ class IoTDevice(models.Model):
         blank=True,
         validators=[MinValueValidator(0), MaxValueValidator(180)]
     )
+    registration_date = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de registro")
 
     def clean(self):
         """Validaciones personalizadas"""
@@ -76,12 +77,6 @@ class IoTDevice(models.Model):
 
         # Validar que el dispositivo sea una válvula
         if self.device_type_id in [VALVE_48_ID, VALVE_4_ID]:
-            # Validar que actual_flow esté presente para válvulas
-            if self.actual_flow is None:
-                raise ValidationError({
-                    "actual_flow": "El caudal actual es requerido para válvulas."
-                })
-            
             # Validaciones específicas para válvula de 48"
             if self.device_type_id == VALVE_48_ID:
                 # Verificar que no exista otra válvula de 48"
@@ -112,21 +107,22 @@ class IoTDevice(models.Model):
                     id_plot=self.id_plot,
                     id_lot__isnull=True
                 )
-
-                    if queryset.exists():
+                    if self.iot_id:  # Si es una actualización, excluir el dispositivo actual
+                        queryset = queryset.exclude(iot_id=self.iot_id)
+                    if queryset.exists(): # Evaluar si ya existe una válvula de 4" asignada al predio
                             raise ValidationError(
                                 "Ya existe una válvula asignada a este predio."
                             )
                 
                 # Validar que no haya más de una válvula de 4" por lote
-                if self.id_lot and not self.id_plot:
+                if self.id_lot:
                     queryset = IoTDevice.objects.filter(
                     device_type_id=VALVE_4_ID,
-                    id_lot=self.id_lot,
-                    id_plot__isnull=True
+                    id_lot=self.id_lot
                 )
-
-                    if queryset.exists():
+                    if self.iot_id:  # Si es una actualización, excluir el dispositivo actual
+                        queryset = queryset.exclude(iot_id=self.iot_id)
+                    if queryset.exists(): # Evaluar si ya existe una válvula de 4" asignada al lote
                             raise ValidationError(
                                 "Ya existe una válvula asignada a este lote."
                             )
