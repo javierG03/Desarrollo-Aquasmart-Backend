@@ -48,7 +48,10 @@ class IoTDeviceSerializer(serializers.ModelSerializer):
             # Validaciones específicas para válvula de 48"
             if device_type.device_id == VALVE_48_ID:
                 # Verificar que no exista otra válvula de 48"
-                if IoTDevice.objects.filter(device_type_id=VALVE_48_ID).exists():
+                queryset = IoTDevice.objects.filter(device_type_id=VALVE_48_ID)
+                if self.instance:  # Si es una actualización, excluir el dispositivo actual
+                    queryset = queryset.exclude(iot_id=self.instance.iot_id)
+                if queryset.exists():
                     raise serializers.ValidationError(
                         "Ya existe una válvula de 48\" en el distrito."
                     )
