@@ -1,7 +1,7 @@
 import pytest
 from django.urls import reverse
 from users.models import Otp, CustomUser, PersonType
-from iot.models import DeviceType, IoTDevice
+from iot.models import DeviceType, IoTDevice, VALVE_4_ID
 from rest_framework.test import APIClient
 from rest_framework import status
 from plots_lots.models import Plot, Lot, SoilType, CropType
@@ -24,13 +24,14 @@ def crop_type(db):
 
 @pytest.fixture
 def device_type():
+    sensorHumedad = DeviceType.objects.create(name="Sensor de humedad")
     sensorCaudal = DeviceType.objects.create(name="Sensor de caudal")
     valvulaBocatoma = DeviceType.objects.create(name="Válvula de bocatoma")
-    valvulaPredios = DeviceType.objects.create(name="Válvula de predios")
     TuberiaPredios = DeviceType.objects.create(name="Tubería de 4\"")
     TuberiaBocatoma = DeviceType.objects.create(name="Tubería de 48\"")
     sensorTemperatura = DeviceType.objects.create(name="Sensor de temperatura")
-    return sensorCaudal, sensorTemperatura, valvulaBocatoma, valvulaPredios, TuberiaBocatoma, TuberiaPredios
+    valvulaPredios = DeviceType.objects.filter(device_id=VALVE_4_ID).first()
+    return sensorHumedad, sensorCaudal, sensorTemperatura, valvulaBocatoma, TuberiaBocatoma, TuberiaPredios, valvulaPredios
 
 @pytest.fixture
 def person_type(db):
@@ -91,25 +92,34 @@ def inactive_user_plot(normal_user):
 
 @pytest.fixture
 def user_lot(user_plot, crop_type, soil_type):
-    return Lot.objects.create(
-        is_activate=True,
+    lote1 = Lot.objects.create(
         plot=user_plot,
         crop_type=crop_type,
         soil_type=soil_type,
         crop_name="Maíz Híbrido",
         crop_variety="Híbrido 123",
     )
+    lote2 = Lot.objects.create(
+        plot=user_plot,
+        crop_type=crop_type,
+        soil_type=soil_type,
+        crop_name="Maíz cafe",
+        crop_variety="cafe 123",
+    )
+    return lote1, lote2
+
 
 @pytest.fixture
 def iot_device(user_plot,user_lot, device_type):
-    sensorCaudal, sensorTemperatura, valvulaBocatoma, valvulaPredios, TuberiaBocatoma, TuberiaPredios = device_type
+    sensorHumedad, sensorCaudal, sensorTemperatura, valvulaBocatoma, TuberiaBocatoma, TuberiaPredios, valvulaPredios = device_type
+    lote1, lote2 = user_lot
     
     valvula4 = IoTDevice.objects.create(
         device_type=valvulaPredios,
-        name="Tubería de 4\"",
+        name="Válvula de 4\"",
         iot_id=1,
         id_plot=user_plot,
-        id_lot=user_lot,
+        id_lot=lote1,
         is_active=True
     )
     tuberia4 = IoTDevice.objects.create(
@@ -117,7 +127,7 @@ def iot_device(user_plot,user_lot, device_type):
         name="Tubería de 4\"",
         iot_id=2,
         id_plot=user_plot,
-        id_lot=user_lot,
+        id_lot=lote1,
         is_active=True
     )
     sensorDeCaudal = IoTDevice.objects.create(
@@ -125,7 +135,7 @@ def iot_device(user_plot,user_lot, device_type):
         name="Sensor de caudal",
         iot_id=3,
         id_plot=user_plot,
-        id_lot=user_lot,
+        id_lot=lote1,
         is_active=True
     )
     sensorDeTemperatura = IoTDevice.objects.create(
@@ -133,7 +143,7 @@ def iot_device(user_plot,user_lot, device_type):
         name="Sensor de temperatura",
         iot_id=4,
         id_plot=user_plot,
-        id_lot=user_lot,
+        id_lot=lote2,
         is_active=True
     )
     return valvula4, tuberia4, sensorDeCaudal, sensorDeTemperatura
