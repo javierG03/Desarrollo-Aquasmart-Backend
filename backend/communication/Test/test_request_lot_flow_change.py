@@ -25,10 +25,10 @@ def test_user_can_request_flow_change(api_client, normal_user, login_and_validat
     
     payload = {
         "device": iot_device[0].iot_id,
-        "code" : "Temporal",
+        
         "requested_flow": 10.5,
-        "lot": user_lot[0].pk,
-        "observations": "Solicito cambio por temporada seca"
+        "lot": user_lot[0].pk
+        
     }
     print(f"Payload enviado: {payload}")
     
