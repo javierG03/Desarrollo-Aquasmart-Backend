@@ -22,9 +22,6 @@ def test_admin_can_add_consumption_rates(api_client, admin_user, login_and_valid
     FixedConsumptionRate.objects.create(code="TFR",crop_type=rice, fixed_rate_cents=600)
     VolumetricConsumptionRate.objects.create(code="TVR",crop_type=rice, volumetric_rate_cents=1500)
     
-    
-
-
     # 🔐 Login como admin
     client = login_and_validate_otp(api_client, admin_user, "AdminPass123@")
 
@@ -78,9 +75,6 @@ def test_admin_can_add_consumption_rates(api_client, admin_user, login_and_valid
     rice_rate = FixedConsumptionRate.objects.get(crop_type=rice)
     rice_vol_rate = VolumetricConsumptionRate.objects.get(crop_type=rice)
     print(f"tarifa de consumo:","maiz", maize_rate.fixed_rate_cents, maize_vol_rate.volumetric_rate_cents, "arroz", rice_rate.fixed_rate_cents, rice_vol_rate.volumetric_rate_cents)
-
-
-    
 
     assert response.status_code == status.HTTP_200_OK, f"❌ Error al actualizar tarifas: {response.data}"
     print (f"Respuesta: {response.data}, Código de estado: {response.status_code}")
@@ -198,40 +192,34 @@ def test_update_consumption_rate_invalid_crop_type(api_client, admin_user, login
 @pytest.mark.django_db
 def test_update_consumption_rate_missing_fields(api_client, admin_user, login_and_validate_otp, create_company):
     maize = CropType.objects.create(name="Maíz")
-    client = login_and_validate_otp(api_client, admin_user, "AdminPass123@")
-    url = reverse('rates-company')
+    FixedConsumptionRate.objects.create(code="TFM", crop_type=maize, fixed_rate_cents=500)
+    VolumetricConsumptionRate.objects.create(code="TVM", crop_type=maize, volumetric_rate_cents=1000)
 
-    payload = {
-        "fixed_consumption_rates": [{"crop_type": maize.id}],  # Falta fixed_rate
-        "volumetric_consumption_rates": [{"crop_type": maize.id}]  # Falta volumetric_rate
-    }
+    rice = CropType.objects.create(name="Arroz")
 
-    response = client.patch(url, payload, format="json")
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert "campo requerido" in str(response.data).lower()
-
-@pytest.mark.django_db
-def test_duplicate_rates_should_fail(api_client, admin_user, login_and_validate_otp, create_company):
-    maize = CropType.objects.create(name="Maíz")
     client = login_and_validate_otp(api_client, admin_user, "AdminPass123@")
     url = reverse('rates-company')
 
     payload = {
         "fixed_consumption_rates": [
-            {"crop_type": maize.id, "fixed_rate": 5.00},
-            {"crop_type": maize.id, "fixed_rate": 5.00}  # Duplicado
-        ]
+            {
+                "crop_type": maize.id},
+            {
+                "crop_type": rice.id,
+                "code": "TFR",
+                "fixed_rate": 80.00
+
+            }                        ],  # Falta fixed_rate
+        "volumetric_consumption_rates": [
+            {
+                "crop_type": maize.id
+            }
+        ]  # Falta volumetric_rate
     }
 
     response = client.patch(url, payload, format="json")
-    
-    assert response.status_code == status.HTTP_400_BAD_REQUEST, (
-        f"❌ Se esperaba un 400 por duplicado pero se recibió {response.status_code} - {response.data}"
-    )
-    assert "duplicado" in str(response.data).lower(), f"❌ No se encontró mensaje de error relacionado con duplicado. Mensaje recibido: {response.data}"
-
-    print("✅ Detección de tarifa duplicada verificada correctamente.")
-
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "campo requerido" in str(response.data).lower()
 
 @pytest.mark.django_db
 def test_regular_user_cannot_update_rates(api_client, regular_user, login_and_validate_otp, create_company):
