@@ -40,7 +40,7 @@ def person_type(db):
 @pytest.fixture
 def admin_user(db, person_type):
     user = CustomUser.objects.create_superuser(
-        document="admin123",
+        document="01234567890",
         first_name="Admin",
         last_name="User",
         email="admin@example.com",
@@ -55,7 +55,7 @@ def admin_user(db, person_type):
 def normal_user(db, person_type):
     """Crea un usuario normal (no administrador)"""
     user = CustomUser.objects.create_user(
-        document="user123",
+        document="123456789012",
         first_name="Regular",
         last_name="User",
         email="user@example.com",
@@ -70,6 +70,7 @@ def normal_user(db, person_type):
 
 @pytest.fixture
 def user_plot(normal_user):
+    
     return Plot.objects.create(
         plot_name="Predio Prueba",
         owner=normal_user,
@@ -79,8 +80,10 @@ def user_plot(normal_user):
         plot_extension=5.0
     )
 
+
 @pytest.fixture
 def inactive_user_plot(normal_user):
+    
     return Plot.objects.create(
         plot_name="Predio Inactivo",
         owner=normal_user,
@@ -89,6 +92,7 @@ def inactive_user_plot(normal_user):
         longitud=2.2,
         plot_extension=5.0
     )
+
 
 @pytest.fixture
 def user_lot(user_plot, crop_type, soil_type):
@@ -106,6 +110,7 @@ def user_lot(user_plot, crop_type, soil_type):
         crop_name="Maíz cafe",
         crop_variety="cafe 123",
     )
+    
     return lote1, lote2
 
 
