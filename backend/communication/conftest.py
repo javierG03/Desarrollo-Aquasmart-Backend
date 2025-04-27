@@ -102,6 +102,7 @@ def user_lot(user_plot, crop_type, soil_type):
         soil_type=soil_type,
         crop_name="Maíz Híbrido",
         crop_variety="Híbrido 123",
+        is_activate=True
     )
     lote2 = Lot.objects.create(
         plot=user_plot,
@@ -109,6 +110,7 @@ def user_lot(user_plot, crop_type, soil_type):
         soil_type=soil_type,
         crop_name="Maíz cafe",
         crop_variety="cafe 123",
+        is_activate=True
     )
     
     return lote1, lote2
@@ -125,7 +127,9 @@ def iot_device(user_plot,user_lot, device_type):
         iot_id=1,
         id_plot=user_plot,
         id_lot=lote1,
-        is_active=True
+        is_active=True,
+        actual_flow=4.0
+
     )
     tuberia4 = IoTDevice.objects.create(
         device_type=TuberiaPredios,
