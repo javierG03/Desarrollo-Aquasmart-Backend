@@ -112,14 +112,23 @@ def user_lot(user_plot, crop_type, soil_type):
         crop_variety="cafe 123",
         is_activate=True
     )
+
+    lote3 = Lot.objects.create(
+        plot=user_plot,
+        crop_type=crop_type,
+        soil_type=soil_type,
+        crop_name="Maíz cafe",
+        crop_variety="cafe 123",
+        is_activate=False
+    )
     
-    return lote1, lote2
+    return lote1, lote2, lote3
 
 
 @pytest.fixture
 def iot_device(user_plot,user_lot, device_type):
     sensorHumedad, sensorCaudal, sensorTemperatura, valvulaBocatoma, TuberiaBocatoma, TuberiaPredios, valvulaPredios = device_type
-    lote1, lote2 = user_lot
+    lote1, lote2, lote3 = user_lot
     
     valvula4 = IoTDevice.objects.create(
         device_type=valvulaPredios,
@@ -147,15 +156,17 @@ def iot_device(user_plot,user_lot, device_type):
         id_lot=lote1,
         is_active=True
     )
-    sensorDeTemperatura = IoTDevice.objects.create(
-        device_type=sensorTemperatura,
-        name="Sensor de temperatura",
+
+    valvula4Lote3 = IoTDevice.objects.create(
+        device_type=valvulaPredios,
+        name="Valvula 4\"",
         iot_id=4,
         id_plot=user_plot,
-        id_lot=lote2,
-        is_active=True
+        id_lot=lote3,
+        is_active=True,
+        actual_flow=4.0
     )
-    return valvula4, tuberia4, sensorDeCaudal, sensorDeTemperatura
+    return valvula4, tuberia4, sensorDeCaudal, valvula4Lote3
 
 @pytest.fixture
 def login_and_validate_otp():
