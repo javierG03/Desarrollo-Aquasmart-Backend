@@ -23,7 +23,7 @@ def test_user_can_request_flow_activation(api_client, normal_user, login_and_val
     client = login_and_validate_otp(api_client, normal_user, "UserPass123@")
 
     # Obtener el lote y la válvula del conftest
-    lote, _ = user_lot  # Primer lote de los creados en fixture
+    lote, _, _ = user_lot  
     valvula4, _, _, _ = iot_device  # Válvula de 4" creada en fixture
     
     # Asegurar que la válvula tiene caudal en 0 (cancelado)
@@ -69,7 +69,7 @@ def test_cannot_request_flow_activation_for_active_flow(api_client, normal_user,
     client = login_and_validate_otp(api_client, normal_user, "UserPass123@")
 
     # Obtener el lote y la válvula del conftest
-    lote, _ = user_lot
+    lote, _, _ = user_lot
     valvula4, _, _, _ = iot_device
     
     # Asegurar que la válvula tiene caudal activo (mayor que 0)
@@ -113,7 +113,7 @@ def test_cannot_request_flow_activation_with_pending_request(api_client, normal_
     client = login_and_validate_otp(api_client, normal_user, "UserPass123@")
 
     # Obtener el lote y la válvula del conftest
-    lote, _ = user_lot
+    lote, _, _  = user_lot
     valvula4, _, _, _ = iot_device
     
     # Asegurar que la válvula tiene caudal en 0 (cancelado)
@@ -165,7 +165,7 @@ def test_validate_flow_range(api_client, normal_user, login_and_validate_otp, us
     client = login_and_validate_otp(api_client, normal_user, "UserPass123@")
 
     # Obtener el lote y la válvula del conftest
-    lote, _ = user_lot
+    lote, _, _ = user_lot
     valvula4, _, _, _ = iot_device
     
     # Asegurar que la válvula tiene caudal en 0 (cancelado)
@@ -288,7 +288,7 @@ def test_admin_can_approve_flow_activation_request(api_client, admin_user, norma
     ✅ RF63: Verificar que un administrador pueda aprobar una solicitud de activación de caudal.
     """
     # Obtener el lote y la válvula del conftest
-    lote, _ = user_lot
+    lote, _, _  = user_lot
     valvula4, _, _, _ = iot_device
     
     # Asegurar que la válvula tiene caudal en 0 (cancelado)
@@ -341,7 +341,7 @@ def test_admin_can_reject_flow_activation_request(api_client, admin_user, normal
     ✅ RF63: Verificar que un administrador pueda rechazar una solicitud de activación de caudal.
     """
     # Obtener el lote y la válvula del conftest
-    lote, _ = user_lot
+    lote, _, _ = user_lot
     valvula4, _, _, _ = iot_device
     
     # Asegurar que la válvula tiene caudal en 0 (cancelado)
@@ -412,7 +412,7 @@ def test_other_user_cannot_request_flow_activation(api_client, admin_user, norma
     client = login_and_validate_otp(api_client, other_user, "OtroPass123@")
     
     # Obtener el lote del primer usuario
-    lote, _ = user_lot
+    lote, _, _ = user_lot
     
     # 🔹 Preparar el payload para la solicitud
     url = reverse("flow-activation-request")
@@ -457,7 +457,7 @@ def test_required_fields_validation(api_client, normal_user, login_and_validate_
     client = login_and_validate_otp(api_client, normal_user, "UserPass123@")
 
     # Obtener el lote y la válvula del conftest
-    lote, _ = user_lot
+    lote, _, _ = user_lot
     valvula4, _, _, _ = iot_device
     
     # Asegurar que la válvula tiene caudal en 0 (cancelado)
@@ -520,7 +520,7 @@ def test_non_admin_cannot_approve_request(api_client, normal_user, login_and_val
     ✅ RF63: Verificar que un usuario normal no pueda aprobar o rechazar solicitudes.
     """
     # Obtener el lote y la válvula del conftest
-    lote, _ = user_lot
+    lote, _, _ = user_lot
     valvula4, _, _, _ = iot_device
     
     # Asegurar que la válvula tiene caudal en 0 (cancelado)
