@@ -2,7 +2,7 @@ from django.db import models
 from communication.models import BaseRequestReport
 from iot.models import IoTDevice, VALVE_4_ID
 from plots_lots.models import Plot
-
+from communication.utils import generate_unique_id
 
 class TypeReport(models.TextChoices):
     WATER_SUPPLY_FAILURE = 'Reporte de Fallo en el Suministro del Agua', 'Reporte de Fallo en el Suministro del Agua'
@@ -14,6 +14,12 @@ class FailureReport(BaseRequestReport):
     plot = models.ForeignKey(Plot, on_delete=models.CASCADE, null=True, blank=True, verbose_name="Predio", help_text="Predio al que se le realiza el reporte")
     failure_type = models.CharField(max_length=50, choices=TypeReport.choices, default=TypeReport.WATER_SUPPLY_FAILURE, verbose_name="Tipo de reporte", help_text="Tipo de reporte (suministro de agua o aplicativo)")
 
+    def save(self, *args, **kwargs):
+        
+        if not self.id:
+            self.id = generate_unique_id(FailureReport,"20")
+        super().save(*args, **kwargs)
+        
     def _validate_owner(self):
         ''' Valida que el usuario solicitante sea dueño del predio '''
         self._validate_owner()

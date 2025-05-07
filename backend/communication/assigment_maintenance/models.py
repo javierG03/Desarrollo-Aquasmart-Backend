@@ -2,7 +2,7 @@ from django.db import models
 from django.conf import settings
 from communication.requests.models import FlowRequest
 from communication.reports.models import FailureReport
-
+from communication.utils import generate_unique_id
 
 class Assignment(models.Model):
     """Modelo para almacenar asignaciones de solicitudes y reportes de fallos"""
@@ -17,11 +17,17 @@ class Assignment(models.Model):
 
     class Meta:
         verbose_name = "Asignación de solicitud/reporte"
-        verbose_name_plural = "Asignaciones de solicitudes/reportes"
+        verbose_name_plural = "Asignaciones de solicitudes/reportes"         
+     
+    def save(self, *args, **kwargs):
+        
+        if not self.id:
+            self.id = generate_unique_id(Assignment,"30")
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Asignación de {self.assigned_by} a {self.assigned_to} ({self.assignment_date})"
-
+    
 
 class MaintenanceReport(models.Model):
     """Modelo para almacenar informes de mantenimiento"""
@@ -38,6 +44,10 @@ class MaintenanceReport(models.Model):
     class Meta:
         verbose_name = "Informe de mantenimiento"
         verbose_name_plural = "Informes de mantenimiento"
-
+    def save(self, *args, **kwargs):
+        
+        if not self.id:
+            self.id = generate_unique_id(MaintenanceReport,"40")
+        super().save(*args, **kwargs)
     def __str__(self):
         return f"Informe de mantenimiento de {self.assignment.assigned_to} ({self.intervention_date})"
