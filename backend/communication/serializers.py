@@ -1,15 +1,15 @@
 from django.utils import timezone
 from rest_framework import serializers
-from .request.models import BaseFlowRequest
+from .requests.models import BaseRequestReport
 from iot.models import IoTDevice, VALVE_4_ID
 
-class BaseFlowRequestSerializer(serializers.ModelSerializer):
+class BaseRequestReportSerializer(serializers.ModelSerializer):
     """Serializer base para solicitudes de caudal."""
 
     class Meta:
-        model = BaseFlowRequest
+        model = BaseRequestReport
         fields = '__all__'
-        read_only_fields = 'status'
+        read_only_fields = 'status', 'result'
         extra_kwargs = {
         'lot': {'required': True, 'allow_null': False}
     }
@@ -61,16 +61,16 @@ class BaseFlowRequestSerializer(serializers.ModelSerializer):
                 {"status": "No se puede cambiar el estado una vez revisada la solicitud."}
             )
 
-        validated_data['reviewed_at'] = timezone.now()
+        validated_data['finalized_at'] = timezone.now()
 
 
 class BaseRequestStatusSerializer(serializers.ModelSerializer):
     """Serializer base para actualizar el estado de solicitudes de caudal."""
 
     class Meta:
-        model = BaseFlowRequest
-        fields = ['status', 'reviewed_at']
-        read_only_fields = ['reviewed_at']
+        model = BaseRequestReport
+        fields = ['status', 'finalized_at']
+        read_only_fields = ['finalized_at']
 
     def _validate_lot(self):
         ''' Validaciones del lote en la solicitud '''
@@ -115,6 +115,6 @@ class BaseRequestStatusSerializer(serializers.ModelSerializer):
                 {"status": "No se puede cambiar el estado una vez revisada la solicitud."}
             )
 
-        validated_data['reviewed_at'] = timezone.now()
+        validated_data['finalized_at'] = timezone.now()
 
         return super().update(instance, validated_data)

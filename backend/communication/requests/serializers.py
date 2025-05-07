@@ -1,15 +1,15 @@
 from rest_framework import serializers
 from .models import FlowChangeRequest, FlowCancelRequest, FlowActivationRequest
 from iot.models import IoTDevice, VALVE_4_ID
-from ..serializers import BaseFlowRequestSerializer, BaseRequestStatusSerializer
+from ..serializers import BaseRequestReportSerializer, BaseRequestStatusSerializer
 
-class FlowChangeRequestSerializer(BaseFlowRequestSerializer):
+class FlowChangeRequestSerializer(BaseRequestReportSerializer):
     """Serializer para crear solicitudes de cambio de caudal."""
 
-    class Meta (BaseFlowRequestSerializer.Meta):
+    class Meta (BaseRequestReportSerializer.Meta):
         model = FlowChangeRequest
         fields = '__all__'
-        read_only_fields = ['user', 'device', 'plot', 'status', 'created_at', 'reviewed_at']
+        read_only_fields = ['user', 'device', 'plot', 'status', 'created_at', 'finalized_at']
 
     def validate_lot(self, value):
         value = super().validate_lot(value)
@@ -77,12 +77,12 @@ class FlowChangeRequestStatusSerializer(BaseRequestStatusSerializer):
         model = FlowChangeRequest
 
 
-class FlowCancelRequestSerializer(BaseFlowRequestSerializer):
+class FlowCancelRequestSerializer(BaseRequestReportSerializer):
     """Serializer para crear solicitudes de cancelación de caudal."""
-    class Meta(BaseFlowRequestSerializer.Meta):
+    class Meta(BaseRequestReportSerializer.Meta):
         model = FlowCancelRequest
         fields = '__all__'
-        read_only_fields = ['user', 'plot', 'status', 'created_at', 'reviewed_at']
+        read_only_fields = ['user', 'plot', 'status', 'created_at', 'finalized_at']
 
     # Validar observaciones
     def validate_observations(self, value):
@@ -158,13 +158,13 @@ class FlowCancelRequestStatusSerializer(BaseRequestStatusSerializer):
         model = FlowCancelRequest
 
 
-class FlowActivationRequestSerializer(BaseFlowRequestSerializer):
+class FlowActivationRequestSerializer(BaseRequestReportSerializer):
     """Serializer para crear solicitudes de activación de caudal."""
 
-    class Meta(BaseFlowRequestSerializer.Meta):
+    class Meta(BaseRequestReportSerializer.Meta):
         model = FlowActivationRequest
         fields = '__all__'
-        read_only_fields = ['user', 'plot', 'status', 'created_at', 'reviewed_at']
+        read_only_fields = ['user', 'plot', 'status', 'created_at', 'finalized_at']
 
     def _validate_pending_activation_request(self, lot):
         ''' Valida que no existan solicitudes de activación de caudal pendientes para el lote. '''
@@ -209,4 +209,4 @@ class AllFlowRequestsSerializer(serializers.Serializer):
     status = serializers.CharField()
     type = serializers.CharField()
     created_at = serializers.DateTimeField()
-    reviewed_at = serializers.DateTimeField()
+    finalized_at = serializers.DateTimeField()
