@@ -19,12 +19,25 @@ class FailureReportAdmin(admin.ModelAdmin):
 
 @admin.register(Assignment)
 class AssignmentAdmin(admin.ModelAdmin):
+    readonly_fields = ('id',)  # Solo visible en la vista de edición
+    exclude = ('id',)  # No mostrarlo al crear (formulario 'add')
     list_display = ('id', 'flow_request', 'failure_report', 'assigned_by', 'assigned_to', 'assignment_date', 'reassigned')
     search_fields = ('id', 'assigned_by__document', 'assigned_to__document')
     list_filter = ('assignment_date', 'reassigned')
+    
+    def get_readonly_fields(self, request, obj=None):
+        if obj:  # Ya existe, entonces muestra el ID
+            return ('id',)
+        return ()
 
 @admin.register(MaintenanceReport)
 class MaintenanceReportAdmin(admin.ModelAdmin):
+    readonly_fields = ('id',)  # Solo visible en la vista de edición
+    exclude = ('id',)  # No mostrarlo al crear (formulario 'add')
     list_display = ('id', 'assignment', 'intervention_date', 'status', 'created_at', 'is_approved')
     search_fields = ('id', 'assignment__id')
     list_filter = ('status', 'created_at', 'is_approved')
+    def get_readonly_fields(self, request, obj=None):
+        if obj:  # Ya existe, entonces muestra el ID
+            return ('id',)
+        return ()
