@@ -44,10 +44,27 @@ class MaintenanceReport(models.Model):
     class Meta:
         verbose_name = "Informe de mantenimiento"
         verbose_name_plural = "Informes de mantenimiento"
-    def save(self, *args, **kwargs):
-        
-        if not self.id:
-            self.id = generate_unique_id(MaintenanceReport,"40")
-        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"Informe de mantenimiento de {self.assignment.assigned_to} ({self.intervention_date})"
+
+
+    def _finalize_requests_reports(self):
+        ''' Finalizar la solicitud o el reporte ligado al informe después de aprobado '''
+        if self.is_approved == True:
+            flow_request = self.assignment.flow_request
+            failure_report = self.assignment.failure_report
+            if flow_request:
+                flow_request.is_approved = True
+                flow_request.save()
+            elif failure_report:
+                failure_report.status = 'Finalizado'
+                failure_report.save()
+
+    def save(self, *args, **kwargs):
+        if not self.id:
+            self.id = generate_unique_id(MaintenanceReport,"40")
+
+        self._finalize_requests_reports()
+
+        super().save(*args, **kwargs)

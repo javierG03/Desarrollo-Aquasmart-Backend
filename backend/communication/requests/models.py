@@ -138,6 +138,7 @@ class FlowRequest(BaseRequestReport):
             if self.is_approved == True:
                 device.actual_flow = 0 # Desactivar el caudal del lote
                 device.id_lot.is_activate = False # Desactivar el lote
+                device.save()
                 device.id_lot.save()
                 self.status = 'Finalizado'
 
