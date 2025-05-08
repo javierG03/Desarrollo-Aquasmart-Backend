@@ -1,76 +1,65 @@
-from communication.serializers import BaseFlowRequestSerializer, BaseRequestStatusSerializer
-from .models import WaterSupplyFailureReport
 from rest_framework import serializers
+from .models import FailureReport
 
-class WaterSupplyFailureReportSerializer(BaseFlowRequestSerializer):
-    """Serializer para crear reportes de fallos en suministro de agua."""
+class FailureReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FailureReport
+        fields = [
+            'id',
+            'type',
+            'created_by',
+            'lot',
+            'plot',  # opcional
+            'failure_type',
+            'status',
+            'observations',
+            'created_at',
+            'finalized_at',
+        ]
+        read_only_fields = ['id', 'status', 'created_at', 'finalized_at','created_by']
+        
 
-    class Meta(BaseFlowRequestSerializer.Meta):
-        model = WaterSupplyFailureReport
-        fields = '__all__'
-        read_only_fields = ['user', 'status', 'created_at', 'reviewed_at']
-        extra_kwargs = {'lot': {'required': False, 'allow_null': True}}
-
-    def validate_observations(self, value):
-        if not value or len(value) > 200:
-            raise serializers.ValidationError("Las observaciones son obligatorias y no pueden exceder los 200 caracteres.")
-        return value
-
-    def _validate_pending_report_lot(self, lot):
-        ''' Valida que no existan solicitudes pendientes de cancelación temporal para el mismo lote. '''
-        instance_pk = getattr(self.instance, 'pk', None)
-        if WaterSupplyFailureReport.objects.filter(lot=lot, status='pendiente').exclude(pk=instance_pk).exists():
-            raise serializers.ValidationError(
-                {"error": "Reporte pendiente detectado en el lote. Verifique sus reportes pendientes o en proceso."}
-            )
-
-    def _validate_pending_report_plot(self, plot):
-        ''' Valida que no existan solicitudes pendientes de cancelación temporal para el mismo lote. '''
-        instance_pk = getattr(self.instance, 'pk', None)
-        if WaterSupplyFailureReport.objects.filter(lot=None, plot=plot, status='pendiente').exclude(pk=instance_pk).exists():
-            raise serializers.ValidationError(
-                {"error": "Reporte pendiente detectado en el predio. Verifique sus reportes pendientes o en proceso."}
-            )
-
-    def validate(self, attrs):
+    def validate(self, data):
         user = self.context['request'].user
-        lot = attrs.get('lot')
-        plot = attrs.get('plot')
+        lot = data.get('lot')
+        plot = data.get('plot')
+        failure_type = data.get('failure_type')
 
-        # Validar que el usuario (solicitante) sea dueño del predio
-        if lot:
-            if user != lot.plot.owner:
-                raise serializers.ValidationError(
-                    {"owner": "Solo el dueño del predio puede realizar una solicitud para el caudal de este lote."}
-                )
-        elif plot:
-            if user != plot.owner:
-                raise serializers.ValidationError(
-                    {"owner": "Solo el dueño del predio puede realizar una solicitud para el caudal de este lote."}
-                )
+        if failure_type == 'Reporte de Fallo en el Suministro del Agua':
+         if not lot and not plot:
+             raise serializers.ValidationError("Debe proporcionar al menos un lote o un predio para este tipo de reporte.")
 
+        # Validación si solo se envía plot
+         if plot and not lot:
+                if plot.owner != user:
+                   raise serializers.ValidationError("Solo el dueño del predio puede hacer el reporte para este predio.")
+                if not plot.is_activate:
+                    raise serializers.ValidationError("No se puede reportar un predio inhabilitado.")
+                data['lot'] = None  # dejar explícito que no hay lote
 
-        # No se permite que ambos estén vacíos
-        if not lot and not plot:
-            raise serializers.ValidationError(
-                {"error": "Se debe especificar un lote o un predio para el reporte."}
-            )
+        # Validación si solo se envía lot
+         elif lot and not plot:
+            if not hasattr(lot, 'plot') or not lot.plot:
+                raise serializers.ValidationError("El lote no está asociado a ningún predio.")
+            if lot.plot.owner != user:
+                raise serializers.ValidationError("Solo el dueño del predio puede hacer el reporte para este lote.")
+            if not lot.plot.is_activate:
+                raise serializers.ValidationError("No se puede reportar un lote de un predio inhabilitado.")
+            data['plot'] = lot.plot  # autocompletar plot
 
-        # No se permite que ambos estén presentes
-        if lot and plot:
-            raise serializers.ValidationError(
-                {"error": "Solo se debe especificar un lote o un predio, no ambos."}
-            )
+        # Validación si se envían ambos
+         elif lot and plot:
+            if lot.plot != plot:
+                raise serializers.ValidationError("El lote no pertenece al predio especificado.")
+            if plot.owner != user:
+                raise serializers.ValidationError("Solo el dueño del predio puede hacer el reporte.")
+            if not plot.is_activate:
+                raise serializers.ValidationError("No se puede reportar un predio inhabilitado.")
 
-        if lot:
-            self._validate_pending_report_lot(lot)
-        if plot:
-            self._validate_pending_report_plot(plot)
-
-        return attrs
-
-class WaterSupplyFailureReportStatusSerializer(BaseRequestStatusSerializer):
-    """Serializer para actualizar el estado de un reporte de fallo de suministro de agua."""
-
-    class Meta(BaseRequestStatusSerializer.Meta):
-        model = WaterSupplyFailureReport
+        return data   
+            
+    def create(self, validated_data):
+        validated_data['created_by'] = self.context['request'].user
+        instance = FailureReport(**validated_data)
+        instance.save()  # El .save() ya llama a full_clean y asigna el ID
+        return instance
