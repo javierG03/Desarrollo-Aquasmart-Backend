@@ -38,6 +38,16 @@ class FailureReport(BaseRequestReport):
         if lot_pending.exists() or plot_pending.exists():
             raise ValueError("No se puede crear el reporte porque ya existe uno pendiente para el predio o el lote seleccionado.")
 
+    def _validate_owner(self):
+        """Valida que el usuario creador sea dueño del predio o del lote."""
+        if self.failure_type == TypeReport.WATER_SUPPLY_FAILURE:
+         if self.lot and self.created_by != self.lot.plot.owner:
+            raise ValueError("Solo el dueño del predio puede crear un reporte para este lote.")
+         if self.plot and self.created_by != self.plot.owner:
+            raise ValueError("Solo el dueño del predio puede crear un reporte para este predio.")
+
+
+
     def _assign_plot_from_lot(self):
         ''' Asigna el predio automáticamente desde el lote '''
         if self.lot and hasattr(self.lot, 'plot'):
@@ -45,14 +55,16 @@ class FailureReport(BaseRequestReport):
 
     def clean(self):
         super().clean()
-        self._validate_plot_is_activate()
-        self._validate_pending_report_plot_lot()
+         # Si el tipo de reporte es de suministro, validaciones completas
+        if self.failure_type == TypeReport.WATER_SUPPLY_FAILURE:
+         self._validate_plot_is_activate()
+         self._validate_pending_report_plot_lot()
 
     def save(self, *args, **kwargs):
-        self.full_clean()
         # Generar un ID único para el reporte de fallo
         if not self.id:
             self.id = generate_unique_id(FailureReport,"20")
+        self.full_clean()
 
         self.type = 'Reporte'
 
