@@ -3,6 +3,7 @@ from communication.models import BaseRequestReport
 from iot.models import IoTDevice, VALVE_4_ID
 from plots_lots.models import Plot
 from communication.utils import generate_unique_id
+from communication.notifications import send_failure_report_created_notification, send_failure_report_status_notification
 
 class TypeReport(models.TextChoices):
     WATER_SUPPLY_FAILURE = 'Reporte de Fallo en el Suministro del Agua', 'Reporte de Fallo en el Suministro del Agua'
@@ -17,6 +18,9 @@ class FailureReport(BaseRequestReport):
     class Meta:
         verbose_name = "Reporte de Fallo"
         verbose_name_plural = "Reportes de Fallo"
+
+    def __str__(self):
+        return f"{self.created_by.get_full_name()} - {self.get_failure_type_display()} ({self.status})"
 
     def _validate_plot_is_activate(self):
         ''' Valida que el predio en cuya solicitud está presente, esté habilitado '''
@@ -49,6 +53,13 @@ class FailureReport(BaseRequestReport):
         self._validate_pending_report_plot_lot()
 
     def save(self, *args, **kwargs):
+        is_new = not self.pk
+        old_status = None
+        
+        if not is_new:
+            old_report = FailureReport.objects.get(pk=self.pk)
+            old_status = old_report.status
+
         if not self.id:
             self.id = generate_unique_id(FailureReport, "20")
 
@@ -57,3 +68,12 @@ class FailureReport(BaseRequestReport):
 
         self.full_clean()
         super().save(*args, **kwargs)
+        
+        # Enviar notificaciones
+        try:
+            if is_new:
+                send_failure_report_created_notification(self)
+            elif old_status != self.status:
+                send_failure_report_status_notification(self)
+        except Exception as e:
+            print(f"Error al enviar notificación: {e}")
