@@ -20,7 +20,8 @@ class AssignmentSerializer(serializers.ModelSerializer):
             'assignment_date',
             'reassigned',
         ]
-        read_only_fields = ['assignment_date']
+        read_only_fields = ['id', 'assigned_by', 'assignment_date']
+
         
     def _validate_exclusive_assignment(self, data):
         flow_request = data.get('flow_request')
@@ -45,18 +46,19 @@ class AssignmentSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Este reporte de fallo ya ha sido asignado a este usuario.")
 
     def _validate_reassignment_logic(self, data):
-        flow_request = data.get('flow_request')
-        failure_report = data.get('failure_report')
-        reassigned = data.get('reassigned', False)
+     flow_request = data.get('flow_request')
+     failure_report = data.get('failure_report')
+     reassigned = data.get('reassigned', False)
 
-        queryset = Assignment.objects.all()
-        if self.instance:
-            qs =  queryset.exclude(id=self.instance.id)
+      # Asegurar que `qs` siempre esté definido
+     queryset = Assignment.objects.all()
+     qs = queryset.exclude(id=self.instance.id) if self.instance else queryset
 
-        if flow_request and qs.filter(flow_request=flow_request).exists() and not reassigned:
-            raise serializers.ValidationError("Esta solicitud ya fue asignada previamente. Debe marcar como 'reassigned'.")
-        if failure_report and qs.filter(failure_report=failure_report).exists() and not reassigned:
-            raise serializers.ValidationError("Este reporte ya fue asignado previamente. Debe marcar como 'reassigned'.")
+     if flow_request and qs.filter(flow_request=flow_request).exists() and not reassigned:
+        raise serializers.ValidationError("Esta solicitud ya fue asignada previamente. Debe marcar como 'reassigned'.")
+
+     if failure_report and qs.filter(failure_report=failure_report).exists() and not reassigned:
+        raise serializers.ValidationError("Este reporte ya fue asignado previamente. Debe marcar como 'reassigned'.")
 
     def _validate_assigned_user_role(self, data):
         assigned_to = data.get('assigned_to')
