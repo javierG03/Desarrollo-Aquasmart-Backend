@@ -16,28 +16,29 @@ class FailureReportSerializer(serializers.ModelSerializer):
             'created_at',
             'finalized_at',
         ]
-        read_only_fields = ['id', 'status', 'created_at', 'finalized_at']
+        read_only_fields = ['id', 'status', 'created_at', 'finalized_at','created_by']
         
 
     def validate(self, data):
         user = self.context['request'].user
         lot = data.get('lot')
         plot = data.get('plot')
-        
-        # Verificar si el lote está activo
-        if lot and lot.is_activate is not True:
-            raise serializers.ValidationError("El lote está inhabilitado.")      
+        failure_type = data.get('failure_type')
+
+        if failure_type == 'Reporte de Fallo en el Suministro del Agua':
+         if not lot and not plot:
+             raise serializers.ValidationError("Debe proporcionar al menos un lote o un predio para este tipo de reporte.")
 
         # Validación si solo se envía plot
-        if plot and not lot:
-            if plot.owner != user:
-                raise serializers.ValidationError("Solo el dueño del predio puede hacer el reporte para este predio.")
-            if not plot.is_activate:
-                raise serializers.ValidationError("No se puede reportar un predio inhabilitado.")
-            data['lot'] = None  # dejar explícito que no hay lote
+         if plot and not lot:
+                if plot.owner != user:
+                   raise serializers.ValidationError("Solo el dueño del predio puede hacer el reporte para este predio.")
+                if not plot.is_activate:
+                    raise serializers.ValidationError("No se puede reportar un predio inhabilitado.")
+                data['lot'] = None  # dejar explícito que no hay lote
 
         # Validación si solo se envía lot
-        elif lot and not plot:
+         elif lot and not plot:
             if not hasattr(lot, 'plot') or not lot.plot:
                 raise serializers.ValidationError("El lote no está asociado a ningún predio.")
             if lot.plot.owner != user:
@@ -47,7 +48,7 @@ class FailureReportSerializer(serializers.ModelSerializer):
             data['plot'] = lot.plot  # autocompletar plot
 
         # Validación si se envían ambos
-        elif lot and plot:
+         elif lot and plot:
             if lot.plot != plot:
                 raise serializers.ValidationError("El lote no pertenece al predio especificado.")
             if plot.owner != user:
@@ -55,14 +56,10 @@ class FailureReportSerializer(serializers.ModelSerializer):
             if not plot.is_activate:
                 raise serializers.ValidationError("No se puede reportar un predio inhabilitado.")
 
-        else:
-            raise serializers.ValidationError("Debe proporcionar al menos un lote o un predio para realizar el reporte.")
-
-        return data
-
+        return data   
+            
     def create(self, validated_data):
         validated_data['created_by'] = self.context['request'].user
         instance = FailureReport(**validated_data)
-        instance.full_clean()
-        instance.save()
+        instance.save()  # El .save() ya llama a full_clean y asigna el ID
         return instance
