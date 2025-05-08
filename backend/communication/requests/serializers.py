@@ -1,212 +1,113 @@
 from rest_framework import serializers
-from .models import FlowChangeRequest, FlowCancelRequest, FlowActivationRequest
+from .models import FlowRequest, FlowRequestType
 from iot.models import IoTDevice, VALVE_4_ID
-from ..serializers import BaseRequestReportSerializer, BaseRequestStatusSerializer
 
-class FlowChangeRequestSerializer(BaseRequestReportSerializer):
-    """Serializer para crear solicitudes de cambio de caudal."""
-
-    class Meta (BaseRequestReportSerializer.Meta):
-        model = FlowChangeRequest
-        fields = '__all__'
-        read_only_fields = ['user', 'device', 'plot', 'status', 'created_at', 'finalized_at']
-
-    def validate_lot(self, value):
-        value = super().validate_lot(value)
-        device = IoTDevice.objects.filter(id_lot=value, device_type__device_id=VALVE_4_ID).first()
-        if device.actual_flow == 0 or device.actual_flow == None:
-            raise serializers.ValidationError("El caudal del lote está inactivo. Debes solicitar activarlo primero.")
-        return value
-
-    def _validate_pending_change_request(self, lot):
-        ''' Valida que no existan solicitudes de cambio de caudal pendientes para el lote. '''
-        instance_pk = getattr(self.instance, 'pk', None)
-        if FlowChangeRequest.objects.filter(lot=lot, status='pendiente').exclude(pk=instance_pk).exists():
-            raise serializers.ValidationError(
-                {"error": "El lote elegido ya cuenta con una solicitud de cambio de caudal en curso."}
-            )
-
-    def _validate_pending_cancel_request(self, lot):
-        ''' Valida que no existan solicitudes pendientes de cancelación temporal y definitiva para el mismo lote. '''
-        if FlowCancelRequest.objects.filter(lot=lot, status='pendiente', cancel_type__in=['temporal', 'definitiva']).exists():
-            raise serializers.ValidationError(
-                {"error": "El lote elegido cuenta con una solicitud de cancelación de caudal en curso."}
-            )
-
-    def _validate_requested_flow_uniqueness(self, lot, requested_flow):
-        ''' Valida que el caudal solicitado no sea igual al actual '''
-        device = IoTDevice.objects.filter(id_lot=lot, device_type__device_id=VALVE_4_ID).first()
-        if requested_flow is not None and device and device.actual_flow == requested_flow:
-            raise serializers.ValidationError(
-                {"error": "El caudal solicitado es el mismo que se encuentra disponible. Intente con un valor diferente."}
-            )
+class FlowRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FlowRequest
+        fields = [
+            'id',
+            'type',
+            'created_by',
+            'lot',
+            'flow_request_type',
+            'requested_flow',
+            'is_approved',
+            'requires_delegation',
+            'status',
+            'observations',
+            'created_at',
+            'finalized_at',
+        ]
+        read_only_fields = ['id', 'status', 'created_by', 'created_at', 'finalized_at']
 
     def validate(self, attrs):
-        attrs = super().validate(attrs)
-        lot = attrs.get('lot')
-        requested_flow = attrs.get('requested_flow')
+        user = self.context['request'].user
+        lot = attrs.get('lot') or getattr(self.instance, 'lot', None)
+        flow_request_type = attrs.get('flow_request_type') or getattr(self.instance, 'flow_request_type', None)
+        requested_flow = attrs.get('requested_flow') if 'requested_flow' in attrs else getattr(self.instance, 'requested_flow', None)
 
-        # Ejecutar validadores personalizados solo si los datos están presentes
-        if lot:
-            self._validate_pending_change_request(lot)
-            self._validate_pending_cancel_request(lot)
-            if requested_flow is not None:
-                self._validate_requested_flow_uniqueness(lot, requested_flow)
+        # Validar que se envíe el lote
+        if not lot:
+            raise serializers.ValidationError({"lot": "El lote es obligatorio para la solicitud."})
+
+        # Validar dueño del predio
+        if user != lot.plot.owner:
+            raise serializers.ValidationError({"owner": "Solo el dueño del predio puede realizar una solicitud para el caudal de este lote."})
+
+        # Validar que el lote esté habilitado
+        if lot.is_activate is not True:
+            raise serializers.ValidationError("No se puede realizar solicitud de caudal de un lote inhabilitado.")
+
+        # Validar que el lote tenga válvula 4"
+        device = IoTDevice.objects.filter(id_lot=lot, device_type__device_id=VALVE_4_ID).first()
+        if not device:
+            raise serializers.ValidationError("El lote no tiene una válvula 4\" asociada.")
+
+        # Validar caudal solicitado (solo para cambio y activación)
+        if flow_request_type in {FlowRequestType.FLOW_CHANGE, FlowRequestType.FLOW_ACTIVATION}:
+            if requested_flow is None:
+                raise serializers.ValidationError("El caudal es obligatorio para la solicitud.")
+            if requested_flow < 1 or requested_flow >= 11.7:
+                raise serializers.ValidationError("El caudal solicitado debe estar dentro del rango de 1 L/seg a 11.7 L/seg.")
+
+        # Validar caudal activo para cambio de caudal
+        if flow_request_type == FlowRequestType.FLOW_CHANGE and device.actual_flow in (0, None):
+            raise serializers.ValidationError("El caudal del lote está inactivo. Debes solicitar activarlo primero.")
+
+        # Validar caudal ya activo en activación
+        if flow_request_type == FlowRequestType.FLOW_ACTIVATION and device.actual_flow > 0:
+            raise serializers.ValidationError("El caudal del lote ya está activo. No es necesario solicitar activación.")
+
+        # Validar caudal ya inactivo en cancelación temporal
+        if flow_request_type == FlowRequestType.FLOW_TEMPORARY_CANCEL and device.actual_flow in (0, None):
+            raise serializers.ValidationError("El caudal del lote está inactivo. No es necesario solicitar cancelación temporal.")
+
+        # Validar solicitudes pendientes de cambio de caudal
+        if flow_request_type == FlowRequestType.FLOW_CHANGE:
+            if FlowRequest.objects.filter(lot=lot, flow_request_type=FlowRequestType.FLOW_CHANGE).exclude(status='Finalizado').exclude(pk=getattr(self.instance, 'pk', None)).exists():
+                raise serializers.ValidationError("El lote elegido ya cuenta con una solicitud de cambio de caudal en curso.")
+
+        # Validar solicitudes pendientes de cancelación (temporal o definitiva)
+        if flow_request_type == FlowRequestType.FLOW_CHANGE:
+            if FlowRequest.objects.filter(
+                lot=lot,
+                flow_request_type__in=[FlowRequestType.FLOW_TEMPORARY_CANCEL, FlowRequestType.FLOW_DEFINITIVE_CANCEL]
+            ).exclude(status='Finalizado').exists():
+                raise serializers.ValidationError("El lote elegido cuenta con una solicitud de cancelación de caudal en curso.")
+
+        # Validar caudal solicitado no igual al actual
+        if flow_request_type == FlowRequestType.FLOW_CHANGE and requested_flow is not None and device.actual_flow == requested_flow:
+            raise serializers.ValidationError("El caudal solicitado es el mismo que se encuentra disponible. Intente con un valor diferente.")
+
+        # Validar solicitudes pendientes de cancelación temporal
+        if flow_request_type == FlowRequestType.FLOW_TEMPORARY_CANCEL:
+            if FlowRequest.objects.filter(
+                lot=lot,
+                flow_request_type=FlowRequestType.FLOW_TEMPORARY_CANCEL
+            ).exclude(status='Finalizado').exclude(pk=getattr(self.instance, 'pk', None)).exists():
+                raise serializers.ValidationError("El lote elegido cuenta con una solicitud de cancelación temporal de caudal en curso.")
+
+        # Validar solicitudes pendientes de cancelación definitiva
+        if flow_request_type in {FlowRequestType.FLOW_TEMPORARY_CANCEL, FlowRequestType.FLOW_DEFINITIVE_CANCEL}:
+            if FlowRequest.objects.filter(
+                lot=lot,
+                flow_request_type=FlowRequestType.FLOW_DEFINITIVE_CANCEL
+            ).exclude(status='Finalizado').exclude(pk=getattr(self.instance, 'pk', None)).exists():
+                raise serializers.ValidationError("El lote elegido cuenta con una solicitud de cancelación definitiva de caudal en curso.")
+
+        # Validar solicitudes pendientes de activación
+        if flow_request_type == FlowRequestType.FLOW_ACTIVATION:
+            if FlowRequest.objects.filter(
+                lot=lot,
+                flow_request_type=FlowRequestType.FLOW_ACTIVATION,
+                status='Pendiente'
+            ).exclude(pk=getattr(self.instance, 'pk', None)).exists():
+                raise serializers.ValidationError("El lote elegido cuenta con una solicitud de activación de caudal en curso.")
 
         return attrs
 
     def create(self, validated_data):
-        # Si es definitiva, rechaza la temporal pendiente ANTES de crear la definitiva
-        if validated_data.get('cancel_type') == 'definitiva':
-            lot = validated_data.get('lot')
-            temporal = FlowCancelRequest.objects.filter(
-                lot=lot, status='pendiente', cancel_type='temporal'
-            ).first()
-            if temporal:
-                temporal.status = 'rechazada'
-                temporal.observations = 'Rechazada de forma automática: El usuario ha solicitado una cancelación definitiva.'
-                temporal.save()
-        # Ahora sí, crea la definitiva normalmente
+        validated_data['created_by'] = self.context['request'].user
+        validated_data['type'] = 'Solicitud'
         return super().create(validated_data)
-
-
-class FlowChangeRequestStatusSerializer(BaseRequestStatusSerializer):
-    """Serializer para actualizar el estado de la solicitud de cambio de caudal."""
-
-    class Meta(BaseRequestStatusSerializer.Meta):
-        model = FlowChangeRequest
-
-
-class FlowCancelRequestSerializer(BaseRequestReportSerializer):
-    """Serializer para crear solicitudes de cancelación de caudal."""
-    class Meta(BaseRequestReportSerializer.Meta):
-        model = FlowCancelRequest
-        fields = '__all__'
-        read_only_fields = ['user', 'plot', 'status', 'created_at', 'finalized_at']
-
-    # Validar observaciones
-    def validate_observations(self, value):
-        if not value or not (5 <= len(value) <= 200):
-            raise serializers.ValidationError("Las observaciones deben tener entre 5 y 200 caracteres.")
-        return value
-
-    def _validate_pending_temporary_request(self, cancel_type, lot):
-        ''' Valida que no existan solicitudes pendientes de cancelación temporal para el mismo lote. '''
-        instance_pk = getattr(self.instance, 'pk', None)
-        if cancel_type != 'definitiva' and FlowCancelRequest.objects.filter(lot=lot, status='pendiente', cancel_type='temporal').exclude(pk=instance_pk).exists():
-            raise serializers.ValidationError(
-                {"error": "El lote elegido cuenta con una solicitud de cancelación temporal de caudal en curso."}
-            )
-
-    def _validate_pending_definitive_request(self, lot):
-        ''' Valida que no existan solicitudes pendientes de cancelación definitiva para el mismo lote. '''
-        instance_pk = getattr(self.instance, 'pk', None)
-        if FlowCancelRequest.objects.filter(lot=lot, status='pendiente', cancel_type='definitiva').exclude(pk=instance_pk).exists():
-            raise serializers.ValidationError(
-                {"error": "El lote elegido cuenta con una solicitud de cancelación definitiva de caudal en curso."}
-            )
-
-    def _check_caudal_flow_inactive(self, cancel_type, lot):
-        ''' Verifica que el lote tenga un caudal activo '''
-        device = IoTDevice.objects.filter(id_lot=lot, device_type__device_id=VALVE_4_ID).first()
-        if cancel_type == 'temporal' and device.actual_flow in (0, None):
-            raise serializers.ValidationError(
-                {"error": "El caudal del lote está inactivo. No es necesario solicitar cancelación temporal."}
-            )
-
-    def validate(self, attrs):
-        attrs = super().validate(attrs)
-        lot = attrs.get('lot')
-        cancel_type = attrs.get('cancel_type')
-
-        if lot:
-            self._validate_pending_temporary_request(cancel_type, lot)
-            self._validate_pending_definitive_request(lot)
-            self._check_caudal_flow_inactive(cancel_type, lot)
-
-        if cancel_type == 'temporal':
-            # No permitir temporal si ya existe definitiva pendiente
-            if FlowCancelRequest.objects.filter(
-                lot=lot, cancel_type='definitiva', status='pendiente'
-            ).exists():
-                raise serializers.ValidationError(
-                    {"error": "No puedes solicitar una cancelación temporal si ya existe una definitiva pendiente para este lote."}
-                )
-            # No permitir dos temporales pendientes
-            if FlowCancelRequest.objects.filter(
-                lot=lot, cancel_type='temporal', status='pendiente'
-            ).exists():
-                raise serializers.ValidationError(
-                    {"error": "No puedes solicitar una cancelación temporal si ya existe una pendiente para este lote."}
-                )
-        elif cancel_type == 'definitiva':
-            # No permitir definitiva si ya existe definitiva pendiente
-            if FlowCancelRequest.objects.filter(
-                lot=lot, cancel_type='definitiva', status='pendiente'
-            ).exists():
-                raise serializers.ValidationError(
-                    {"error": "No puedes solicitar una cancelación definitiva si ya existe una definitiva pendiente para este lote."}
-                )
-
-        return attrs
-
-
-class FlowCancelRequestStatusSerializer(BaseRequestStatusSerializer):
-    """Serializer para actualizar el estado de la solicitud de cancelación de caudal."""
-
-    class Meta(BaseRequestStatusSerializer.Meta):
-        model = FlowCancelRequest
-
-
-class FlowActivationRequestSerializer(BaseRequestReportSerializer):
-    """Serializer para crear solicitudes de activación de caudal."""
-
-    class Meta(BaseRequestReportSerializer.Meta):
-        model = FlowActivationRequest
-        fields = '__all__'
-        read_only_fields = ['user', 'plot', 'status', 'created_at', 'finalized_at']
-
-    def _validate_pending_activation_request(self, lot):
-        ''' Valida que no existan solicitudes de activación de caudal pendientes para el lote. '''
-        instance_pk = getattr(self.instance, 'pk', None)
-        if FlowActivationRequest.objects.filter(lot=lot, status='pendiente').exclude(pk=instance_pk).exists():
-            raise serializers.ValidationError(
-                {"error": "El lote elegido ya cuenta con una solicitud de activación de caudal en curso."}
-            )
-
-    def _validate_actual_flow_activated(self, lot):
-        ''' Valida que el caudal actual del lote esté activo '''
-        device = IoTDevice.objects.filter(id_lot=lot, device_type__device_id=VALVE_4_ID).first()
-        if device.actual_flow > 0:
-            raise serializers.ValidationError(
-                {"error": "El caudal del lote ya está activo. No es necesario solicitar activación."}
-            )
-
-    def validate(self, attrs):
-        attrs = super().validate(attrs)
-        lot = attrs.get('lot')
-
-        if lot:
-            self._validate_pending_activation_request(lot)
-            self._validate_actual_flow_activated(lot)
-        
-        return attrs
-
-
-class FlowActivationRequestStatusSerializer(BaseRequestStatusSerializer):
-    """Serializer para actualizar el estado de la solicitud de activación de caudal."""
-
-    class Meta(BaseRequestStatusSerializer.Meta):
-        model = FlowActivationRequest
-
-
-class AllFlowRequestsSerializer(serializers.Serializer):
-    """Serializer para listar todas las solicitudes de caudal."""
-    id = serializers.IntegerField()
-    user = serializers.CharField(source='user.document')
-    lot = serializers.CharField(source='lot.id_lot')
-    plot = serializers.CharField()
-    status = serializers.CharField()
-    type = serializers.CharField()
-    created_at = serializers.DateTimeField()
-    finalized_at = serializers.DateTimeField()
