@@ -61,14 +61,12 @@ class FailureReport(BaseRequestReport):
          self._validate_pending_report_plot_lot()
 
     def save(self, *args, **kwargs):
-        # Generar un ID único para el reporte de fallo
-        if not self.id:
-            self.id = generate_unique_id(FailureReport,"20")
-        self.full_clean()
+     # Genera un ID único para el reporte si no existe
+     if not self.id:
+         self.id = generate_unique_id(FailureReport, "20")
 
-        self.type = 'Reporte'
-
-        super().save(*args, **kwargs)
-
-        self._validate_owner()
-        self._assign_plot_from_lot()
+     self.type = 'Reporte'
+     self._assign_plot_from_lot()
+    
+     self.full_clean()
+     super().save(*args, **kwargs)
