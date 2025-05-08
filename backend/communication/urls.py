@@ -7,7 +7,18 @@ from communication.reports.views import (
     WaterSupplyFailureReportViewSet, AppFailureReportViewSet
 )
 from communication.assigment_maintenance.views import (
-    PendingItemsListView, AssignmentViewSet
+    AssignmentViewSet,
+    FlowRequestAssignmentDetailView,
+    FailureReportAssignmentDetailView,
+    TechnicianAssignedItemsView,
+    AssignmentDetailView,
+    MaintenanceReportCreateView,
+    MaintenanceReportListView,
+    MaintenanceReportDetailView,
+    ApproveMaintenanceReportView,
+    ReassignAssignmentView
+
+
 )
 
 # === Flow Requests ===
@@ -33,9 +44,8 @@ app_report_create = AppFailureReportViewSet.as_view({'post': 'create'})         
 app_report_list = AppFailureReportViewSet.as_view({'get': 'list'})                 # Listar reportes de falla en el aplicativo
 
 # === Assignments ===
-pending_items = PendingItemsListView.as_view()                                     # Ver todos los elementos (reportes/solicitudes)
-assignment_create = AssignmentViewSet.as_view({'post': 'create'})                 # Crear asignación
-assignment_list = AssignmentViewSet.as_view({'get': 'list'})                      # Listar asignaciones
+assignment_create = AssignmentViewSet.as_view({'post': 'create'})  # Crear asignación
+assignment_list = AssignmentViewSet.as_view({'get': 'list'})       # Listar asignaciones
 
 urlpatterns = [
     # Flow Request Endpoints
@@ -49,9 +59,8 @@ urlpatterns = [
     path('flow-requests/activate/list', activate_request_list, name='flow-request-activate-list'),
 
     # Flow Request Management
-    path('flow-request/<int:pk>/', flow_request_detail, name='flow-request-detail'),
-    path('flow-request/<int:pk>/approve/', flow_request_approve, name='flow-request-approve'),
-    path('flow-request/<int:pk>/reject/', flow_request_reject, name='flow-request-reject'),
+    path('flow-request/<int:pk>/approve', flow_request_approve, name='flow-request-approve'),
+    path('flow-request/<int:pk>/reject', flow_request_reject, name='flow-request-reject'),
 
     # Report Endpoints
     path('reports/water-supply/create', water_report_create, name='water-supply-failure-create'),
@@ -61,7 +70,19 @@ urlpatterns = [
     path('reports/app-failure/list', app_report_list, name='app-failure-list'),
 
     # Assignment Endpoints
-    path('assignments/pending-items', pending_items, name='pending-items'),
     path('assignments/create', assignment_create, name='assignment-create'),
     path('assignments/list', assignment_list, name='assignment-list'),
+     path('assignments/flow-request/<int:pk>', FlowRequestAssignmentDetailView.as_view(), name='assignment-flow-request-detail'),
+    path('assignments/failure-report/<int:pk>', FailureReportAssignmentDetailView.as_view(), name='assignment-failure-report-detail'),
+
+    #maintenance reports
+    path('technician/assignments', TechnicianAssignedItemsView.as_view(), name='technician-assignments'),  # Lista de reportes/solicitudes asignados a un técnico
+    path('technician/assignments/<int:pk>', AssignmentDetailView.as_view(), name='assignment-detail'),     # Detalle de una asignación específica
+    path('maintenance-reports/create', MaintenanceReportCreateView.as_view(), name='maintenance-report-create'),  # Crear informe de mantenimiento
+    path('maintenance-reports/list', MaintenanceReportListView.as_view(), name='maintenance-report-list'),      # Lista de informes (visible para admin y técnicos)
+    path('maintenance-reports/<int:pk>', MaintenanceReportDetailView.as_view(), name='maintenance-report-detail'),  # Detalle del informe
+
+    path('maintenance-reports/<int:pk>/approve', ApproveMaintenanceReportView.as_view(), name='maintenance-report-approve'),
+    path('assignments/<int:pk>/reassign', ReassignAssignmentView.as_view(), name='assignment-reassign'),
+
 ]
