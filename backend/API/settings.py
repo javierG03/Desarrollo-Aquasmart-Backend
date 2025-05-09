@@ -59,7 +59,6 @@ INSTALLED_APPS = [
     'billing',
     'communication',
     'notification',
-    'reportes',
 ]
 
 MIDDLEWARE = [

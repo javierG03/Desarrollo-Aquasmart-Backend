@@ -39,5 +39,4 @@ urlpatterns = [
     path("api/billing/", include("billing.urls")),
     path("api/communication/", include("communication.urls")),
     path("api/notifications/", include("notification.urls")),
-    path("api/reports/", include("reportes.urls")),  # Nueva ruta para reportes
 ]
