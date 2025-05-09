@@ -55,6 +55,18 @@ class BaseRequestReport(models.Model):
             self.finalized_at = timezone.now()
         elif old.status == 'Finalizado' and self.status != old.status:
             raise ValueError("No se puede cambiar el estado una vez que la solicitud ha sido revisada.")
+        if not self.pk:
+         return  # aún no existe, no validar transición
+
+        try:
+             old = type(self).objects.get(pk=self.pk)
+        except type(self).DoesNotExist:
+         return  # aún no existe en la BD, probablemente es nuevo
+        if old.status != 'Finalizado' and self.status == 'Finalizado':
+          self.finalized_at = timezone.now()
+        elif old.status == 'Finalizado' and self.status != old.status:
+          raise ValueError("No se puede cambiar el estado una vez que la solicitud ha sido revisada.")
+
 
     def clean(self):
         #self._validate_owner()

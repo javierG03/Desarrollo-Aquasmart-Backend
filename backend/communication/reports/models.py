@@ -37,6 +37,16 @@ class FailureReport(BaseRequestReport):
         if lot_pending.exists() or plot_pending.exists():
             raise ValueError("No se puede crear el reporte porque ya existe uno pendiente para el predio o el lote seleccionado.")
 
+    def _validate_owner(self):
+        """Valida que el usuario creador sea dueño del predio o del lote."""
+        if self.failure_type == TypeReport.WATER_SUPPLY_FAILURE:
+         if self.lot and self.created_by != self.lot.plot.owner:
+            raise ValueError("Solo el dueño del predio puede crear un reporte para este lote.")
+         if self.plot and self.created_by != self.plot.owner:
+            raise ValueError("Solo el dueño del predio puede crear un reporte para este predio.")
+
+
+
     def _assign_plot_from_lot(self):
         ''' Asigna el predio automáticamente desde el lote '''
         if self.lot and hasattr(self.lot, 'plot'):
@@ -44,13 +54,12 @@ class FailureReport(BaseRequestReport):
 
     def clean(self):
         super().clean()
-        self._validate_plot_is_activate()
-        self._validate_pending_report_plot_lot()
+         # Si el tipo de reporte es de suministro, validaciones completas
+        if self.failure_type == TypeReport.WATER_SUPPLY_FAILURE:
+         self._validate_plot_is_activate()
+         self._validate_pending_report_plot_lot()
 
     def save(self, *args, **kwargs):
-        is_new = not self.pk
-        old_status = self.status if not is_new else None
-
         if not self.id:
             self.id = generate_unique_id(FailureReport, "20")
 
@@ -59,16 +68,3 @@ class FailureReport(BaseRequestReport):
 
         self.full_clean()
         super().save(*args, **kwargs)
-        
-        if is_new or (not is_new and old_status != self.status):
-            from communication.notifications import (
-                send_failure_report_created_notification,
-                send_failure_report_status_notification
-            )
-            try:
-                if is_new:
-                    send_failure_report_created_notification(self)
-                elif old_status != self.status:
-                    send_failure_report_status_notification(self)
-            except Exception as e:
-                print(f"Error al enviar notificación de reporte: {e}")

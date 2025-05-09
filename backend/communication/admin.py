@@ -5,14 +5,14 @@ from communication.assigment_maintenance.models import Assignment, MaintenanceRe
 
 @admin.register(FlowRequest)
 class FlowRequestAdmin(admin.ModelAdmin):
-    list_display = ('id', 'created_by', 'lot', 'flow_request_type', 'status', 'created_at')
-    readonly_fields = ('id', 'type', 'created_at', 'finalized_at')
+    list_display = ('id', 'created_by', 'lot', 'flow_request_type', 'status', 'created_at', 'is_approved', 'finalized_at')
+    readonly_fields = ('id', 'type', 'created_at', 'finalized_at', 'requires_delegation')
     search_fields = ('id', 'created_by__document', 'lot__name')
     list_filter = ('flow_request_type', 'status', 'created_at')
 
 @admin.register(FailureReport)
 class FailureReportAdmin(admin.ModelAdmin):
-    list_display = ('id', 'created_by', 'plot', 'failure_type', 'status', 'created_at')
+    list_display = ('id', 'created_by', 'plot', 'failure_type', 'status', 'created_at', 'finalized_at')
     readonly_fields = ('id', 'type', 'created_at', 'finalized_at')
     search_fields = ('id', 'created_by__document', 'plot__name')
     list_filter = ('failure_type', 'status', 'created_at')

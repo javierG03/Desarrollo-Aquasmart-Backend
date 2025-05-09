@@ -1,101 +1,118 @@
-from django.db import models
-from rest_framework import generics, status
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework import viewsets, permissions, status 
+from rest_framework.generics import RetrieveAPIView
+from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import FlowChangeRequest, FlowCancelRequest, FlowActivationRequest
-from .serializers import (FlowChangeRequestSerializer, FlowChangeRequestStatusSerializer, FlowCancelRequestSerializer,
-    FlowCancelRequestStatusSerializer, FlowActivationRequestSerializer, FlowActivationRequestStatusSerializer, AllFlowRequestsSerializer)
+from rest_framework.permissions import IsAuthenticated
+from django.utils import timezone
 
 
-class FlowChangeRequestCreateView(generics.CreateAPIView):
-    """Vista para crear solicitudes de cambio de caudal."""
-    queryset = FlowChangeRequest.objects.all()
-    serializer_class = FlowChangeRequestSerializer
-    permission_classes = [IsAuthenticated]
+from communication.requests.models import FlowRequest, FlowRequestType
+from communication.requests.serializers import FlowRequestSerializer
 
 
-class FlowRequestsListView(generics.ListAPIView):
-    """Vista para listar todas las solicitudes de caudal."""
-    permission_classes = [IsAdminUser]
-    serializer_class = AllFlowRequestsSerializer
+# Gestiona solicitudes generales de caudal (cambio)
+class FlowRequestViewSet(viewsets.ModelViewSet):
+    serializer_class = FlowRequestSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        # Unir todas las solicitudes en una sola lista
-        change = FlowChangeRequest.objects.all().annotate(type=models.Value('Cambio', output_field=models.CharField()))
-        cancel = FlowCancelRequest.objects.all().annotate(type=models.Value('Cancelación', output_field=models.CharField()))
-        activate = FlowActivationRequest.objects.all().annotate(type=models.Value('Activación', output_field=models.CharField()))
-        # Unir los tres querysets
-        return list(change) + list(cancel) + list(activate)
+        user = self.request.user
+        if user.groups.filter(name="Manager").exists():
+            return FlowRequest.objects.all()
+        return FlowRequest.objects.filter(created_by=user)
 
-    def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        # Serializar manualmente
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
+    def perform_create(self, serializer):
+        # Guarda la solicitud con el usuario actual como creador
+        serializer.save(created_by=self.request.user, type='Solicitud')
 
 
-class FlowRequestDetailView(generics.CreateAPIView):
-    """Vista para detallar solicitud de cambio de caudal."""
-    def get(self, request, tipo, pk):
-        model_map = {
-            'change': FlowChangeRequest,
-            'cancel': FlowCancelRequest,
-            'activate': FlowActivationRequest,
-        }
-        serializer_map = {
-            'change': FlowChangeRequestSerializer,
-            'cancel': FlowCancelRequestSerializer,
-            'activate': FlowActivationRequestSerializer,
-        }
-        model = model_map.get(tipo)
-        serializer_class = serializer_map.get(tipo)
-        if not model or not serializer_class:
-            return Response({'error': 'Tipo de solicitud no válido.'}, status=status.HTTP_400_BAD_REQUEST)
+# Gestiona solicitudes de cancelación (temporal o definitiva)
+class CancelFlowRequestViewSet(viewsets.ModelViewSet):
+    serializer_class = FlowRequestSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        base_qs = FlowRequest.objects.filter(
+            flow_request_type__in=[
+                FlowRequestType.FLOW_TEMPORARY_CANCEL,
+                FlowRequestType.FLOW_DEFINITIVE_CANCEL
+            ]
+        )
+        user = self.request.user
+        if user.groups.filter(name="Manager").exists():
+            return base_qs
+        return base_qs.filter(created_by=user)
+
+    def perform_create(self, serializer):
+        # Asocia el usuario creador y marca como tipo 'Solicitud'
+        serializer.save(created_by=self.request.user, type='Solicitud')
+
+
+# Gestiona solicitudes de activación de caudal
+class ActivateFlowRequestViewSet(viewsets.ModelViewSet):
+    serializer_class = FlowRequestSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        base_qs = FlowRequest.objects.filter(flow_request_type=FlowRequestType.FLOW_ACTIVATION)
+        user = self.request.user
+        if user.groups.filter(name="Manager").exists():
+            return base_qs
+        return base_qs.filter(created_by=user)
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user, type='Solicitud')
+
+
+# Permite visualizar el detalle de una solicitud específica
+class FlowRequestDetailView(RetrieveAPIView):
+    queryset = FlowRequest.objects.all()
+    serializer_class = FlowRequestSerializer
+    permission_classes = [IsAuthenticated]
+
+
+# Permite aprobar una solicitud de caudal
+
+class FlowRequestApproveView(APIView):
+    """
+    Permite al administrador aprobar una solicitud de caudal.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
         try:
-            instance = model.objects.get(pk=pk)
-        except model.DoesNotExist:
-            return Response({'error': 'Solicitud no encontrada.'}, status=status.HTTP_404_NOT_FOUND)
+            flow = FlowRequest.objects.get(pk=pk)
+        except FlowRequest.DoesNotExist:
+            return Response({"detail": "Solicitud no encontrada."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Permitir solo al admin o al usuario dueño de la solicitud
-        if not (request.user.is_staff or instance.user == request.user):
-            return Response({'error': 'Solo el dueño del predio o el administrador puede detallar la solicitud de caudal de este lote.'}, status=status.HTTP_403_FORBIDDEN)
-        
-        serializer = serializer_class(instance)
-        return Response(serializer.data)
+        flow.is_approved = True
+        flow.status = "Finalizado"
+        flow.finalized_at = timezone.now()
+        flow.save()
 
-class FlowChangeRequestStatusView(generics.UpdateAPIView):
-    """Vista para actualizar el estado de la solicitud de cambio de caudal."""
-    queryset = FlowChangeRequest.objects.all()
-    serializer_class = FlowChangeRequestStatusSerializer
-    permission_classes = [IsAdminUser]
-    lookup_field = 'pk'
+        return Response({"detail": "Solicitud aprobada correctamente."}, status=status.HTTP_200_OK)
 
 
-class FlowCancelRequestCreateView(generics.CreateAPIView):
-    """Vista para crear solicitudes de cancelación de caudal."""
-    queryset = FlowCancelRequest.objects.all()
-    serializer_class = FlowCancelRequestSerializer
+class FlowRequestRejectView(APIView):
+    """
+    Permite al administrador rechazar una solicitud de caudal.
+    """
     permission_classes = [IsAuthenticated]
 
+    def post(self, request, pk):
+        observations = request.data.get("observations")
+        if not observations:
+            return Response({"detail": "Debe incluir observaciones del rechazo."}, status=status.HTTP_400_BAD_REQUEST)
 
-class FlowCancelRequestStatusView(generics.UpdateAPIView):
-    """Vista para actualizar el estado de la solicitud de cancelación de caudal."""
-    queryset = FlowCancelRequest.objects.all()
-    serializer_class = FlowCancelRequestStatusSerializer
-    permission_classes = [IsAdminUser]
-    lookup_field = 'pk'
+        try:
+            flow = FlowRequest.objects.get(pk=pk)
+        except FlowRequest.DoesNotExist:
+            return Response({"detail": "Solicitud no encontrada."}, status=status.HTTP_404_NOT_FOUND)
 
+        flow.is_approved = False
+        flow.status = "Finalizado"
+        flow.observations = observations
+        flow.finalized_at = timezone.now()
+        flow.save()
 
-class FlowActivationRequestCreateView(generics.CreateAPIView):
-    """Vista para crear solicitudes de activación de caudal."""
-    queryset = FlowActivationRequest.objects.all()
-    serializer_class = FlowActivationRequestSerializer
-    permission_classes = [IsAuthenticated]
-
-
-class FlowActivationRequestStatusView(generics.UpdateAPIView):
-    """Vista para actualizar el estado de la solicitud de activación de caudal."""
-    queryset = FlowActivationRequest.objects.all()
-    serializer_class = FlowActivationRequestStatusSerializer
-    permission_classes = [IsAdminUser]
-    lookup_field = 'pk'
+        return Response({"detail": "Solicitud rechazada correctamente."}, status=status.HTTP_200_OK)
