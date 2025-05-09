@@ -192,6 +192,9 @@ class LoginRestriction(models.Model):
     blocked_until = models.DateTimeField(null=True, blank=True)
     last_attempt_time = models.DateTimeField(null=True, blank=True)
     
+    def __str__(self):
+        return f"{self.user} intentos fallidos: {self.attempts}"
+    
     def register_attempt(self):
         """Registra un intento fallido de inicio de sesión"""
         if self.is_blocked():

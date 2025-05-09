@@ -93,7 +93,7 @@ class MaintenanceReportSerializer(serializers.ModelSerializer):
             'created_at',
             'is_approved',
         ]
-        read_only_fields = ['created_at']
+        read_only_fields = ['created_at', 'id']
 
     def validate_assignment(self, value):
         """Evita informes duplicados para una misma asignación"""
