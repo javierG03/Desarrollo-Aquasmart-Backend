@@ -3,6 +3,10 @@ from communication.requests.views import (
     FlowRequestViewSet, CancelFlowRequestViewSet, ActivateFlowRequestViewSet,
     FlowRequestDetailView, FlowRequestApproveView, FlowRequestRejectView
 )
+from communication.requests.views import (
+    FlowRequestViewSet, CancelFlowRequestViewSet, ActivateFlowRequestViewSet,
+    FlowRequestDetailView, FlowRequestApproveView, FlowRequestRejectView
+)
 from communication.reports.views import (
     WaterSupplyFailureReportViewSet, AppFailureReportViewSet
 )
