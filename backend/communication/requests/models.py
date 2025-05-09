@@ -96,7 +96,7 @@ class FlowRequest(BaseRequestReport):
             if self.is_approved == True:
                 device.actual_flow = self.requested_flow
                 device.save()
-                self.status = 'Finalizado' # Marcar como 'Finalizado' la solicitud
+                self.status = 'Finalizado'
 
     def _auto_reject_temporary_cancel_request(self):
         if self.flow_request_type == FlowRequestType.FLOW_DEFINITIVE_CANCEL:
@@ -109,20 +109,15 @@ class FlowRequest(BaseRequestReport):
 
     def _apply_cancel_flow_to_device(self):
         device = self._get_device
-        # Si es cancelación temporal
-        if self.flow_request_type == FlowRequestType.FLOW_TEMPORARY_CANCEL:
-            if self.is_approved == True:
-                device.actual_flow = 0 # Desactivar el caudal del lote
-                device.save()
-                self.status = 'Finalizado'
-        # Si es cancelación definitiva
-        if self.flow_request_type == FlowRequestType.FLOW_DEFINITIVE_CANCEL:
-            if self.is_approved == True:
-                device.actual_flow = 0 # Desactivar el caudal del lote
-                device.id_lot.is_activate = False # Desactivar el lote
-                device.save()
-                device.id_lot.save()
-                self.status = 'Finalizado'
+        if self.flow_request_type == FlowRequestType.FLOW_TEMPORARY_CANCEL and self.is_approved == True:
+            device.actual_flow = 0
+            device.save()
+            self.status = 'Finalizado'
+        elif self.flow_request_type == FlowRequestType.FLOW_DEFINITIVE_CANCEL:
+            device.actual_flow = 0
+            device.id_lot.is_activate = False
+            device.id_lot.save()
+            self.status = 'Finalizado'
 
     def clean(self):
         super().clean()
@@ -142,13 +137,21 @@ class FlowRequest(BaseRequestReport):
         if not self.id:
             self.id = generate_unique_id(FlowRequest,"10")
 
-            self.type = 'Solicitud'
+        self.type = 'Solicitud'
 
         if self.flow_request_type == FlowRequestType.FLOW_DEFINITIVE_CANCEL:
             self.requires_delegation = True
 
+        super().save(*args, **kwargs)
+        
+        # Notificaciones
+        if is_new:
+            from communication.notifications import send_flow_request_created_notification
+            send_flow_request_created_notification(self)
+        elif old_is_approved != self.is_approved and self.status == 'Finalizado':
+            from communication.notifications import send_flow_request_decision_notification
+            send_flow_request_decision_notification(self)
+        
         self._apply_requested_flow_to_device()
         self._auto_reject_temporary_cancel_request()
         self._apply_cancel_flow_to_device()
-
-        super().save(*args, **kwargs)

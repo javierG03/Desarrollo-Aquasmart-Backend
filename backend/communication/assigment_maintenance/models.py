@@ -3,10 +3,7 @@ from django.conf import settings
 from communication.requests.models import FlowRequest
 from communication.reports.models import FailureReport
 from communication.utils import generate_unique_id
-from communication.notifications import (
-    send_assignment_notification,
-    send_maintenance_report_notification
-)
+from communication.notifications import send_maintenance_report_notification
 
 class Assignment(models.Model):
     """Modelo para almacenar asignaciones de solicitudes y reportes de fallos"""
@@ -30,9 +27,6 @@ class Assignment(models.Model):
             self.id = generate_unique_id(Assignment, "30")
             
         super().save(*args, **kwargs)
-        
-        if is_new:
-            send_assignment_notification(self)
 
     def __str__(self):
         return f"Asignación #{self.id} de {self.assigned_by} a {self.assigned_to}"
@@ -59,25 +53,27 @@ class MaintenanceReport(models.Model):
         verbose_name_plural = "Informes de mantenimiento"
 
     def __str__(self):
-        return f"Informe de mantenimiento de {self.assignment.assigned_to} ({self.intervention_date})"
-
+        return f"Informe #{self.id} por {self.assignment.assigned_to} ({self.status})"
 
     def _finalize_requests_reports(self):
         ''' Finalizar la solicitud o el reporte ligado al informe después de aprobado '''
-        if self.is_approved == True:
-            flow_request = self.assignment.flow_request
-            failure_report = self.assignment.failure_report
-            if flow_request:
-                flow_request.is_approved = True
-                flow_request.save()
-            elif failure_report:
-                failure_report.status = 'Finalizado'
-                failure_report.save()
+        if self.is_approved:
+            if self.assignment.flow_request:
+                self.assignment.flow_request.is_approved = True
+                self.assignment.flow_request.save()
+            elif self.assignment.failure_report:
+                self.assignment.failure_report.status = 'Finalizado'
+                self.assignment.failure_report.save()
 
     def save(self, *args, **kwargs):
+        is_new = not self.pk
+        
         if not self.id:
-            self.id = generate_unique_id(MaintenanceReport,"40")
-
-        self._finalize_requests_reports()
+            self.id = generate_unique_id(MaintenanceReport, "40")
 
         super().save(*args, **kwargs)
+        
+        self._finalize_requests_reports()
+        
+        if is_new:
+            send_maintenance_report_notification(self)

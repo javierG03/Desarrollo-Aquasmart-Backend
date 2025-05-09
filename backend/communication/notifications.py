@@ -136,7 +136,7 @@ def send_flow_request_decision_notification(request):
         print(f"Error al preparar notificación de decisión de solicitud: {str(e)}")
         return False
 
-# Nuevas funciones para notificaciones de asignación y mantenimiento
+# Funciones para notificaciones de asignación y mantenimiento
 def send_assignment_notification(assignment):
     """Notificación cuando se asigna una solicitud/reporte"""
     try:
@@ -159,10 +159,9 @@ def send_assignment_notification(assignment):
             'assigned_to': assignment.assigned_to.get_full_name(),
             'assignment_date': assignment.assignment_date.strftime("%d/%m/%Y %H:%M"),
             'is_reassignment': "Sí" if assignment.reassigned else "No",
-            'observations': "Ninguna" if not assignment.observations else assignment.observations,
+            'observations': assignment.observations or "Ninguna",
         }
         
-        # Enviar correo tanto al asignador como al asignado
         return all([
             _send_notification_email(subject, context, 'assignment_created', assignment.assigned_by.email),
             _send_notification_email(subject, context, 'assignment_created', assignment.assigned_to.email)
@@ -185,11 +184,10 @@ def send_maintenance_report_notification(report):
             'status': report.get_status_display(),
             'is_approved': "Aprobado" if report.is_approved else "Pendiente de aprobación",
             'description': report.description or "No se proporcionó descripción",
+            'findings': report.findings or "No se registraron hallazgos",
+            'actions_taken': report.actions_taken or "No se registraron acciones",
+            'recommendations': report.recommendations or "No se hicieron recomendaciones",
             'images': "Disponibles" if report.images else "No hay imágenes",
-            # Aseguramos que los campos muestren "No especificado" si están vacíos
-            'findings': report.findings if report.findings else "No se registraron hallazgos",
-            'actions_taken': report.actions_taken if report.actions_taken else "No se registraron acciones",
-            'recommendations': report.recommendations if report.recommendations else "No se hicieron recomendaciones",
         }
         
         # Enviar al técnico y al supervisor

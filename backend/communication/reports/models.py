@@ -40,12 +40,10 @@ class FailureReport(BaseRequestReport):
     def _validate_owner(self):
         """Valida que el usuario creador sea dueño del predio o del lote."""
         if self.failure_type == TypeReport.WATER_SUPPLY_FAILURE:
-         if self.lot and self.created_by != self.lot.plot.owner:
-            raise ValueError("Solo el dueño del predio puede crear un reporte para este lote.")
-         if self.plot and self.created_by != self.plot.owner:
-            raise ValueError("Solo el dueño del predio puede crear un reporte para este predio.")
-
-
+            if self.lot and self.created_by != self.lot.plot.owner:
+                raise ValueError("Solo el dueño del predio puede crear un reporte para este lote.")
+            if self.plot and self.created_by != self.plot.owner:
+                raise ValueError("Solo el dueño del predio puede crear un reporte para este predio.")
 
     def _assign_plot_from_lot(self):
         ''' Asigna el predio automáticamente desde el lote '''
@@ -54,17 +52,27 @@ class FailureReport(BaseRequestReport):
 
     def clean(self):
         super().clean()
-         # Si el tipo de reporte es de suministro, validaciones completas
         if self.failure_type == TypeReport.WATER_SUPPLY_FAILURE:
-         self._validate_plot_is_activate()
-         self._validate_pending_report_plot_lot()
+            self._validate_plot_is_activate()
+            self._validate_pending_report_plot_lot()
+            self._validate_owner()
 
     def save(self, *args, **kwargs):
+        is_new = not self.pk
+        old_status = self.status if not is_new else None
+
         if not self.id:
             self.id = generate_unique_id(FailureReport, "20")
 
         self.type = 'Reporte'
         self._assign_plot_from_lot()
 
-        self.full_clean()
         super().save(*args, **kwargs)
+        
+        # Notificaciones
+        if is_new:
+            from communication.notifications import send_failure_report_created_notification
+            send_failure_report_created_notification(self)
+        elif old_status != self.status:
+            from communication.notifications import send_failure_report_status_notification
+            send_failure_report_status_notification(self)
