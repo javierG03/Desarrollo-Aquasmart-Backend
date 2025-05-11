@@ -4,9 +4,8 @@ from rest_framework.response import Response
 from rest_framework.generics import (
     RetrieveAPIView, CreateAPIView, ListAPIView
 )
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, BasePermission
 from django.contrib.auth import get_user_model
-
 from communication.requests.models import FlowRequest
 from communication.requests.serializers import FlowRequestSerializer
 from communication.reports.models import FailureReport
@@ -14,12 +13,23 @@ from communication.reports.serializers import FailureReportSerializer
 
 from .models import MaintenanceReport, Assignment
 from .serializers import MaintenanceReportSerializer, AssignmentSerializer
-from .permissions import IsAdminOrTechnicianOrOperator  # <-- Asegúrate de importar bien
 
 
 User = get_user_model()
 
-
+class IsAdminOrTechnicianOrOperator(BasePermission):
+    """
+    Permite acceso si el usuario es admin o pertenece a Técnicos u Operadores.
+    """
+    def has_permission(self, request, view):
+        user = request.user
+        return (
+            user and user.is_authenticated and (
+                user.is_staff or
+                user.groups.filter(name__in=["Técnicos", "Operadores"]).exists()
+            )
+        )
+    
 class AssignmentViewSet(viewsets.ModelViewSet):
    
     queryset = Assignment.objects.all()
@@ -97,6 +107,10 @@ class MaintenanceReportListView(ListAPIView):
     def get_queryset(self):
         user = self.request.user
         if user.is_staff or user.groups.filter(name__in=["Técnicos", "Operadores"]).exists():
+            if user.groups.filter(name="Manager").exists():
+                return MaintenanceReport.objects.all()
+            return MaintenanceReport.objects.filter(assignment__assigned_to=user)
+
 
         if user.groups.filter(name="Manager").exists():
             return MaintenanceReport.objects.all()
