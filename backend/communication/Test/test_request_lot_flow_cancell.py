@@ -1,7 +1,7 @@
 import pytest
 from django.urls import reverse
 from rest_framework import status
-from communication.request.models import FlowCancelRequest
+from communication.requests.models import FlowCancelRequest
 from iot.models import IoTDevice, DeviceType  # Ajusta si el path es diferente
 from plots_lots.models import Plot, Lot
 from users.models import CustomUser, Otp

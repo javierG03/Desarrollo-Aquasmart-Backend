@@ -1,10 +1,33 @@
 import pytest
 from django.urls import reverse
 from rest_framework import status
-from communication.request.models import FlowChangeRequest
+from communication.requests.models import FlowRequest
 from iot.models import IoTDevice, DeviceType  # Ajusta si el path es diferente
 from plots_lots.models import Plot, Lot
 from users.models import CustomUser, Otp
+
+
+
+@pytest.mark.django_db
+def test_valid_flow_change_request(api_client, normal_user, login_and_validate_otp, user_plot, user_lot,  iot_device ,device_type):
+    client = login_and_validate_otp(api_client, normal_user, "UserPass123@")
+    
+
+    url = reverse("flow-request-create")
+    payload = {
+        "flow_request_type" : "Cambio de Caudal",
+        "lot": user_lot[0].pk,
+        "type": "Solicitud",
+        "requested_flow": 3.5,
+        "observations": "Cambio por temporada"
+    }
+    print(f"Payload enviado: {payload}")
+
+    response = client.post(url, payload, format="json")
+    print(f"Respuesta ({response.status_code}): {response.data}")
+    assert response.status_code == 201, f"❌ Se esperaba 201, se recibió {response.status_code} - {response.data}"
+    print("✅ Solicitud de cambio de caudal enviada correctamente.")
+
 
 @pytest.mark.django_db
 def test_user_can_request_flow_change(api_client, normal_user, login_and_validate_otp, user_plot, user_lot, iot_device, device_type):
@@ -21,11 +44,13 @@ def test_user_can_request_flow_change(api_client, normal_user, login_and_validat
     client = login_and_validate_otp(api_client, normal_user, "UserPass123@")
 
     # 🔹 Paso 4: Construcción del payload
-    url = reverse("flow-change-request")  # Asegúrate que este nombre está en urls.py
+    url = reverse("flow-request-create")  # Asegúrate que este nombre está en urls.py
     
     payload = {        
         "requested_flow": 10.5,
-        "lot": user_lot[0].pk
+        "lot": user_lot[0].pk,
+        "type": "Solicitud",
+        "flow_request_type": "Cambio de Caudal"
         
     }
     print(f"Payload enviado: {payload}")
@@ -46,21 +71,26 @@ def test_user_can_request_flow_change(api_client, normal_user, login_and_validat
     assert float(response.data["requested_flow"]) == 10.5, "❌ El caudal registrado no coincide"
 
     # 🔎 Paso 7: Verificar existencia del registro en la base de datos
-    request = FlowChangeRequest.objects.get(id=response.data["id"])
+    request = FlowRequest.objects.get(id=response.data["id"])
 
     assert request.requested_flow == 10.5, "❌ El caudal registrado en la BD no coincide"
-    assert request.plot == user_plot, "❌ El predio asociado en BD es incorrecto"
-    assert request.user == normal_user, "❌ El usuario asignado a la solicitud es incorrecto"
+    assert request.lot == user_lot[0], "❌ El lote asociado en BD es incorrecto"
+    assert request.type == "Solicitud", "❌ El tipo de solicitud no es correcto"
+    assert request.flow_request_type == "Cambio de Caudal", "❌ El tipo de solicitud no es correcto"
+    assert request.status == "Pendiente", "❌ El estado de la solicitud no es correcto"
+    
 
     print("✅ Solicitud de cambio de caudal creada correctamente.")
 
 @pytest.mark.django_db
-def test_user_cannot_request_flow_chango_for_innactive_lot(api_client, normal_user, login_and_validate_otp, user_plot, user_lot, iot_device, device_type):
+def test_user_cannot_request_flow_change_for_innactive_lot(api_client, normal_user, login_and_validate_otp, user_plot, user_lot, iot_device, device_type):
     client = login_and_validate_otp(api_client, normal_user, "UserPass123@")
 
-    url = reverse("flow-change-request")
+    url = reverse("flow-request-create")
     payload = {
         "requested_flow": 10.5,
+        "type": "Solicitud",
+        "flow_request_type": "Cambio de Caudal",
         "lot": user_lot[2].pk  # Lote inactivo
     }
     print(f"Payload enviado: {payload}")
@@ -74,12 +104,14 @@ def test_user_cannot_request_flow_chango_for_innactive_lot(api_client, normal_us
     print ("✅ No se pudo realizar la solicitud de cambio de caudal para un lote inactivo.")
 
 @pytest.mark.django_db
-def test_user_cannot_request_flow_chango_on_lot_with_pending_request(api_client, normal_user, login_and_validate_otp, user_plot, user_lot, iot_device, device_type):
+def test_user_cannot_request_flow_change_on_lot_with_pending_request(api_client, normal_user, login_and_validate_otp, user_plot, user_lot, iot_device, device_type):
     client = login_and_validate_otp(api_client, normal_user, "UserPass123@")
 
-    url = reverse("flow-change-request")
+    url = reverse("flow-request-create")
     payload = {
         "requested_flow": 10.5,
+        "type": "Solicitud",
+        "flow_request_type": "Cambio de Caudal",
         "lot": user_lot[0].pk
     }
     print(f"Payload enviado: {payload}")
@@ -94,6 +126,8 @@ def test_user_cannot_request_flow_chango_on_lot_with_pending_request(api_client,
 
     payload = {
         "requested_flow": 9.0,
+        "type": "Solicitud",
+        "flow_request_type": "Cambio de Caudal",
         "lot": user_lot[0].pk  # Lote con solicitud pendiente
     }
     print(f"Payload enviado: {payload}")
@@ -110,9 +144,11 @@ def test_user_cannot_request_flow_chango_on_lot_with_pending_request(api_client,
 def test_user_cannot_request_higher_lot_flow_change_than_allowed(api_client, normal_user, login_and_validate_otp, user_plot, user_lot, iot_device, device_type):
     client = login_and_validate_otp(api_client, normal_user, "UserPass123@")
 
-    url = reverse("flow-change-request")
+    url = reverse("flow-request-create")
     payload = {
         "requeste_flow": 11.9,  # Caudal superior al permitido
+        "type": "Solicitud",
+        "flow_request_type": "Cambio de Caudal",
         "lot": user_lot[0].pk
     }
     print(f"Payload enviado: {payload}")
@@ -129,9 +165,11 @@ def test_user_cannot_request_higher_lot_flow_change_than_allowed(api_client, nor
 def test_user_cannot_request_lot_flow_change_with_lacking_data_request(api_client, normal_user, login_and_validate_otp, user_plot, user_lot, iot_device, device_type):
     client = login_and_validate_otp(api_client, normal_user, "UserPass123@")
 
-    url = reverse("flow-change-request")
+    url = reverse("flow-request-create")
     payload = {
-        "lot": user_lot[0].pk  # Falta el caudal solicitado
+        "lot": user_lot[0].pk, # Falta el caudal solicitado
+        "type": "Solicitud",
+        "flow_request_type": "Cambio de Caudal"
     }
     print (f"Payload enviado: {payload}")
     response = client.post(url, payload, format="json")
@@ -145,7 +183,9 @@ def test_user_cannot_request_lot_flow_change_with_lacking_data_request(api_clien
     print ("✅ No se pudo realizar la solicitud de cambio de caudal sin caudal requerido.")
 
     payload = {
-        "requested_flow": 10.5  # Falta el lote
+        "requested_flow": 10.5,  # Falta el lote
+        "type": "Solicitud",
+        "flow_request_type": "Cambio de Caudal"
     }
     print (f"Payload enviado: {payload}")
     response = client.post(url, payload, format="json")
@@ -172,9 +212,11 @@ def test_user_cannot_request_flow_change_for_lot_without_valve(api_client, norma
     client = login_and_validate_otp(api_client, normal_user, "UserPass123@")
 
     # 🔹 Paso 4: Construcción del payload
-    url = reverse("flow-change-request")
+    url = reverse("flow-request-create")
     payload = {
         "requested_flow": 10.5,
+        "type": "Solicitud",
+        "flow_request_type": "Cambio de Caudal",
         "lot": user_lot[1].pk  # Lote sin válvula asociada
     }
     print(f"Payload enviado: {payload}")
@@ -237,9 +279,11 @@ def test_user_cannot_request_flow_change_for_another_user_plot(api_client, norma
     client = login_and_validate_otp(api_client, normal_user, "UserPass123@")
 
     # 🔹 Paso 4: Construcción del payload
-    url = reverse("flow-change-request")
+    url = reverse("flow-request-create")
     payload = {
         "requested_flow": 10.5,
+        "type": "Solicitud",
+        "flow_request_type": "Cambio de Caudal",
         "lot": NotProperLot.pk  # Lote de otro usuario
     }
     print(f"Payload enviado: {payload}")
