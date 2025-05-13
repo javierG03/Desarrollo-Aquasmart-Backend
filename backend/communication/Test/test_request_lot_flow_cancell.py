@@ -1,7 +1,7 @@
 import pytest
 from django.urls import reverse
 from rest_framework import status
-from communication.requests.models import FlowCancelRequest
+from communication.requests.models import FlowRequest
 from iot.models import IoTDevice, DeviceType  # Ajusta si el path es diferente
 from plots_lots.models import Plot, Lot
 from users.models import CustomUser, Otp
@@ -18,11 +18,13 @@ def test_user_can_request_flow_cancellation(api_client, normal_user, login_and_v
     client = login_and_validate_otp(api_client, normal_user, "UserPass123@")
 
 
-    url = reverse("flow-change-request")  # Asegúrate que este nombre está en urls.py
+    url = reverse("flow-request-cancel-create")  # Asegúrate que este nombre está en urls.py
     
     flow_request = {
         "device": iot_device[0].iot_id,
-        
+        "type": "Solicitud",
+        "observations": "No necesito el caudal adicional por ahora",
+        "flow_request_type": "Cambio de Caudal",
         "requested_flow": 10.5,
         "lot": user_lot[0].pk
         
@@ -46,9 +48,10 @@ def test_user_can_request_flow_cancellation(api_client, normal_user, login_and_v
     assert user_lot[0].plot == user_plot, "❌ El lote no pertenece al predio"
 
     # 🔹 Hacer solicitud de cancelación
-    url = reverse("flow-cancel-request")  # Asegúrate que esté correctamente en tus URLs
+    url = reverse("flow-request-cancel-create")  # Asegúrate que esté correctamente en tus URLs
     payload = {
-        "cancel_type": "temporal",
+        "flow_request_type": "Cancelación Temporal de Caudal",
+        "type": "Solicitud",
         "lot": user_lot[0].pk,
         "observations": "No necesito el caudal adicional por ahora"
     }
@@ -71,9 +74,10 @@ def test_user_cannot_request_flow_cancellation_on_innactivate_lot(api_client, no
     # 🔐 Login
     client = login_and_validate_otp(api_client, normal_user, "UserPass123@")
 
-    url = reverse("flow-cancel-request")  # Asegúrate que esté correctamente en tus URLs
+    url = reverse("flow-request-cancel-create")  # Asegúrate que esté correctamente en tus URLs
     payload = {
-        "cancel_type": "temporal",
+        "flow_request_type": "Cancelación Temporal de Caudal",
+        "type": "Solicitud",
         "lot": user_lot[2].pk,
         "observations": "No necesito el caudal adicional por ahora"
     }
@@ -89,9 +93,10 @@ def test_user_cannot_request_flow_cancellation_on_innactivate_lot(api_client, no
 @pytest.mark.django_db
 def test_user_cannot_request_flow_cancellation_on_lot_with_pending_request(api_client, normal_user, login_and_validate_otp, user_plot, user_lot, iot_device, device_type):
     client = login_and_validate_otp(api_client, normal_user, "UserPass123@")
-    url = reverse("flow-cancel-request")
+    url = reverse("flow-request-cancel-create")
     payload = {
-        "cancel_type": "temporal",
+        "flow_request_type": "Cancelación Temporal de Caudal",
+        "type": "Solicitud",
         "lot": user_lot[0].pk,
         "observations": "No necesito caudal"
     }
@@ -103,7 +108,8 @@ def test_user_cannot_request_flow_cancellation_on_lot_with_pending_request(api_c
     )
 
     payload = {
-        "cancel_type": "temporal",
+        "flow_request_type": "Cancelación Temporal de Caudal",
+        "type": "Solicitud",
         "lot": user_lot[0].pk,
         "observations": "Petición nuevo con una pendiente"
     }
@@ -118,9 +124,10 @@ def test_user_cannot_request_flow_cancellation_on_lot_with_pending_request(api_c
 @pytest.mark.django_db
 def test_user_cannot_request_temporal_flow_cancellation_on_lot_with_definitive_cancellation(api_client, normal_user, login_and_validate_otp, user_plot, user_lot, iot_device, device_type):
     client = login_and_validate_otp(api_client, normal_user, "UserPass123@")
-    url = reverse("flow-cancel-request")
+    url = reverse("flow-request-cancel-create")
     payload = {
-        "cancel_type": "definitiva",
+        "flow_request_type": "Cancelación Definitiva de Caudal",
+        "type": "Solicitud",
         "lot": user_lot[0].pk,
         "observations": "No necesito caudal"
     }
@@ -131,7 +138,8 @@ def test_user_cannot_request_temporal_flow_cancellation_on_lot_with_definitive_c
         )
     
     payload = {
-        "cancel_type" : "temporal",
+        "flow_request_type": "Cancelación Temporal de Caudal",
+        "type": "Solicitud",
         "lot": user_lot[0].pk,
         "observations": "Petición cancelación temporal con unadefinitiva pendiente"
     }
@@ -145,9 +153,10 @@ def test_user_cannot_request_temporal_flow_cancellation_on_lot_with_definitive_c
 @pytest.mark.django_db
 def test_temporal_request_gets_cancelled_when_user_request_definitive_cancellation(api_client, normal_user, login_and_validate_otp, user_plot, user_lot, iot_device, device_type):
     client = login_and_validate_otp(api_client, normal_user, "UserPass123@")
-    url = reverse("flow-cancel-request")
+    url = reverse("flow-request-cancel-create")
     payload_temp = {
-        "cancel_type": "temporal",
+        "flow_request_type": "Cancelación Temporal de Caudal",
+        "type": "Solicitud",
         "lot": user_lot[0].pk,
         "observations": "No necesito caudal"
     }
@@ -157,7 +166,8 @@ def test_temporal_request_gets_cancelled_when_user_request_definitive_cancellati
         f"❌ Se esperaba HTTP 201 pero se obtuvo {response_temp.status_code}. Respuesta: {response_temp.data}")
     
     payload_def = {
-        "cancel_type": "definitiva",
+        "flow_request_type": "Cancelación Definitiva de Caudal",
+        "type": "Solicitud",
         "lot": user_lot[0].pk,
         "observations": "Petición cancelación definitiva con una temporal pendiente"
     }
@@ -166,14 +176,14 @@ def test_temporal_request_gets_cancelled_when_user_request_definitive_cancellati
     assert response_def.status_code == status.HTTP_201_CREATED, (
         f"❌ Se esperaba HTTP 201 pero se obtuvo {response_def.status_code}. Respuesta: {response_def.data}"
     )
-    all_request = FlowCancelRequest.objects.filter(lot=user_lot[0])
+    all_request = FlowRequest.objects.filter(lot=user_lot[0])
     
     print (f"Total de solicitudes: {all_request.count()}")
 
     print(f"Solicitudes de cancelación para el lote {user_lot[0].pk} ({all_request.count()} total):")
     for req in all_request:
-        print(f"- Tipo: {req.cancel_type}, Observaciones: {req.observations}, Estado: {req.status}")
-    assert all_request.filter(cancel_type="temporal", status="pendiente").count() == 0, (
+        print(f"- Tipo: {req.flow_request_type}, Observaciones: {req.observations}, Estado: {req.status}")
+    assert all_request.filter(flow_request_type="Cancelación Definitiva de Caudal", status="pendiente").count() == 0, (
         f"❌ Se esperaba que la solicitud temporal se cancelara, pero aún está pendiente. "
     )
 
@@ -183,10 +193,11 @@ def test_temporal_request_gets_cancelled_when_user_request_definitive_cancellati
 def test_user_cannot_request_flow_cancellation_with_lacking_data_request(api_client, normal_user, login_and_validate_otp, user_plot, user_lot, iot_device, device_type):
     client = login_and_validate_otp(api_client, normal_user, "UserPass123@")
     
-    url = reverse("flow-cancel-request")
+    url = reverse("flow-request-cancel-create")
 
     payload = {
-        "cancel_type": "temporal",
+        "flow_request_type": "Cancelación Temporal de Caudal",
+        "type": "Solicitud",
         "lot": user_lot[0].pk,
     }
     response = client.post(url, payload, format="json")
@@ -196,7 +207,8 @@ def test_user_cannot_request_flow_cancellation_with_lacking_data_request(api_cli
     )
     print("✅ No se permitió la cancelación de caudal sin observaciones.")
     payload = {
-        "cancel_type": "temporal",
+        "flow_request_type": "Cancelación Temporal de Caudal",
+        "type": "Solicitud",
         "observations": "No necesito el caudal adicional por ahora"
     }
     response = client.post(url, payload, format="json")
@@ -207,6 +219,7 @@ def test_user_cannot_request_flow_cancellation_with_lacking_data_request(api_cli
     print("✅ No se permitió la cancelación de caudal sin lote asociado.")
 
     payload = {
+        "type": "Solicitud",
         "lot": user_lot[0].pk,
         "observations": "No necesito el caudal adicional por ahora"
     }
@@ -233,9 +246,10 @@ def test_user_cannot_request_flow_cancellation_on_lot_without_valve(api_client, 
     # 🔐 Login
     client = login_and_validate_otp(api_client, normal_user, "UserPass123@")
 
-    url = reverse("flow-cancel-request")
+    url = reverse("flow-request-cancel-create")  # Asegúrate que esté correctamente en tus URLs
     payload = {
-        "cancel_type": "temporal",
+        "flow_request_type": "Cancelación Temporal de Caudal",
+        "type": "Solicitud",
         "lot": user_lot[1].pk,
         "observations": "No necesito el caudal adicional por ahora"
     }
@@ -293,9 +307,10 @@ def test_user_cannot_request_flow_cancellation_on_other_user_lot(api_client, per
     # 🔐 Login
     client = login_and_validate_otp(api_client, normal_user, "UserPass123@")
 
-    url = reverse("flow-cancel-request")
+    url = reverse("flow-request-cancel-create")
     payload = {
-        "cancel_type": "temporal",
+        "flow_request_type": "Cancelación Temporal de Caudal",
+        "type": "Solicitud",
         "lot": NotProperLot.pk,
         "observations": "No necesito el caudal adicional por ahora"
     }
