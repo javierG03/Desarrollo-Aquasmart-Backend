@@ -96,38 +96,14 @@ class FlowRequest(BaseRequestReport):
 
     def _validate_pending_activation_request(self):
         ''' Valida que no existan solicitudes pendientes de activación para el mismo lote. '''
-        if self.flow_request_type == FlowRequestType.FLOW_ACTIVATION:
-            if FlowRequest.objects.filter(lot=self.lot, status='Pendiente').exclude(pk=self.pk).exists():
-                raise ValueError("El lote elegido cuenta con una solicitud de activación de caudal en curso.")
+        if FlowRequest.objects.filter(lot=self.lot, status='Pendiente').exclude(pk=self.pk).exists():
+            raise ValueError("El lote elegido cuenta con una solicitud de activación de caudal en curso.")
 
     def _validate_actual_flow_activated(self):
         ''' Valida que el caudal actual del lote esté activo '''
-        if self.flow_request_type == FlowRequestType.FLOW_ACTIVATION:
-            device = self._get_device
-            if device.actual_flow > 0:
-                raise ValueError("El caudal del lote ya está activo. No es necesario solicitar activación.")
-
-    def _validate_observations(self):
-        if self.flow_request_type in {FlowRequestType.FLOW_TEMPORARY_CANCEL, FlowRequestType.FLOW_DEFINITIVE_CANCEL, FlowRequestType.FLOW_ACTIVATION}:
-            if not self.observations:
-                raise ValueError("El campo 'observations' es obligatorio.")
-            
-            if self.flow_request_type in {FlowRequestType.FLOW_TEMPORARY_CANCEL, FlowRequestType.FLOW_DEFINITIVE_CANCEL}:
-                if len(self.observations) > 200:
-                    raise ValueError("Las observaciones no pueden exceder los 200 caracteres.")
-            elif self.flow_request_type == FlowRequestType.FLOW_ACTIVATION:
-                if len(self.observations) > 300:
-                    raise ValueError("Las observaciones no pueden exceder los 300 caracteres.")
-
-    def _validate_approved_transition(self):
-        ''' Valida que no se cambie el estado de la solicitud una vez fue finalizada '''
-        if self.pk:
-            try:
-                old = type(self).objects.get(pk=self.pk)
-                if old.is_approved == True and self.is_approved != old.is_approved:
-                    raise ValueError("Si la solicitud ya fue aprobada, no se puede revertir dicha acción.")
-            except type(self).DoesNotExist:
-                pass
+        device = self._get_device
+        if device.actual_flow > 0:
+            raise ValueError("El caudal del lote ya está activo. No es necesario solicitar activación.")
 
     def _apply_requested_flow_to_device(self): # PENDIENTE
         ''' Aplica el caudal solicitado al dispositivo (válvula) asociado '''
@@ -135,7 +111,7 @@ class FlowRequest(BaseRequestReport):
             device = self._get_device
             if self.is_approved == True:
                 device.actual_flow = self.requested_flow
-                device.save(update_fields=['actual_flow'])
+                device.save()
                 self.status = 'Finalizado' # Marcar como 'Finalizado' la solicitud
 
     def _auto_reject_temporary_cancel_request(self): # PENDIENTE
@@ -146,30 +122,29 @@ class FlowRequest(BaseRequestReport):
                 flow_cancel_request.is_approved = False # Marcar como 'False' la aprobación de la solicitud temporal
                 flow_cancel_request.status = 'Finalizado' # Marcar como 'Finalizado' la solicitud temporal
                 flow_cancel_request.observations = 'Finalizado de forma automática: El usuario ha solicitado una cancelación definitiva.'
-                flow_cancel_request.save(update_fields=['is_approved', 'status', 'observations', 'finalized_at'])
+                flow_cancel_request.save()
 
-    def _apply_cancel_flow_to_device(self): # PENDIENTE
+    def apply_cancel_flow_to_device(self): # PENDIENTE
         ''' Aplica la cancelación de caudal al dispositivo (válvula) asociado, y al lote (si es definitiva) '''
         device = self._get_device
         # Si es cancelación temporal
         if self.flow_request_type == FlowRequestType.FLOW_TEMPORARY_CANCEL:
             if self.is_approved == True:
                 device.actual_flow = 0 # Desactivar el caudal del lote
-                device.save(update_fields=['actual_flow'])
+                device.save()
                 self.status = 'Finalizado'
         # Si es cancelación definitiva
         if self.flow_request_type == FlowRequestType.FLOW_DEFINITIVE_CANCEL:
             if self.is_approved == True:
                 device.actual_flow = 0 # Desactivar el caudal del lote
                 device.id_lot.is_activate = False # Desactivar el lote
-                device.save(update_fields=['actual_flow'])
-                device.id_lot.save(update_fields=['is_activate'])
+                device.save()
+                device.id_lot.save()
                 self.status = 'Finalizado'
 
     def clean(self):
         super().clean()
         self._validate_owner()
-        self._validate_approved_transition()
         self._validate_requested_flow()
         self._check_caudal_flow_inactive()
         self._validate_pending_change_request()
@@ -177,10 +152,6 @@ class FlowRequest(BaseRequestReport):
         self._validate_requested_flow_uniqueness()
         self._validate_pending_temporary_request()
         self._validate_pending_definitive_request()
-        self._validate_cancellation_flow_not_editable()
-        self._validate_pending_activation_request()
-        self._validate_actual_flow_activated()
-        self._validate_observations()
 
     def save(self, *args, **kwargs):
         # Generar ID único para la solicitud
@@ -189,13 +160,11 @@ class FlowRequest(BaseRequestReport):
 
             self.type = 'Solicitud'
 
-        # Establecer 'requires_delegation' automáticamente, según el tipo de solicitud
         if self.flow_request_type == FlowRequestType.FLOW_DEFINITIVE_CANCEL:
             self.requires_delegation = True
-        else: self.requires_delegation = False
 
         self._apply_requested_flow_to_device()
         self._auto_reject_temporary_cancel_request()
-        self._apply_cancel_flow_to_device()
+        self.apply_cancel_flow_to_device()
 
         super().save(*args, **kwargs)
