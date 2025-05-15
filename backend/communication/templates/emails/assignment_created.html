@@ -4,15 +4,11 @@
     <title>Nueva Asignación</title>
 </head>
 <body>
-    <h1>Nueva Asignación - {{ object_type }} #{{ object_id }}</h1>
-    <p>Se ha asignado un nuevo trabajo:</p>
-    <ul>
-        <li><strong>Tipo:</strong> {{ object_type }}</li>
-        <li><strong>ID:</strong> {{ object_id }}</li>
-        <li><strong>Asignado por:</strong> {{ assigned_by }}</li>
-        <li><strong>Asignado a:</strong> {{ assigned_to }}</li>
-        <li><strong>Fecha:</strong> {{ assignment_date }}</li>
-        <li><strong>Observaciones:</strong> {{ observations }}</li>
-    </ul>
+    <h1>Nueva Asignación: {{ object_type }} #{{ object_id }}</h1>
+    <p><strong>Estado actual:</strong> {{ object_status }}</p>
+    <p><strong>Asignado por:</strong> {{ assigned_by }}</p>
+    <p><strong>Asignado a:</strong> {{ assigned_to }}</p>
+    <p><strong>Fecha:</strong> {{ assignment_date }}</p>
+    <p><strong>Es reasignación:</strong> {{ is_reassignment }}</p>
 </body>
 </html>

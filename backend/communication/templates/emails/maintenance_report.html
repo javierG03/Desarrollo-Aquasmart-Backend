@@ -1,27 +1,40 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Informe de Mantenimiento</title>
+    <title>Informe de Mantenimiento #{{ report_id }}</title>
+    <style>
+        .section { margin-bottom: 15px; }
+        .section-title { 
+            font-weight: bold; 
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+    </style>
 </head>
 <body>
     <h1>Informe de Mantenimiento #{{ report_id }}</h1>
-    <p>Asignación relacionada: #{{ assignment_id }}</p>
-    <h2>Detalles técnicos</h2>
-    <ul>
-        <li><strong>Técnico:</strong> {{ technician }}</li>
-        <li><strong>Supervisor:</strong> {{ supervisor }}</li>
-        <li><strong>Fecha de intervención:</strong> {{ intervention_date }}</li>
-        <li><strong>Estado:</strong> {{ status }}</li>
-        <li><strong>Aprobación:</strong> {{ is_approved }}</li>
-    </ul>
-    <h2>Detalles de la intervención</h2>
-    <p>{{ description }}</p>
-    <h3>Hallazgos</h3>
-    <p>{{ findings }}</p>
-    <h3>Acciones realizadas</h3>
-    <p>{{ actions_taken }}</p>
-    <h3>Recomendaciones</h3>
-    <p>{{ recommendations }}</p>
-    <p>Imágenes adjuntas: {{ images }}</p>
+    
+    <div class="section">
+        <div class="section-title">INFORMACIÓN BÁSICA</div>
+        <p><strong>Tipo:</strong> {{ object_type }} #{{ object_id }}</p>
+        <p><strong>Estado:</strong> {{ status }}</p>
+        <p><strong>Aprobación:</strong> {{ is_approved }}</p>
+    </div>
+
+    <div class="section">
+        <div class="section-title">FECHA Y RESPONSABLES</div>
+        <p><strong>Fecha de intervención:</strong> {{ intervention_date }}</p>
+        <p><strong>Técnico:</strong> {{ technician }}</p>
+        <p><strong>Supervisor:</strong> {{ supervisor }}</p>
+    </div>
+
+    <div class="section">
+        <div class="section-title">DESCRIPCIÓN</div>
+        <p>{{ description }}</p>
+    </div>
+
+    <footer style="margin-top: 20px; font-size: 0.8em; color: #7f8c8d;">
+        Este es un mensaje automático, por favor no responder directamente.
+    </footer>
 </body>
 </html>

@@ -36,11 +36,11 @@ def _get_safe_attr(obj, *attrs, default="No especificado"):
 
 def _get_plot_display(plot):
     """Obtiene representación segura de un predio"""
-    return _get_safe_attr(plot, 'nombre', 'name', 'codigo', 'code', 'id', default="Predio")
+    return _get_safe_attr(plot, 'nombre', 'name', 'codigo', 'code', 'id_plot', default="Predio")
 
 def _get_lot_display(lot):
     """Obtiene representación segura de un lote"""
-    return _get_safe_attr(lot, 'nombre', 'name', 'codigo', 'code', 'id', default="Lote")
+    return _get_safe_attr(lot, 'nombre', 'name', 'codigo', 'code', 'id_lot', default="Lote")
 
 # Funciones para notificaciones de reportes de fallos
 def send_failure_report_created_notification(report):
@@ -140,28 +140,29 @@ def send_flow_request_decision_notification(request):
 def send_assignment_notification(assignment):
     """Notificación cuando se asigna una solicitud/reporte"""
     try:
+        # Determinar si es para solicitud o reporte
         if assignment.flow_request:
             obj_type = "Solicitud de Caudal"
             obj_id = assignment.flow_request.id
-            obj_details = f"Tipo: {assignment.flow_request.get_flow_request_type_display()}"
+            obj_status = assignment.flow_request.get_status_display()
         else:
             obj_type = "Reporte de Fallo"
             obj_id = assignment.failure_report.id
-            obj_details = f"Tipo: {assignment.failure_report.get_failure_type_display()}"
+            obj_status = assignment.failure_report.get_status_display()
 
         subject = f"📌 Nueva Asignación - {obj_type} #{obj_id}"
         
         context = {
             'object_type': obj_type,
             'object_id': obj_id,
-            'object_details': obj_details,
+            'object_status': obj_status,
             'assigned_by': assignment.assigned_by.get_full_name(),
             'assigned_to': assignment.assigned_to.get_full_name(),
             'assignment_date': assignment.assignment_date.strftime("%d/%m/%Y %H:%M"),
             'is_reassignment': "Sí" if assignment.reassigned else "No",
-            'observations': assignment.observations or "Ninguna",
         }
         
+        # Enviar correo tanto al asignador como al asignado
         return all([
             _send_notification_email(subject, context, 'assignment_created', assignment.assigned_by.email),
             _send_notification_email(subject, context, 'assignment_created', assignment.assigned_to.email)
@@ -173,21 +174,26 @@ def send_assignment_notification(assignment):
 def send_maintenance_report_notification(report):
     """Notificación cuando se crea un informe de mantenimiento"""
     try:
-        subject = f"📄 Nuevo Informe de Mantenimiento #{report.id}"
+        subject = f"📄 Informe de Mantenimiento #{report.id} - {report.get_status_display()}"
         
+        # Determinar si es para solicitud o reporte
+        if report.assignment.flow_request:
+            obj_type = "Solicitud de Caudal"
+            obj_id = report.assignment.flow_request.id
+        else:
+            obj_type = "Reporte de Fallo"
+            obj_id = report.assignment.failure_report.id
+
         context = {
             'report_id': report.id,
-            'assignment_id': report.assignment.id,
+            'object_type': obj_type,
+            'object_id': obj_id,
             'intervention_date': report.intervention_date.strftime("%d/%m/%Y %H:%M"),
             'technician': report.assignment.assigned_to.get_full_name(),
             'supervisor': report.assignment.assigned_by.get_full_name(),
             'status': report.get_status_display(),
-            'is_approved': "Aprobado" if report.is_approved else "Pendiente de aprobación",
+            'is_approved': "Aprobado" if report.is_approved else "Pendiente",
             'description': report.description or "No se proporcionó descripción",
-            'findings': report.findings or "No se registraron hallazgos",
-            'actions_taken': report.actions_taken or "No se registraron acciones",
-            'recommendations': report.recommendations or "No se hicieron recomendaciones",
-            'images': "Disponibles" if report.images else "No hay imágenes",
         }
         
         # Enviar al técnico y al supervisor
