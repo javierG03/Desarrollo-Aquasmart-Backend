@@ -7,10 +7,10 @@ from iot.models import IoTDevice, VALVE_4_ID
 
 
 class StatusRequestReport(models.TextChoices):
-    PENDING = 'Pendiente', 'Pendiente'
-    IN_PROGRESS = 'En proceso', 'En proceso'
-    REJECTED = 'A espera de aprobación', 'A espera de aprobación'
-    FINISHED = 'Finalizado', 'Finalizado'
+    PENDING = 'Pendiente', 'Pendiente' # Cuando se crea la solicitud/reporte
+    IN_PROGRESS = 'En proceso', 'En proceso' # Cuando se creó la asignación para la solicitud/reporte
+    REJECTED = 'A espera de aprobación', 'A espera de aprobación' # Cuando se creó el informe de la asignación para la solicitud/reporte
+    FINISHED = 'Finalizado', 'Finalizado' # Cuando el informe ha sido aprobado
 
 class BaseRequestReport(models.Model):
     ''' Modelo base para solicitudes de caudal y reportes de fallos '''
@@ -31,7 +31,7 @@ class BaseRequestReport(models.Model):
     def _validate_lot_is_activate(self):
         ''' Valida que el lote en cuya solicitud está presente, esté habilitado '''
         if self.lot and self.lot.is_activate != True:
-            raise ValueError("No se puede realizar solicitud de caudal de un lote inhabilitado.")
+            raise ValueError("No se puede realizar una solicitud o un reporte de un lote inhabilitado.")
 
     def _validate_lot_has_valve4(self):
         ''' Validar que el lote tenga asignada una válvula de 4" '''
@@ -43,33 +43,15 @@ class BaseRequestReport(models.Model):
 
     def _validate_status_transition(self):
         ''' Valida que no se cambie el estado de la solicitud una vez fue finalizada '''
-        if not self.pk:
-            return  # Objeto nuevo, no hay transición que validar
-
-        try:
-            old = type(self).objects.get(pk=self.pk)
-        except type(self).DoesNotExist:
-            return  # Objeto aún no existe en la BD, no hay nada que comparar
-
-        if old.status != 'Finalizado' and self.status == 'Finalizado':
-            self.finalized_at = timezone.now()
-        elif old.status == 'Finalizado' and self.status != old.status:
-            raise ValueError("No se puede cambiar el estado una vez que la solicitud ha sido revisada.")
-        if not self.pk:
-         return  # aún no existe, no validar transición
-
-        try:
-             old = type(self).objects.get(pk=self.pk)
-        except type(self).DoesNotExist:
-         return  # aún no existe en la BD, probablemente es nuevo
-        if old.status != 'Finalizado' and self.status == 'Finalizado':
-          self.finalized_at = timezone.now()
-        elif old.status == 'Finalizado' and self.status != old.status:
-          raise ValueError("No se puede cambiar el estado una vez que la solicitud ha sido revisada.")
-
+        if self.pk:
+            try:
+                old = type(self).objects.get(pk=self.pk)
+                if old.status == StatusRequestReport.FINISHED and self.status != old.status:
+                    raise ValueError("No se puede cambiar el estado una vez que la solicitud ha sido revisada.")
+            except type(self).DoesNotExist:
+                pass
 
     def clean(self):
-        #self._validate_owner()
         self._validate_lot_is_activate()
         self._validate_lot_has_valve4()
         self._validate_status_transition()
@@ -81,6 +63,9 @@ class BaseRequestReport(models.Model):
         if not self.pk:
             self.status = 'Pendiente'
             self.finalized_at = None
+
+        if self.status == StatusRequestReport.FINISHED:
+            self.finalized_at = timezone.now()
 
         super().save(*args, **kwargs)
 

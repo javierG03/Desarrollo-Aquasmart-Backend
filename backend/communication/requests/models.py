@@ -1,6 +1,8 @@
 from django.db import models
+from django.db import transaction
+from django.utils import timezone
 from functools import cached_property
-from communication.models import BaseRequestReport
+from communication.models import BaseRequestReport, StatusRequestReport
 from iot.models import IoTDevice, VALVE_4_ID
 from communication.utils import generate_unique_id
 
@@ -23,7 +25,7 @@ class FlowRequest(BaseRequestReport):
         verbose_name_plural = "Solicitudes de caudal"
 
     def __str__(self):
-        return f"{self.flow_request_type} de {self.created_by.get_full_name()} para {self.lot} - {self.status}"
+        return f"Solicitud de {self.flow_request_type} hecha por {self.created_by.get_full_name()} para {self.lot} - {self.status}"
 
     @cached_property
     def _get_device(self):
@@ -82,21 +84,63 @@ class FlowRequest(BaseRequestReport):
                 raise ValueError("No se puede modificar el caudal solicitado en una solicitud de cancelación de caudal.")
 
     def _validate_pending_activation_request(self):
-        if FlowRequest.objects.filter(lot=self.lot, status='Pendiente').exclude(pk=self.pk).exists():
-            raise ValueError("El lote elegido cuenta con una solicitud de activación de caudal en curso.")
+        ''' Valida que no existan solicitudes pendientes de activación para el mismo lote. '''
+        if self.flow_request_type == FlowRequestType.FLOW_ACTIVATION:
+            if FlowRequest.objects.filter(lot=self.lot, status='Pendiente').exclude(pk=self.pk).exists():
+                raise ValueError("El lote elegido cuenta con una solicitud de activación de caudal en curso.")
 
     def _validate_actual_flow_activated(self):
-        device = self._get_device
-        if device.actual_flow > 0:
-            raise ValueError("El caudal del lote ya está activo. No es necesario solicitar activación.")
+        ''' Valida que el caudal actual del lote esté activo '''
+        if self.flow_request_type == FlowRequestType.FLOW_ACTIVATION:
+            device = self._get_device
+            if device.actual_flow > 0:
+                raise ValueError("El caudal del lote ya está activo. No es necesario solicitar activación.")
+
+    def _validate_observations(self):
+        if self.flow_request_type in {FlowRequestType.FLOW_TEMPORARY_CANCEL, FlowRequestType.FLOW_DEFINITIVE_CANCEL, FlowRequestType.FLOW_ACTIVATION}:
+            if not self.observations:
+                raise ValueError("El campo 'observations' es obligatorio.")
+            
+            if self.flow_request_type in {FlowRequestType.FLOW_TEMPORARY_CANCEL, FlowRequestType.FLOW_DEFINITIVE_CANCEL}:
+                if len(self.observations) > 200:
+                    raise ValueError("Las observaciones no pueden exceder los 200 caracteres.")
+            elif self.flow_request_type == FlowRequestType.FLOW_ACTIVATION:
+                if len(self.observations) > 300:
+                    raise ValueError("Las observaciones no pueden exceder los 300 caracteres.")
+
+    def _validate_approved_transition(self):
+        ''' Valida que no se cambie el estado de la solicitud una vez fue finalizada '''
+        if self.pk:
+            try:
+                old = type(self).objects.get(pk=self.pk)
+                if old.is_approved == True and self.is_approved != old.is_approved:
+                    raise ValueError("Si la solicitud ya fue aprobada, no se puede revertir dicha acción.")
+            except type(self).DoesNotExist:
+                pass
+
+    def approve_from_maintenance(self):
+        """Método específico para aprobar la solicitud desde un reporte de mantenimiento"""
+        with transaction.atomic():
+            self.is_approved = True
+            self.status = StatusRequestReport.FINISHED
+            self.finalized_at = timezone.now()
+            
+            self._apply_cancel_flow_to_device()
+            
+            # Guardar sin ejecutar validaciones
+            type(self).objects.filter(pk=self.pk).update(
+                is_approved=self.is_approved,
+                status=self.status,
+                finalized_at=self.finalized_at
+            )
 
     def _apply_requested_flow_to_device(self):
         if self.flow_request_type in {FlowRequestType.FLOW_CHANGE, FlowRequestType.FLOW_TEMPORARY_CANCEL, FlowRequestType.FLOW_ACTIVATION}:
             device = self._get_device
             if self.is_approved == True:
                 device.actual_flow = self.requested_flow
-                device.save()
-                self.status = 'Finalizado'
+                device.save(update_fields=['actual_flow'])
+                self.status = 'Finalizado' # Marcar como 'Finalizado' la solicitud
 
     def _auto_reject_temporary_cancel_request(self):
         if self.flow_request_type == FlowRequestType.FLOW_DEFINITIVE_CANCEL:
@@ -105,23 +149,29 @@ class FlowRequest(BaseRequestReport):
                 flow_cancel_request.is_approved = False
                 flow_cancel_request.status = 'Finalizado'
                 flow_cancel_request.observations = 'Finalizado de forma automática: El usuario ha solicitado una cancelación definitiva.'
-                flow_cancel_request.save()
+                flow_cancel_request.save(update_fields=['is_approved', 'status', 'observations', 'finalized_at'])
 
     def _apply_cancel_flow_to_device(self):
         device = self._get_device
-        if self.flow_request_type == FlowRequestType.FLOW_TEMPORARY_CANCEL and self.is_approved == True:
-            device.actual_flow = 0
-            device.save()
-            self.status = 'Finalizado'
-        elif self.flow_request_type == FlowRequestType.FLOW_DEFINITIVE_CANCEL:
-            device.actual_flow = 0
-            device.id_lot.is_activate = False
-            device.id_lot.save()
-            self.status = 'Finalizado'
+        # Si es cancelación temporal
+        if self.flow_request_type == FlowRequestType.FLOW_TEMPORARY_CANCEL:
+            if self.is_approved == True:
+                device.actual_flow = 0 # Desactivar el caudal del lote
+                device.save(update_fields=['actual_flow'])
+                self.status = 'Finalizado'
+        # Si es cancelación definitiva
+        if self.flow_request_type == FlowRequestType.FLOW_DEFINITIVE_CANCEL:
+            if self.is_approved == True:
+                device.actual_flow = 0 # Desactivar el caudal del lote
+                device.id_lot.is_activate = False # Desactivar el lote
+                device.save(update_fields=['actual_flow'])
+                device.id_lot.save(update_fields=['is_activate'])
+                self.status = 'Finalizado'
 
     def clean(self):
         super().clean()
         self._validate_owner()
+        self._validate_approved_transition()
         self._validate_requested_flow()
         self._check_caudal_flow_inactive()
         self._validate_pending_change_request()
@@ -129,6 +179,10 @@ class FlowRequest(BaseRequestReport):
         self._validate_requested_flow_uniqueness()
         self._validate_pending_temporary_request()
         self._validate_pending_definitive_request()
+        self._validate_cancellation_flow_not_editable()
+        self._validate_pending_activation_request()
+        self._validate_actual_flow_activated()
+        self._validate_observations()
 
     def save(self, *args, **kwargs):
         is_new = not self.pk
@@ -139,8 +193,10 @@ class FlowRequest(BaseRequestReport):
 
         self.type = 'Solicitud'
 
+        # Establecer 'requires_delegation' automáticamente, según el tipo de solicitud
         if self.flow_request_type == FlowRequestType.FLOW_DEFINITIVE_CANCEL:
             self.requires_delegation = True
+        else: self.requires_delegation = False
 
         super().save(*args, **kwargs)
         

@@ -4,9 +4,8 @@ from rest_framework.response import Response
 from rest_framework.generics import (
     RetrieveAPIView, CreateAPIView, ListAPIView
 )
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, BasePermission, IsAdminUser
 from django.contrib.auth import get_user_model
-
 from communication.requests.models import FlowRequest
 from communication.requests.serializers import FlowRequestSerializer
 from communication.reports.models import FailureReport
@@ -15,20 +14,72 @@ from communication.reports.serializers import FailureReportSerializer
 from .models import MaintenanceReport, Assignment
 from .serializers import MaintenanceReportSerializer, AssignmentSerializer
 
+from .models import MaintenanceReport, Assignment
+from .serializers import MaintenanceReportSerializer, AssignmentSerializer
+
 User = get_user_model()
 
 
+class AdminRequestOrReportUnifiedDetailView(APIView):
+    """
+    Devuelve el detalle de una solicitud o reporte según el ID, sin importar el usuario.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        flow = FlowRequest.objects.filter(pk=pk).first()
+        if flow:
+            return Response(FlowRequestSerializer(flow).data)
+
+        report = FailureReport.objects.filter(pk=pk).first()
+        if report:
+            return Response(FailureReportSerializer(report).data)
+
+        return Response({"detail": "No se encontró una solicitud o reporte con ese ID."}, status=404)
+
+
+class AllRequestsAndReportsView(APIView):
+    """
+    Devuelve todas las solicitudes y reportes de todos los usuarios (uso administrativo).
+    """
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        flow_requests = FlowRequest.objects.all()
+        failure_reports = FailureReport.objects.all()
+
+        flow_data = FlowRequestSerializer(flow_requests, many=True).data
+        report_data = FailureReportSerializer(failure_reports, many=True).data
+
+        return Response({
+            "flow_requests": flow_data,
+            "failure_reports": report_data
+        })
+    
+
+
+class IsAdminOrTechnicianOrOperator(BasePermission):
+    """
+    Permite acceso si el usuario es admin o pertenece a Técnicos u Operadores.
+    """
+    def has_permission(self, request, view):
+        user = request.user
+        return (
+            user and user.is_authenticated and (
+                user.is_staff or
+                user.groups.filter(name__in=["Técnicos", "Operadores"]).exists()
+            )
+        )
+    
 class AssignmentViewSet(viewsets.ModelViewSet):
-    """
-    Permite crear y listar asignaciones por parte de un administrador.
-    """
+   
     queryset = Assignment.objects.all()
     serializer_class = AssignmentSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user
-        if user.groups.filter(name="Manager").exists():
+        if user.is_staff or user.groups.filter(name__in=["Técnicos", "Operadores"]).exists():
             return Assignment.objects.all()
         return Assignment.objects.filter(assigned_by=user)
 
@@ -87,6 +138,8 @@ class MaintenanceReportCreateView(CreateAPIView):
 
 class MaintenanceReportListView(ListAPIView):
     """
+    Lista todos los informes de mantenimiento.
+    Técnicos, operadores y admins ven todos. Otros ven solo los suyos.
     Lista todos los informes de mantenimiento. Técnicos ven los propios, managers ven todos.
     """
     serializer_class = MaintenanceReportSerializer
@@ -94,6 +147,12 @@ class MaintenanceReportListView(ListAPIView):
 
     def get_queryset(self):
         user = self.request.user
+        if user.is_staff or user.groups.filter(name__in=["Técnicos", "Operadores"]).exists():
+            if user.groups.filter(name="Manager").exists():
+                return MaintenanceReport.objects.all()
+            return MaintenanceReport.objects.filter(assignment__assigned_to=user)
+
+
         if user.groups.filter(name="Manager").exists():
             return MaintenanceReport.objects.all()
         return MaintenanceReport.objects.filter(assignment__assigned_to=user)
@@ -106,6 +165,14 @@ class MaintenanceReportDetailView(RetrieveAPIView):
     queryset = MaintenanceReport.objects.all()
     serializer_class = MaintenanceReportSerializer
     permission_classes = [IsAuthenticated]
+
+
+class ApproveMaintenanceReportView(APIView):
+    """
+    Permite aprobar informes de mantenimiento (solo admin/técnico/operador).
+    """
+    permission_classes = [IsAuthenticated, IsAdminOrTechnicianOrOperator]
+
 class ApproveMaintenanceReportView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -115,13 +182,24 @@ class ApproveMaintenanceReportView(APIView):
         except MaintenanceReport.DoesNotExist:
             return Response({"detail": "Informe no encontrado"}, status=status.HTTP_404_NOT_FOUND)
 
+        if report.is_approved:
+            return Response({"detail": "El informe ya fue aprobado."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
         report.is_approved = True
         report.save()
         return Response({"detail": "Informe aprobado correctamente."})
 
 
 class ReassignAssignmentView(APIView):
+
+    """
+    Permite reasignar una solicitud o reporte.
+    """
+    permission_classes = [IsAuthenticated, IsAdminOrTechnicianOrOperator]
     permission_classes = [IsAuthenticated]
+
 
     def post(self, request, pk):
         try:

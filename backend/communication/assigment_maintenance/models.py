@@ -1,9 +1,10 @@
 from django.db import models
+from django.db import transaction
 from django.conf import settings
+from django.utils import timezone
 from communication.requests.models import FlowRequest
 from communication.reports.models import FailureReport
-from communication.utils import generate_unique_id
-from communication.notifications import send_maintenance_report_notification
+from communication.utils import generate_unique_id, change_status_request_report
 
 class Assignment(models.Model):
     """Modelo para almacenar asignaciones de solicitudes y reportes de fallos"""
@@ -18,18 +19,31 @@ class Assignment(models.Model):
 
     class Meta:
         verbose_name = "Asignación de solicitud/reporte"
-        verbose_name_plural = "Asignaciones de solicitudes/reportes"         
-     
-    def save(self, *args, **kwargs):
-        is_new = not self.pk
-        
-        if not self.id:
-            self.id = generate_unique_id(Assignment, "30")
-            
-        super().save(*args, **kwargs)
+        verbose_name_plural = "Asignaciones de solicitudes/reportes"
 
     def __str__(self):
-        return f"Asignación #{self.id} de {self.assigned_by} a {self.assigned_to}"
+        if self.flow_request:
+            return f"Asignación de {self.assigned_by} a {self.assigned_to} ({self.assignment_date} - {self.flow_request.status})"
+        if self.failure_report:
+            return f"Asignación de {self.assigned_by} a {self.assigned_to} ({self.assignment_date} - {self.failure_report.status})"
+
+    def _validate_requires_delegation(self):
+        ''' Valida que no se permita crear una asignación de una solicitud que no debe ser delegada '''
+        if self.flow_request.requires_delegation == False:
+            raise ValueError({"error": "No se puede crear una asignación de esta solicitud."})
+
+    def save(self, *args, **kwargs):
+        if not self.pk:
+            change_status_request_report(self, Assignment)
+        
+        if not self.id:
+            self.id = generate_unique_id(Assignment,"30")
+
+        if self.flow_request:
+            self._validate_requires_delegation()
+
+        super().save(*args, **kwargs)
+
 
 class MaintenanceReport(models.Model):
     """Modelo para almacenar informes de mantenimiento"""
@@ -53,26 +67,34 @@ class MaintenanceReport(models.Model):
         verbose_name_plural = "Informes de mantenimiento"
 
     def __str__(self):
-        return f"Informe #{self.id} por {self.assignment.assigned_to} ({self.status})"
+        return f"Informe de mantenimiento de {self.assignment.assigned_to} ({self.intervention_date})"
+
+    def _validate_intervention_date(self):
+        ''' Valida que la fecha de intervención no sea mayor a la fecha actual '''
+        if self.intervention_date > timezone.now():
+            raise ValueError("La fecha de intervención no puede ser mayor a la fecha actual.")
 
     def _finalize_requests_reports(self):
         ''' Finalizar la solicitud o el reporte ligado al informe después de aprobado '''
-        if self.is_approved:
-            if self.assignment.flow_request:
-                self.assignment.flow_request.is_approved = True
-                self.assignment.flow_request.save()
-            elif self.assignment.failure_report:
-                self.assignment.failure_report.status = 'Finalizado'
-                self.assignment.failure_report.save()
+        with transaction.atomic():
+            if self.is_approved == True:
+                flow_request = self.assignment.flow_request
+                failure_report = self.assignment.failure_report
+                if flow_request:
+                    flow_request.approve_from_maintenance()
+                elif failure_report:
+                    failure_report.status = 'Finalizado'
+                    failure_report.finalized_at = timezone.now()
+                    failure_report.save(update_fields=['status', 'finalized_at'])
 
     def save(self, *args, **kwargs):
-        is_new = not self.pk
-        
+        if not self.pk:
+            change_status_request_report(self, MaintenanceReport)
         if not self.id:
             self.id = generate_unique_id(MaintenanceReport, "40")
 
-        super().save(*args, **kwargs)
-        
+        self._validate_intervention_date()
+
         self._finalize_requests_reports()
         
         if is_new:
