@@ -2,7 +2,7 @@ import pytest
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
-from communication.reports.models import WaterSupplyFailureReport
+from communication.reports.models import FailureReport
 from plots_lots.models import Plot, Lot
 from users.models import CustomUser, PersonType
 from iot.models import IoTDevice, VALVE_4_ID

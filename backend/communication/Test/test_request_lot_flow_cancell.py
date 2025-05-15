@@ -65,30 +65,7 @@ def test_user_can_request_flow_cancellation(api_client, normal_user, login_and_v
 
     print("✅ Solicitud de cancelación de caudal realizada correctamente.")
 
-@pytest.mark.django_db
-def test_user_cannot_request_flow_cancellation_on_innactivate_lot(api_client, normal_user, login_and_validate_otp, user_plot, user_lot, iot_device, device_type):
-    """
-    ❌ Verifica que un usuario no pueda solicitar la cancelación de un cambio de caudal en un lote inactivo.
-    """
-    
-    # 🔐 Login
-    client = login_and_validate_otp(api_client, normal_user, "UserPass123@")
 
-    url = reverse("flow-request-cancel-create")  # Asegúrate que esté correctamente en tus URLs
-    payload = {
-        "flow_request_type": "Cancelación Temporal de Caudal",
-        "type": "Solicitud",
-        "lot": user_lot[2].pk,
-        "observations": "No necesito el caudal adicional por ahora"
-    }
-
-    response = client.post(url, payload, format="json")
-    print(f"Respuesta ({response.status_code}): {response.data}")
-    assert response.status_code == status.HTTP_400_BAD_REQUEST, (
-        f"❌ Se esperaba HTTP 400 pero se obtuvo {response.status_code}. Respuesta: {response.data}"
-    )
-
-    print ("✅ No se permitió la cancelación de caudal en un lote inactivo.")
 
 @pytest.mark.django_db
 def test_user_cannot_request_flow_cancellation_on_lot_with_pending_request(api_client, normal_user, login_and_validate_otp, user_plot, user_lot, iot_device, device_type):

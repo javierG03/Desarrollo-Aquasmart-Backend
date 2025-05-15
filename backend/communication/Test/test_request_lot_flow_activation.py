@@ -4,7 +4,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 # Modelos necesarios para las pruebas
-from communication.request.models import FlowActivationRequest, FlowChangeRequest, FlowCancelRequest
+from communication.requests.models import FlowRequest
 from iot.models import IoTDevice, DeviceType, VALVE_4_ID, VALVE_48_ID
 from plots_lots.models import Plot, Lot, SoilType, CropType
 from users.models import CustomUser, PersonType, Otp

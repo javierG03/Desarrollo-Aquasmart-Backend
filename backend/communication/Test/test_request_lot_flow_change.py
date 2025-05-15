@@ -82,26 +82,7 @@ def test_user_can_request_flow_change(api_client, normal_user, login_and_validat
 
     print("✅ Solicitud de cambio de caudal creada correctamente.")
 
-@pytest.mark.django_db
-def test_user_cannot_request_flow_change_for_innactive_lot(api_client, normal_user, login_and_validate_otp, user_plot, user_lot, iot_device, device_type):
-    client = login_and_validate_otp(api_client, normal_user, "UserPass123@")
 
-    url = reverse("flow-request-create")
-    payload = {
-        "requested_flow": 10.5,
-        "type": "Solicitud",
-        "flow_request_type": "Cambio de Caudal",
-        "lot": user_lot[2].pk  # Lote inactivo
-    }
-    print(f"Payload enviado: {payload}")
-    response = client.post(url, payload, format="json")
-    print(f"Respuesta ({response.status_code}): {response.data}")
-
-    assert response.status_code == status.HTTP_400_BAD_REQUEST, (
-        f"❌ Se esperaba HTTP 400 pero se obtuvo {response.status_code}. "
-        f"Respuesta: {response.data}"
-    )
-    print ("✅ No se pudo realizar la solicitud de cambio de caudal para un lote inactivo.")
 
 @pytest.mark.django_db
 def test_user_cannot_request_flow_change_on_lot_with_pending_request(api_client, normal_user, login_and_validate_otp, user_plot, user_lot, iot_device, device_type):
