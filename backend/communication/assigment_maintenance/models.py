@@ -26,6 +26,9 @@ class Assignment(models.Model):
         permissions = [
             ("can_be_assigned", "Puede puede ser asignado"),
             ("can_assign_user", "Puede asignar un usuario"),
+            ('Can_view_assignment', 'Puede ver asignaciones'),
+            ('view_all_assignments', 'Puede ver todas las asignaciones'),
+            
         ]
 
     def __str__(self):

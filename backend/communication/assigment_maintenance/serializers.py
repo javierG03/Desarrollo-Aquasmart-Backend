@@ -21,7 +21,15 @@ class AssignmentSerializer(serializers.ModelSerializer):
             'reassigned',
         ]
         read_only_fields = ['id', 'assigned_by', 'assignment_date']
-
+        
+    def to_representation(self, instance):
+        "Elimina los campos de flujo y reporte si son nulos al momento de mostrar la respuesta"
+        rep = super().to_representation(instance)
+        if rep.get('flow_request') is None:
+            rep.pop('flow_request')
+        if rep.get('failure_report') is None:
+            rep.pop('failure_report')
+        return rep
     def validate_flow_request(self, value):
         ''' Valida que no se permita crear una asignación de una solicitud que no debe ser delegada '''
         if value.requires_delegation == False:
