@@ -71,9 +71,11 @@ class AssignmentSerializer(serializers.ModelSerializer):
         assigned_to = data.get('assigned_to')
 
         if assigned_to:
-            valid_groups = ['Técnico', 'Operador']
-            if not assigned_to.groups.filter(name__in=valid_groups).exists():
-                raise serializers.ValidationError("Solo se puede asignar a usuarios del grupo 'Técnico' o 'Operador'.")
+            required_permission = 'communication.can_be_assigned'  # Cambia esto por el permiso que tú definas
+            if not assigned_to.has_perm(required_permission):
+                raise serializers.ValidationError(
+                    {"assigned_error":f"El usuario asignado debe tener el permiso necesario para poder completar esta accion."}
+                )
         
     def validate(self, data):
         self._validate_exclusive_assignment(data)

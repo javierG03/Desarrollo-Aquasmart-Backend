@@ -70,12 +70,12 @@ class IsAdminOrTechnicianOrOperator(BasePermission):
                 user.groups.filter(name__in=["Técnicos", "Operadores"]).exists()
             )
         )
-    
+from communication.permissions import CanAssignUser  
 class AssignmentViewSet(viewsets.ModelViewSet):
    
     queryset = Assignment.objects.all()
     serializer_class = AssignmentSerializer
-    permission_classes = [IsAuthenticated, IsAdminOrTechnicianOrOperator]
+    permission_classes = [IsAuthenticated, CanAssignUser]
 
     def get_queryset(self):
         user = self.request.user

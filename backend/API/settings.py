@@ -48,10 +48,11 @@ INSTALLED_APPS = [
     'storages',
     'rest_framework.authtoken',
     'rest_framework',
+    'users.apps.UsersConfig',
     'auditlog',
     
     # Local apps
-    'users',
+    
     'iot',
     'plots_lots',
     'AquaSmart',
@@ -66,10 +67,10 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'auditlog.middleware.AuditlogMiddleware',
+    'django.middleware.common.CommonMiddleware',    
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'auditlog.middleware.AuditlogMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -199,7 +200,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
-    'EXCEPTION_HANDLER': 'notification.exceptions.custom_exception_handler',
+    'EXCEPTION_HANDLER': 'API.exceptions.custom_exception_handler',
     'DEFAULT_THROTTLE_RATES': {
         'anon': '100/day',
         'user': '1000/day',
