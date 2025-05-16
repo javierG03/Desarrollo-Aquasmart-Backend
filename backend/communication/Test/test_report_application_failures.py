@@ -28,7 +28,7 @@ def test_application_failure_requires_valid_observations(api_client, normal_user
     print("✅ Reporte de fallo en aplicativo validado correctamente.")
 
 @pytest.mark.django_db
-def test_application_failure_cannot_has_more_than_200_characteres(
+def test_application_failure_cannot_has_more_than_300_characteres(
     api_client, normal_user, login_and_validate_otp
 ):
     client = login_and_validate_otp(api_client, normal_user, "UserPass123@")
@@ -37,7 +37,7 @@ def test_application_failure_cannot_has_more_than_200_characteres(
     response = client.post(
         url,
         {
-            "observations": "a" * 201,
+            "observations": "a" * 301,
             "type": "Reporte",
             "failure_type":"Fallo en el Aplicativo"
         },

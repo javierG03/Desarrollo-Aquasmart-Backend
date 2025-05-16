@@ -5,7 +5,8 @@ from iot.models import DeviceType, IoTDevice, VALVE_4_ID
 from rest_framework.test import APIClient
 from rest_framework import status
 from plots_lots.models import Plot, Lot, SoilType, CropType
-
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 
 
 @pytest.fixture
@@ -49,6 +50,40 @@ def admin_user(db, person_type):
         person_type=person_type,
         is_registered=True
     )
+    return user
+
+@pytest.fixture
+def tecnico_user(db,person_type):
+    user = CustomUser.objects.create_superuser(
+    document="00123456789",
+    first_name="tecnico",
+    last_name="User",
+    email="tecnico@example.com",
+    phone="000111222333444",
+    password="UserPass123@",
+    person_type=person_type,
+    is_registered=True
+    )
+    group, _ = Group.objects.get_or_create(name="Técnico")
+    user.groups.add(group)
+    user.save()
+    return user
+
+@pytest.fixture
+def operador_user(db, person_type):
+    user = CustomUser.objects.create_superuser(
+    first_name="operador",
+    last_name="User",
+    email="operador@example.com",
+    password="UserPass123@",
+    document="0001234567890",
+    phone="11122233344455566",
+    person_type=person_type,
+    is_registered=True
+    )
+    group, _ = Group.objects.get_or_create(name="Operador")
+    user.groups.add(group)
+    user.save()
     return user
 
 @pytest.fixture
