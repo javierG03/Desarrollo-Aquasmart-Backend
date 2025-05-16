@@ -8,7 +8,7 @@ class CanAccessAssignmentView(permissions.BasePermission):
     def has_permission(self, request, view):
         permission_map = {
             'list': 'communication.view_assignment',            
-            'create': 'communication.can_be_assigned',        
+            'create': 'communication.can_assign_user',        
         }
           # Obtener el permiso requerido para la acción actual
         required_permission = permission_map.get(view.action)
