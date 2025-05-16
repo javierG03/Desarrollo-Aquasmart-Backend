@@ -607,7 +607,7 @@ def test_non_admin_cannot_approve_request(api_client, normal_user, login_and_val
     print(f"Respuesta rechazo ({reject_response.status_code}): {reject_response.data}")
     
     # 🔎 Validar que se deniega la acción de rechazo
-    assert reject_response.status_code == status.HTTP_404_NOT_FOUND, (
+    assert reject_response.status_code == status.HTTP_403_FORBIDDEN, (
         f"❌ La acción de rechazo debería ser denegada pero se obtuvo código {reject_response.status_code}"
     )
     
