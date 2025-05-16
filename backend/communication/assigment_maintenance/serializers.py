@@ -37,7 +37,9 @@ class AssignmentSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Debe asignar al menos un 'flow_request' o un 'failure_report'.")
 
     def _validate_no_auto_assignment(self, data):
-        if data.get('assigned_by') == data.get('assigned_to'):
+        
+        assigned_by = self.context['request'].user
+        if assigned_by == data.get('assigned_to'):            
             raise serializers.ValidationError("Un usuario no puede asignarse a sí mismo una solicitud o reporte.")
 
     def _validate_duplicate_assignment(self, data):
@@ -69,9 +71,11 @@ class AssignmentSerializer(serializers.ModelSerializer):
         assigned_to = data.get('assigned_to')
 
         if assigned_to:
-            valid_groups = ['Técnico', 'Operador']
-            if not assigned_to.groups.filter(name__in=valid_groups).exists():
-                raise serializers.ValidationError("Solo se puede asignar a usuarios del grupo 'Técnico' o 'Operador'.")
+            required_permission = 'communication.can_be_assigned'  # Cambia esto por el permiso que tú definas
+            if not assigned_to.has_perm(required_permission):
+                raise serializers.ValidationError(
+                    {"assigned_error":f"El usuario asignado debe tener el permiso necesario para poder completar esta accion."}
+                )
         
     def validate(self, data):
         self._validate_exclusive_assignment(data)
