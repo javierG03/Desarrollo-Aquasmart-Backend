@@ -142,11 +142,11 @@ def send_assignment_notification(assignment):
     try:
         # Determinar si es para solicitud o reporte
         if assignment.flow_request:
-            obj_type = "Solicitud de Caudal"
+            obj_type = f"Solicitud de {assignment.flow_request.get_flow_request_type_display()}"
             obj_id = assignment.flow_request.id
             obj_status = assignment.flow_request.get_status_display()
         else:
-            obj_type = "Reporte de Fallo"
+            obj_type = f"Reporte de {assignment.failure_report.get_failure_type_display()}"
             obj_id = assignment.failure_report.id
             obj_status = assignment.failure_report.get_status_display()
 

@@ -37,7 +37,9 @@ class AssignmentSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Debe asignar al menos un 'flow_request' o un 'failure_report'.")
 
     def _validate_no_auto_assignment(self, data):
-        if data.get('assigned_by') == data.get('assigned_to'):
+        
+        assigned_by = self.context['request'].user
+        if assigned_by == data.get('assigned_to'):            
             raise serializers.ValidationError("Un usuario no puede asignarse a sí mismo una solicitud o reporte.")
 
     def _validate_duplicate_assignment(self, data):
