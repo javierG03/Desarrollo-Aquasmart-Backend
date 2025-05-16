@@ -14,6 +14,8 @@ from communication.reports.serializers import FailureReportSerializer
 from .models import MaintenanceReport, Assignment
 from .serializers import MaintenanceReportSerializer, AssignmentSerializer
 
+from .models import MaintenanceReport, Assignment
+from .serializers import MaintenanceReportSerializer, AssignmentSerializer
 
 User = get_user_model()
 
