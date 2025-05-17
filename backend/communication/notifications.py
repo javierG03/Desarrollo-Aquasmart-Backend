@@ -2,7 +2,8 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
-
+import os
+email_admin = os.environ.get('EMAIL_HOST_USER', default=os.getenv("EMAIL_HOST_USER"))
 def _send_notification_email(subject, context, template_name, recipient_email):
     """Función helper para enviar correos electrónicos"""
     try:
@@ -59,7 +60,10 @@ def send_failure_report_created_notification(report):
             'user_name': report.created_by.get_full_name(),
         }
         
-        return _send_notification_email(subject, context, 'failure_report_created', report.created_by.email)
+        return all([
+            _send_notification_email(subject, context, 'failure_report_created', report.created_by.email),
+            _send_notification_email(subject, context, 'failure_report_created', email_admin)
+            ])
     except Exception as e:
         print(f"Error al preparar notificación de reporte creado: {str(e)}")
         return False
@@ -80,7 +84,11 @@ def send_failure_report_status_notification(report):
             'user_name': report.created_by.get_full_name(),
         }
         
-        return _send_notification_email(subject, context, 'failure_report_status', report.created_by.email)
+        return all([
+            _send_notification_email(subject, context, 'failure_report_status', report.created_by.email),
+            _send_notification_email(subject, context, 'failure_report_status', email_admin)            
+            ])
+    
     except Exception as e:
         print(f"Error al preparar notificación de estado de reporte: {str(e)}")
         return False
@@ -106,7 +114,10 @@ def send_flow_request_created_notification(request):
             'requires_delegation': "Sí" if request.requires_delegation else "No",
         }
         
-        return _send_notification_email(subject, context, 'flow_request_created', request.created_by.email)
+        return all([
+            _send_notification_email(subject, context, 'flow_request_created', request.created_by.email),
+            _send_notification_email(subject, context, 'flow_request_created', email_admin)
+            ])
     except Exception as e:
         print(f"Error al preparar notificación de solicitud creada: {str(e)}")
         return False
@@ -131,7 +142,10 @@ def send_flow_request_decision_notification(request):
             'new_flow': f"{request.requested_flow} L/s" if request.is_approved and request.requested_flow else "Sin cambios",
         }
         
-        return _send_notification_email(subject, context, 'flow_request_decision', request.created_by.email)
+        return all([
+            _send_notification_email(subject, context, 'flow_request_decision', request.created_by.email),
+            _send_notification_email(subject, context, 'flow_request_decision', email_admin)
+            ])
     except Exception as e:
         print(f"Error al preparar notificación de decisión de solicitud: {str(e)}")
         return False
