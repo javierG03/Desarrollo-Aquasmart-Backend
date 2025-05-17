@@ -15,21 +15,21 @@ now = timezone.now().strftime("%Y-%m-%d")
 def api_climate_request(location,date):
     
     key = os.getenv("KEY_CLIMATE")
-    SCOPE =f"{location}/{date}/{date}?unitGroup=metric&include=days&key={key}&contentType=json"
-    
+    scope =f"{location}/{date}/{date}?unitGroup=metric&include=days&key={key}&contentType=json"
+    url_api = os.getenv("URL_CLIMATE")
     campos_deseados = [
     "datetime", "tempmax", "tempmin", "precip", "precipprob", "precipcover",
     "windgust", "windspeed", "pressure", "cloudcover",
     "solarradiation", "sunrise", "sunset"
 ]
-    print(SCOPE)
+    
 
     headers = {
         
         'Accept': 'application/json'
     }
 
-    url_protegido = os.getenv("URL_CLIMATE")+SCOPE
+    url_protegido = f"{url_api}{scope}"
     response = requests.get(url_protegido, headers=headers)   
     if response.status_code == 200:
         data = response.json()
@@ -48,4 +48,4 @@ def api_climate_request(location,date):
         print(f"Error en solicitud protegida: {response.status_code}")
         return None
 
-api_climate_request(LOCATION,now)   
+#api_climate_request(LOCATION,now)   
