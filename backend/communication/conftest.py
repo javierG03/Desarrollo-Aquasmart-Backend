@@ -7,6 +7,7 @@ from rest_framework import status
 from plots_lots.models import Plot, Lot, SoilType, CropType
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+import os
 
 
 @pytest.fixture
@@ -44,12 +45,17 @@ def admin_user(db, person_type):
         document="01234567890",
         first_name="Admin",
         last_name="User",
-        email="admin@example.com",
+        email = os.environ.get('EMAIL_HOST_USER', default=os.getenv("EMAIL_HOST_USER")),
         phone="3210000000",
         password="AdminPass123@",  # <- muy importante
         person_type=person_type,
         is_registered=True
+
+            
     )
+    group, _ = Group.objects.get_or_create(name="Administradores")
+    user.groups.add(group)
+    user.save()
     return user
 
 @pytest.fixture
@@ -64,7 +70,7 @@ def tecnico_user(db,person_type):
     person_type=person_type,
     is_registered=True
     )
-    group, _ = Group.objects.get_or_create(name="Técnico")
+    group, _ = Group.objects.get_or_create(name="Tecnicos")
     user.groups.add(group)
     user.save()
     return user
@@ -202,6 +208,8 @@ def iot_device(user_plot,user_lot, device_type):
         actual_flow=4.0
     )
     return valvula4, tuberia4, sensorDeCaudal, valvula4Lote3
+
+
 
 @pytest.fixture
 def login_and_validate_otp():
