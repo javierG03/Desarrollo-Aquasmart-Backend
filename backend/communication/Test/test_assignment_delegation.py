@@ -1106,3 +1106,30 @@ class TestAssignmentFunctionality:
         # Verificar que el reporte ha cambiado a estado "A espera de aprobación"
         failure_report.refresh_from_db()
         assert failure_report.status == 'A espera de aprobación'
+    
+    def test_normal_user_cannot_delegate(self, api_client, normal_user, tecnico_user, login_and_validate_otp, user_lot, user_plot, iot_device):
+        """Verifica que un usuario sin permisos de delegación no puede asignar reportes/solicitudes."""
+        # Login como usuario normal (sin permisos)
+        client = login_and_validate_otp(api_client, normal_user, password="UserPass123@")
+        
+        # Crear un reporte de fallo que pertenece al usuario normal
+        lote1, _, _ = user_lot
+        valve4, _, _, _ = iot_device
+        failure_report = self.setup_water_supply_failure_report(normal_user, lote1, user_plot, valve4)
+        
+        # Intentar asignar sin tener permisos
+        url = reverse('assignment-create')
+        response = client.post(url, data={
+            'assigned_to': tecnico_user.document,
+            'failure_report': failure_report.id
+        }, format='json')
+        
+        # Debe fallar por falta de permisos
+        assert response.status_code in [status.HTTP_403_FORBIDDEN, status.HTTP_401_UNAUTHORIZED]
+        
+        # Verificar que el estado del reporte no ha cambiado
+        failure_report.refresh_from_db()
+        assert failure_report.status == 'Pendiente'
+        
+        # Verificar que no se creó ninguna asignación
+        assert not Assignment.objects.filter(failure_report=failure_report).exists()
