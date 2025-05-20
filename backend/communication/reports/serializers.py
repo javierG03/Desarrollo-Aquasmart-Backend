@@ -29,6 +29,7 @@ class FailureReportSerializer(serializers.ModelSerializer):
         failure_type = data.get('failure_type')
         status = data.get('status')
         observations = data.get('observations')
+        print(observations)
 
         # Validaciones heredadas de BaseRequestReport
         if lot:
@@ -53,7 +54,7 @@ class FailureReportSerializer(serializers.ModelSerializer):
 
         # Validaciones específicas de APPLICATION_FAILURE
         if failure_type == TypeReport.APPLICATION_FAILURE:
-            if len(observations) < 10 and len(observations) > 200:
+            if len(observations) < 10 or len(observations) > 200:
                 raise serializers.ValidationError("Las observaciones deben estar entre los 10 y 200 caracteres.")
 
         # Validar predio activo
