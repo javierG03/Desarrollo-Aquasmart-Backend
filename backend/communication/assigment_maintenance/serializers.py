@@ -21,7 +21,15 @@ class AssignmentSerializer(serializers.ModelSerializer):
             'reassigned',
         ]
         read_only_fields = ['id', 'assigned_by', 'assignment_date']
-
+        
+    def to_representation(self, instance):
+        "Elimina los campos de flujo y reporte si son nulos al momento de mostrar la respuesta"
+        rep = super().to_representation(instance)
+        if rep.get('flow_request') is None:
+            rep.pop('flow_request')
+        if rep.get('failure_report') is None:
+            rep.pop('failure_report')
+        return rep
     def validate_flow_request(self, value):
         ''' Valida que no se permita crear una asignación de una solicitud que no debe ser delegada '''
         if value.requires_delegation == False:
@@ -37,7 +45,9 @@ class AssignmentSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Debe asignar al menos un 'flow_request' o un 'failure_report'.")
 
     def _validate_no_auto_assignment(self, data):
-        if data.get('assigned_by') == data.get('assigned_to'):
+        
+        assigned_by = self.context['request'].user
+        if assigned_by == data.get('assigned_to'):            
             raise serializers.ValidationError("Un usuario no puede asignarse a sí mismo una solicitud o reporte.")
 
     def _validate_duplicate_assignment(self, data):
@@ -51,36 +61,43 @@ class AssignmentSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Este reporte de fallo ya ha sido asignado a este usuario.")
 
     def _validate_reassignment_logic(self, data):
-        flow_request = data.get('flow_request')
-        failure_report = data.get('failure_report')
-        reassigned = data.get('reassigned', False)
+      flow_request = data.get('flow_request')
+      failure_report = data.get('failure_report')
+      reassigned = data.get('reassigned', False)
 
-        # Asegurar que `qs` siempre esté definido
-        queryset = Assignment.objects.all()
-        qs = queryset.exclude(id=self.instance.id) if self.instance else queryset
+      queryset = Assignment.objects.all()
+      qs = queryset.exclude(id=self.instance.id) if self.instance else queryset
 
-        if flow_request and qs.filter(flow_request=flow_request).exists() and not reassigned:
-            raise serializers.ValidationError("Esta solicitud ya fue asignada previamente. Debe marcar como 'reassigned'.")
+      is_reassignment = self.context.get('is_reassignment', False)
 
-        if failure_report and qs.filter(failure_report=failure_report).exists() and not reassigned:
-            raise serializers.ValidationError("Este reporte ya fue asignado previamente. Debe marcar como 'reassigned'.")
+      if flow_request and qs.filter(flow_request=flow_request).exists() and not reassigned:
+         msg = "Esta solicitud ya fue asignada previamente. "
+         msg += "Use 'reassigned': true para marcarla como reasignación." if not is_reassignment else ""
+         raise serializers.ValidationError(msg)
 
+      if failure_report and qs.filter(failure_report=failure_report).exists() and not reassigned:
+         msg = "Este reporte ya fue asignado previamente. "
+         msg += "Use 'reassigned': true para marcarlo como reasignación." if not is_reassignment else ""
+         raise serializers.ValidationError(msg)
+      
     def _validate_assigned_user_role(self, data):
         assigned_to = data.get('assigned_to')
 
         if assigned_to:
-            valid_groups = ['Técnico', 'Operador']
-            if not assigned_to.groups.filter(name__in=valid_groups).exists():
-                raise serializers.ValidationError("Solo se puede asignar a usuarios del grupo 'Técnico' o 'Operador'.")
+            required_permission = 'communication.can_be_assigned'  # Cambia esto por el permiso que tú definas
+        if not assigned_to.has_perm(required_permission):
+                raise serializers.ValidationError({
+                 "assigned_to": "Este usuario no tiene permisos para recibir asignaciones."
+    })
         
     def validate(self, data):
         self._validate_exclusive_assignment(data)
         self._validate_no_auto_assignment(data)
-        self._validate_duplicate_assignment(data)
+        self._validate_assigned_user_role(data)       
+        self._validate_duplicate_assignment(data)   
         self._validate_reassignment_logic(data)
-        self._validate_assigned_user_role(data)
-
         return data
+
 
 class MaintenanceReportSerializer(serializers.ModelSerializer):
     """Serializer para el modelo MaintenanceReport"""

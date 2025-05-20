@@ -14,7 +14,10 @@ from communication.reports.serializers import FailureReportSerializer
 from .models import MaintenanceReport, Assignment
 from .serializers import MaintenanceReportSerializer, AssignmentSerializer
 
-
+from .models import MaintenanceReport, Assignment
+from .serializers import MaintenanceReportSerializer, AssignmentSerializer
+from communication.permissions import CanAccessAssignmentView
+from django.db.models import Q 
 User = get_user_model()
 
 
@@ -68,18 +71,31 @@ class IsAdminOrTechnicianOrOperator(BasePermission):
                 user.groups.filter(name__in=["Técnicos", "Operadores"]).exists()
             )
         )
-    
+
 class AssignmentViewSet(viewsets.ModelViewSet):
    
     queryset = Assignment.objects.all()
     serializer_class = AssignmentSerializer
-    permission_classes = [IsAuthenticated, IsAdminOrTechnicianOrOperator]
+    permission_classes = [IsAuthenticated, CanAccessAssignmentView]
 
     def get_queryset(self):
+        """
+        Filtra las asignaciones según los permisos específicos del usuario.
+        """
         user = self.request.user
-        if user.is_staff or user.groups.filter(name__in=["Técnicos", "Operadores"]).exists():
-            return Assignment.objects.all()
-        return Assignment.objects.filter(assigned_by=user)
+        
+        # Superusuarios ven todo
+        if user.is_superuser:
+            return self.queryset.all()
+            
+        # Usuarios con permiso global de vista ven todo
+        if user.has_perm('communication.view_all_assignments'):
+            return self.queryset.all()
+            
+        # Usuarios normales solo ven las que crearon o les fueron asignadas
+        return self.queryset.filter(
+            Q(assigned_by=user) | Q(assigned_to=user)
+        )
 
     def perform_create(self, serializer):
         serializer.save(assigned_by=self.request.user)
@@ -187,31 +203,38 @@ class ApproveMaintenanceReportView(APIView):
 
 
 class ReassignAssignmentView(APIView):
-
     """
-    Permite reasignar una solicitud o reporte.
+    Permite reasignar una solicitud o reporte a otro técnico u operador.
     """
     permission_classes = [IsAuthenticated,  IsAdminUser]
-
-
     def post(self, request, pk):
         try:
             old_assignment = Assignment.objects.get(pk=pk)
         except Assignment.DoesNotExist:
-            return Response({"detail": "Asignación no encontrada"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": "Asignación no encontrada."}, status=404)
 
         data = request.data.copy()
         data['reassigned'] = True
-        data['assigned_by'] = request.user.id
 
-        # Reasignar mismo flujo o reporte
+        # Copiamos la solicitud o reporte original
         if old_assignment.flow_request:
-            data['flow_request'] = old_assignment.flow_request.id
+            data['flow_request'] = old_assignment.flow_request.pk
         elif old_assignment.failure_report:
-            data['failure_report'] = old_assignment.failure_report.id
+            data['failure_report'] = old_assignment.failure_report.pk
 
-        serializer = AssignmentSerializer(data=data)
+        serializer = AssignmentSerializer(
+            data=data,
+            context={
+                'request': request,
+                'is_reassignment': True  # Para el serializer
+            }
+        )
+
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(assigned_by=request.user)
             return Response({"detail": "Reasignación creada correctamente."})
-        return Response(serializer.errors, status=400)
+        else:
+            return Response({
+                "detail": "No se pudo completar la reasignación.",
+                "errors": serializer.errors
+            }, status=400)
