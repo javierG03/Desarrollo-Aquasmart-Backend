@@ -16,7 +16,8 @@ import joblib
 from django.conf import settings
 import os
 from datetime import datetime, timedelta
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError,PermissionDenied,NotFound
+from dateutil.relativedelta import relativedelta
 
 class ClimateRecordViewSet(viewsets.ModelViewSet):
     queryset = ClimateRecord.objects.all()
@@ -105,7 +106,7 @@ def get_latest_climate_data(request):
     """
     try:
         latest_record = ClimateRecord.objects.order_by('-datetime').first()
-        print(latest_record)
+        
         if latest_record:
             serializer = ClimateRecordSerializer(latest_record)
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -125,13 +126,44 @@ class ConsuptionPredictionLotListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return ConsuptionPredictionLot.objects.filter(user=self.request.user).order_by('-created_at')
+       id_lot = self.request.query_params.get('lot')
+       user = self.request.user
+
+       if user.has_perm("AquaSmart.ver_predicciones_lotes"):
+        return ConsuptionPredictionLot.objects.all().order_by('-created_at')
+
+       elif user.has_perm("AquaSmart.ver_prediccion_consumo_mi_lote"):
+            if id_lot:
+                try:
+                    lot_instan = Lot.objects.get(pk=id_lot)
+                except Lot.DoesNotExist:
+                    raise NotFound(f"No se encontró el lote con ID: {id_lot}")
+
+                if lot_instan.plot.owner == user:
+                    return ConsuptionPredictionLot.objects.filter(lot=id_lot).order_by('-created_at')
+                else:
+                    raise PermissionDenied("No tienes permiso para ver este lote.")
+            else:
+                # Si no se pasa `id_lot`, obtener todos los lotes del usuario
+                return ConsuptionPredictionLot.objects.filter(
+                    lot__plot__owner=user
+                ).order_by('-created_at')
+
+       raise PermissionDenied("No tienes permiso para ver las predicciones.")
 
     def perform_create(self, serializer):
         user = self.request.user
         lot = serializer.validated_data['lot']
               
-        lot_id= lot.id_lot     
+        lot_id= lot.id_lot  
+        if user.has_perm("AquaSmart.generar_predicciones_lotes"):
+            pass  # Admin: puede generar predicciones para cualquier lote
+
+        elif user.has_perm("AquaSmart.generar_prediccion_consumo_mi_lote"):
+            if lot.plot.owner != user:
+                raise PermissionDenied("No puedes generar una predicción para un lote que no pertenece a tu lote.")
+        else:
+            raise PermissionDenied("No tienes permiso para generar predicciones.")   
         
         period_time = int(serializer.validated_data['period_time'])
         # ⚠️ Validación previa: ya existe una predicción activa
@@ -196,14 +228,15 @@ class ConsuptionPredictionLotListCreateView(generics.ListCreateAPIView):
         # Crear un código único para agrupar las predicciones
         code_prediction = generate_code_prediction(ConsuptionPredictionLot,lot_id,period_time)
         final_date = timezone.now() + timedelta(days=7)
-
+        
         for i, pred in enumerate(predicciones_formateadas):            
-
+            date_prediction = final_date.date() + relativedelta(months=i+1)    
             ConsuptionPredictionLot.objects.create(
                 user=user,                
                 lot=lot,                
                 period_time=period_time,
                 created_at=timezone.now(),
+                 date_prediction =date_prediction,
                 consumption_prediction=pred['valor'],
                 code_prediction=code_prediction,
                 final_date=final_date

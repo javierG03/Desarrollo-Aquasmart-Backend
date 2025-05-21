@@ -49,12 +49,14 @@ class ConsuptionPredictionLot(models.Model):
     lot = models.ForeignKey(Lot, on_delete=models.CASCADE, verbose_name="Id del lote", help_text="id del lote")    
     period_time = models.CharField(max_length=1,choices=PeriodTime,verbose_name="Tiempo a elegir", help_text="Tiempo a elegir")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creacion de la prediccion", help_text="Fecha de creacion de la prediccion")
+    date_prediction = models.DateField(null=True, verbose_name="Meses de prediccion",help_text="Meses de prediccion")
     consumption_prediction = models.FloatField( verbose_name="Consumo predecido",help_text="Consumo predecido")
     code_prediction = models.CharField(max_length=20, verbose_name="Codigo para las predicciones", help_text="Codigo de las predicciones")
     final_date = models.DateTimeField()
     
+    
     def __str__(self):
-        return f"{self.code_prediction} fecha creacion - {self.created_at}"
+        return f"{self.code_prediction} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"
     
     def save(self, *args,**kwargs):
                 

@@ -19,12 +19,13 @@ class ConsuptionPredictionLotSerializer(serializers.ModelSerializer):
             'plot',            
             'owner',
             'period_time',
+            'date_prediction',
             'consumption_prediction',
             'code_prediction',
             'created_at',
             'final_date'
         ]
-        read_only_fields = ['created_at', 'final_date','consumption_prediction','code_prediction', 'plot','owner',]
+        read_only_fields = ['created_at', 'final_date','consumption_prediction','code_prediction', 'plot','owner','date_prediction',]
     def get_plot(self, obj):
         # Verifica si obj es una instancia de modelo o un diccionario
         if isinstance(obj, ConsuptionPredictionLot):
