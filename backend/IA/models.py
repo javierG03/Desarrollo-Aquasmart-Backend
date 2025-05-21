@@ -1,7 +1,9 @@
 from django.db import models
 from datetime import datetime,timedelta
-
-
+from django.conf import settings
+from plots_lots.models import Lot
+from django.core.validators import MaxValueValidator,MinValueValidator
+from django.utils import timezone
 class ClimateRecord(models.Model):
     
     datetime = models.DateTimeField()
@@ -35,3 +37,31 @@ class ClimateRecord(models.Model):
             self.final_date = self.datetime + timedelta(days=7)
        
         super().save(*args, **kwargs)
+
+
+class ConsuptionPredictionLot(models.Model):
+    
+    class PeriodTime(models.TextChoices):
+        ONE = "1",("1")
+        THREE = "3",("3")
+        SIX = "6",("6")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE, verbose_name="Documento usuario que hizo la peticion", help_text="Documento usuario que hizo la peticion" )
+    lot = models.ForeignKey(Lot, on_delete=models.CASCADE, verbose_name="Id del lote", help_text="id del lote")    
+    period_time = models.CharField(max_length=1,choices=PeriodTime,verbose_name="Tiempo a elegir", help_text="Tiempo a elegir")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creacion de la prediccion", help_text="Fecha de creacion de la prediccion")
+    consumption_prediction = models.FloatField( verbose_name="Consumo predecido",help_text="Consumo predecido")
+    code_prediction = models.CharField(max_length=20, verbose_name="Codigo para las predicciones", help_text="Codigo de las predicciones")
+    final_date = models.DateTimeField()
+    
+    def __str__(self):
+        return f"{self.code_prediction} fecha creacion - {self.created_at}"
+    
+    def save(self, *args,**kwargs):
+                
+        if self.final_date is None:
+            now = timezone.now()
+            self.final_date = now + timedelta(days=7)
+        super().save(*args, **kwargs)    
+    
+   
+    

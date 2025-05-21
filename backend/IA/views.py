@@ -3,11 +3,20 @@ from rest_framework.decorators import api_view, action
 from rest_framework.response import Response
 from datetime import datetime
 from django.utils import timezone
-from .models import ClimateRecord
+from .models import ClimateRecord,Lot
 from .serializers import ClimateRecordSerializer
-from .utils import api_climate_request
+from .utils import api_climate_request, predecir_n_meses,formatear_predicciones, generate_code_prediction
 import time
+import pandas as pd
+from rest_framework import generics
+from .models import ConsuptionPredictionLot
+from .serializers import ConsuptionPredictionLotSerializer
 from rest_framework.permissions import IsAuthenticated
+import joblib
+from django.conf import settings
+import os
+from datetime import datetime, timedelta
+from rest_framework.exceptions import ValidationError
 
 class ClimateRecordViewSet(viewsets.ModelViewSet):
     queryset = ClimateRecord.objects.all()
@@ -110,3 +119,92 @@ def get_latest_climate_data(request):
             {"error": f"Error al obtener los datos del clima: {str(e)}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+class ConsuptionPredictionLotListCreateView(generics.ListCreateAPIView):
+    serializer_class = ConsuptionPredictionLotSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return ConsuptionPredictionLot.objects.filter(user=self.request.user).order_by('-created_at')
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        lot = serializer.validated_data['lot']
+              
+        lot_id= lot.id_lot     
+        
+        period_time = int(serializer.validated_data['period_time'])
+        # ⚠️ Validación previa: ya existe una predicción activa
+        pred_existente = ConsuptionPredictionLot.objects.filter(
+            lot=lot,
+            period_time=period_time,
+            final_date__gte=timezone.now()
+        ).first()
+
+        if pred_existente:
+            text_mes =""
+            if period_time == 1:
+                text_mes = "Mes"
+            else:
+                 text_mes = "Meses"   
+            raise ValidationError({
+                "detail": f"Ya existe una predicción activa para este lote con ese periodo de {period_time} {text_mes }.",                
+            })
+        datos = ClimateRecord.objects.order_by('id').last()
+        fecha_actual = datos.datetime
+        mes = str(fecha_actual.month)
+        año = str(fecha_actual.year)      
+        
+        datos_usuario = {
+        'Año': año,
+        'Mes_numero': mes,
+        'Consumo Neiva (m3-mes)': 10.00,
+        'Temperatura Minima(°C)':datos.tempmin,
+        'Temperatura Maxima(°C)':datos.tempmax,
+        'Precipitacion(mm)': datos.precip,
+        'Probabilidad de Precipitacion(%)':datos.precipprob,
+        'Cubrimiento de Precipitacion(%)': datos.precipcover,
+        'Presión del nivel del Mar (mbar)': datos.pressure,
+        'Nubosidad (%)': datos.cloudcover,
+        'Radiación Solar (W/m2)': datos.solarradiation,
+        'Velocidad del Viento (km/h)': datos.windspeed,
+        'Luminiscencia': datos.luminiscencia
+        }
+        columnas_scaler = [
+        'Consumo Neiva (m3-mes)', 'Temperatura Minima(°C)', 'Temperatura Maxima(°C)',
+        'Precipitacion(mm)', 'Probabilidad de Precipitacion(%)',
+        'Cubrimiento de Precipitacion(%)', 'Presión del nivel del Mar (mbar)',
+        'Nubosidad (%)', 'Radiación Solar (W/m2)', 'Velocidad del Viento (km/h)',
+        'Luminiscencia'
+        ]
+        scaler_x_path = os.path.join(settings.BASE_DIR, 'ia', 'Scaler', 'scaler_X_transformer.pkl')
+        scaler_X = joblib.load(scaler_x_path)
+        # Convertir y escalar solo columnas compatibles con el scaler
+        df_usuario = pd.DataFrame([datos_usuario])[columnas_scaler]
+        datos_usuario_scaled = scaler_X.transform(df_usuario)
+
+        # Obtener datos para la predicción
+        datos_actuales = datos_usuario_scaled[0]
+        
+        historico = None
+        timesteps = 3
+        # Ejecutar la predicción
+        predicciones = predecir_n_meses(datos_actuales, historico, period_time, columnas_scaler, timesteps)
+       
+        predicciones_formateadas = formatear_predicciones(predicciones, fecha_inicio=timezone.now())
+
+        # Crear un código único para agrupar las predicciones
+        code_prediction = generate_code_prediction(ConsuptionPredictionLot,lot_id,period_time)
+        final_date = timezone.now() + timedelta(days=7)
+
+        for i, pred in enumerate(predicciones_formateadas):            
+
+            ConsuptionPredictionLot.objects.create(
+                user=user,                
+                lot=lot,                
+                period_time=period_time,
+                created_at=timezone.now(),
+                consumption_prediction=pred['valor'],
+                code_prediction=code_prediction,
+                final_date=final_date
+            )
