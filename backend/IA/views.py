@@ -209,7 +209,7 @@ class ConsuptionPredictionLotListCreateView(generics.ListCreateAPIView):
         'Nubosidad (%)', 'Radiación Solar (W/m2)', 'Velocidad del Viento (km/h)',
         'Luminiscencia'
         ]
-        scaler_x_path = os.path.join(settings.BASE_DIR, 'ia', 'Scaler', 'scaler_X_transformer.pkl')
+        scaler_x_path = os.path.join(settings.BASE_DIR, 'IA', 'Scaler', 'scaler_X_transformer.pkl')
         scaler_X = joblib.load(scaler_x_path)
         # Convertir y escalar solo columnas compatibles con el scaler
         df_usuario = pd.DataFrame([datos_usuario])[columnas_scaler]
