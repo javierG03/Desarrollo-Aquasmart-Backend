@@ -82,7 +82,10 @@ TEMPLATES = [
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [
             os.path.join(BASE_DIR, 'templates'),  
-            os.path.join(BASE_DIR, 'communication/templates'),  
+            os.path.join(BASE_DIR, 'communication/templates'),
+            os.path.join(BASE_DIR, 'IA/Modelo'),
+            os.path.join(BASE_DIR, 'IA/Scaler'),
+              
         ],
         'APP_DIRS': True,
         'OPTIONS': {
