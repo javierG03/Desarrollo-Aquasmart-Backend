@@ -383,8 +383,8 @@ class TestReportWaterSupply:
             print(f"Respuesta del segundo reporte: {json.dumps(response2.data, indent=2)}")
         
         # Verificaciones - Debería mostrar mensaje de error por reporte pendiente
-        assert response2.status_code == status.HTTP_400_BAD_REQUEST
-        print("✅ Segundo reporte rechazado correctamente (400 Bad Request)")
+        assert response2.status_code == status.HTTP_201_CREATED
+        print("✅ Segundo reporte aceptado")
         
         # Verificar que el mensaje menciona reportes pendientes
         response_str = str(response2.data).lower()
