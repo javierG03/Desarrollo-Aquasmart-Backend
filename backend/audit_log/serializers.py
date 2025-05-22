@@ -3,11 +3,13 @@ from auditlog.models import LogEntry
 from auditlog.mixins import LogEntryAdminMixin
 from auditlog.filters import ResourceTypeFilter, CIDFilter
 
+
 class LogEntrySerializer(serializers.ModelSerializer):
     actor = serializers.StringRelatedField()  # Muestra el username del actor
     content_type = serializers.StringRelatedField()  # Muestra el nombre del modelo
     changes_summary = serializers.SerializerMethodField()
     created = serializers.DateTimeField(source='timestamp')
+    action = serializers.SerializerMethodField()
     
     class Meta:
         model = LogEntry
@@ -21,6 +23,16 @@ class LogEntrySerializer(serializers.ModelSerializer):
             'changes_summary',
             'remote_addr',
         ]
+
+    def get_action(self, obj):
+        """Convierte el número de acción en string"""
+        action_map = {
+            0: 'create',
+            1: 'update',
+            2: 'delete',
+            3: 'access'
+        }
+        return action_map.get(obj.action, 'unknown')
 
     def get_changes_summary(self, obj):
         changes = obj.changes or {}
@@ -50,6 +62,7 @@ class LogEntrySerializer(serializers.ModelSerializer):
                 })
 
         return summary
+
 
 class MyLogEntryAdminMixin(LogEntryAdminMixin):
     def get_list_display(self, request):
