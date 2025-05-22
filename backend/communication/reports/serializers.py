@@ -56,6 +56,8 @@ class FailureReportSerializer(serializers.ModelSerializer):
         if failure_type == TypeReport.APPLICATION_FAILURE:
             if len(observations) < 10 or len(observations) > 200:
                 raise serializers.ValidationError("Las observaciones deben estar entre los 10 y 200 caracteres.")
+            else: print("Las observaciones SÍ ESTÁN entre los 10 y 200 caracteres.")
+        else: print(failure_type != TypeReport.APPLICATION_FAILURE)
 
         # Validar predio activo
         if plot and not plot.is_activate:

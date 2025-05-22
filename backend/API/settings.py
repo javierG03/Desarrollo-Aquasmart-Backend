@@ -53,9 +53,9 @@ INSTALLED_APPS = [
     'AquaSmart',
     'caudal',
     'billing',
-    'communication',     
+    'communication',       
     'IA',
-    
+    'audit_log'
 ]
 
 MIDDLEWARE = [
@@ -70,6 +70,8 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+AUDITLOG_INCLUDE_ALL_MODELS=True
 
 ROOT_URLCONF = 'API.urls'
 AUTH_USER_MODEL = 'users.CustomUser'
@@ -304,14 +306,14 @@ SPECTACULAR_SETTINGS = {
     },
 }
 
-# Auditlog Configuration
-AUDITLOG_INCLUDE_TRACKING_MODELS = [
-    'notification.models.Notification',
-    'notification.models.EmailNotification',
-    'reportes.models.Reporte',
-    'reportes.models.AsignacionReporte',
-    'reportes.models.InformeMantenimiento',
-]
+# # Auditlog Configuration
+# AUDITLOG_INCLUDE_TRACKING_MODELS = [
+#     'notification.models.Notification',
+#     'notification.models.EmailNotification',
+#     'reportes.models.Reporte',
+#     'reportes.models.AsignacionReporte',
+#     'reportes.models.InformeMantenimiento',
+# ]
 
 AUDITLOG_CONFIG = {
     'USE_JSONFIELD': True,
