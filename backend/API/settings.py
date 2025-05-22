@@ -27,8 +27,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Security
 SECRET_KEY = os.environ.get('SECRET_KEY', default=os.getenv("SECRET_KEY"))
-#DEBUG = 'RENDER' not in os.environ
-DEBUG = True
+DEBUG = 'RENDER' not in os.environ
+
 ALLOWED_HOSTS = []
 
 if RENDER_EXTERNAL_HOSTNAME := os.environ.get('RENDER_EXTERNAL_HOSTNAME'):
@@ -187,15 +187,10 @@ USE_TZ = False
 
 # Static files
 STATIC_URL = 'static/'
-"""
 if not DEBUG:
     STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-"""
-if  DEBUG:
-    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-    
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # REST Framework
