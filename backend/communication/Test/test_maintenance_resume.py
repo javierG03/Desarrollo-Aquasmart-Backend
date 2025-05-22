@@ -56,7 +56,7 @@ def test_maintenance_report_resume(api_client, normal_user,admin_user, tecnico_u
     print(f"Assignment: {assignment}")
 
     # Crear un reporte de mantenimiento
-    cllient = login_and_validate_otp(api_client,tecnico_user,"UserPass123@")
+    client = login_and_validate_otp(api_client,tecnico_user,"UserPass123@")
     url = reverse('maintenance-report-create')
 
 
