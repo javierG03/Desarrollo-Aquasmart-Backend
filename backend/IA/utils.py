@@ -78,10 +78,10 @@ def api_climate_request(location,date):
         return None
 
 
-modelo_path = os.path.join(settings.BASE_DIR, 'ia', 'Modelo', 'modelo_transformer_consumo_final.h5')
-features_path = os.path.join(settings.BASE_DIR, 'ia', 'Modelo', 'features_transformer.pkl')
-scaler_x_path = os.path.join(settings.BASE_DIR, 'ia', 'Scaler', 'scaler_X_transformer.pkl')
-scaler_y_path = os.path.join(settings.BASE_DIR, 'ia', 'Scaler', 'scaler_y_transformer.pkl')
+modelo_path = os.path.join(settings.BASE_DIR, 'IA', 'Modelo', 'modelo_transformer_consumo_final.h5')
+features_path = os.path.join(settings.BASE_DIR, 'IA', 'Modelo', 'features_transformer.pkl')
+scaler_x_path = os.path.join(settings.BASE_DIR, 'IA', 'Scaler', 'scaler_X_transformer.pkl')
+scaler_y_path = os.path.join(settings.BASE_DIR, 'IA', 'Scaler', 'scaler_y_transformer.pkl')
 modelo = tf.keras.models.load_model(modelo_path)
 feature_names = joblib.load(features_path)
 scaler_X = joblib.load(scaler_x_path)
