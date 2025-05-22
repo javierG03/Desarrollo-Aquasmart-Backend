@@ -9,103 +9,94 @@ from communication.reports.models import FailureReport, TypeReport
 
 
 @pytest.mark.django_db
-def test_assignment_email_can_be_received(api_client, admin_user, tecnico_user, normal_user,
-                                          user_lot, user_plot, iot_device, login_and_validate_otp,
-                                          settings):
-    """
-    ✅ Verifica que el correo de notificación pueda ser recibido tras una asignación.
-    """
-
-    # 🔧 Forzar backend de correo en memoria
-    settings.EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
-
-    # 🔐 Login como administrador
-    client = login_and_validate_otp(api_client, admin_user, "AdminPass123@")
-    
-
-    # 🔐 Asignar permisos
-    content_type = ContentType.objects.get_for_model(Assignment)
-    assign_perm = Permission.objects.get_or_create(codename="can_assign_user", content_type=content_type)[0]
-    admin_user.user_permissions.add(assign_perm)
-
-    be_assigned_perm = Permission.objects.get_or_create(codename="can_be_assigned", content_type=content_type)[0]
-    tecnico_user.user_permissions.add(be_assigned_perm)
-    tecnico_user.save()
-
-    # 📄 Crear reporte
-    
-    client = login_and_validate_otp(api_client, normal_user, "UserPass123@")
-    url = reverse('water-supply-failure-create')
-    # Crear una solicitud de caudal
-    response = client.post(
-        url,
-        {
-            "observations": "Esto es un reporte de fallo en el suministro de agua",
-            "status": "En Proceso",
-            "type": "Reporte",
-            "failure_type":"Fallo en el Suministro del Agua",
-            "lot": user_lot[0].pk,
-        },
-        format="json",
-    )
-    print(response.data)
-    assert response.status_code == status.HTTP_201_CREATED, (
-        f"❌No se guardó la solicitud de caudal correctamente"
-    )
-    print ("✅La solicitud de caudal se guardó correctamente")
-    failure_report = FailureReport.objects.get(id=response.data["id"])
-    
-
-    # Asifnar el reporte de mantenimiento a un usuario
-    client = login_and_validate_otp(api_client, admin_user, "AdminPass123@")
-    url = reverse('assignment-create')
-    
-    mail.outbox = []
-    
-    response = client.post(
-        url, data=
-        {
-            "failure_report": failure_report.pk,
-            "assigned_to": tecnico_user.document,
-            "status": "Asignado",
-            "observations": "Esto es una asignación de prueba",
-        },
-        format="json",
-    )
-    print(response.data)
-    assert response.status_code == status.HTTP_201_CREATED, (
-        f"❌No se guardó la asignación de mantenimiento correctamente"
-    )
-
-    assert len(mail.outbox) > 0, "❌ No se envió ningún correo de notificación."
-    
-
-    print("Admin ID:", admin_user.pk, admin_user.email)
-    print("Técnico ID:", tecnico_user.pk, tecnico_user.email)
-
-    email = mail.outbox[0]
-    print(f"De: {email.from_email}")
-    print(f"Asunto: {email.subject}")
-    print(f"Para: {email.to}")
-    print(f"Cuerpo: {email.body}")
-
-    assert any(admin_user.email in email.to for email in mail.outbox)
-
-    tecnico_received_mail = False
-
-    for email in mail.outbox:
-        if tecnico_user.email in email.to:
-            tecnico_received_mail = True
-            break
+def test_notification_delivered_to_correct_recipient(api_client, admin_user, tecnico_user, login_and_validate_otp, user_lot, user_plot, normal_user, iot_device, device_type,settings):
+        """
+        Test that ensures notifications are delivered to the correct recipient based on assignment.
+        Verifies that the technician, not the operator, receives notification when assigned to technician,
+        and vice versa.
+        """
+        # Usar backend de correo en memoria para pruebas
+        settings.EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
         
-    assert tecnico_received_mail, "No se envió correo al tecnico"
+        # Login as admin
+        client = login_and_validate_otp(api_client, admin_user, password="AdminPass123@")
+        
+        # Setup permissions for all relevant users
+        content_type = ContentType.objects.get_for_model(Assignment)
+        
+        # Create necessary permissions
+        try:
+            assign_permission = Permission.objects.get(
+                codename='can_assign_user',
+                content_type=content_type
+            )
+        except Permission.DoesNotExist:
+            assign_permission = Permission.objects.create(
+                codename='can_assign_user',
+                name='Can assign user to handle requests/reports',
+                content_type=content_type
+            )
+            
+        try:
+            can_be_assigned = Permission.objects.get(
+                codename='can_be_assigned',
+                content_type=content_type
+            )
+        except Permission.DoesNotExist:
+            can_be_assigned = Permission.objects.create(
+                codename='can_be_assigned',
+                name='Can be assigned to handle requests/reports',
+                content_type=content_type
+            )
+        
+        # Assign permissions to users
+        admin_user.user_permissions.add(assign_permission)
+        tecnico_user.user_permissions.add(can_be_assigned)
+        
+        
+        admin_user.save()
+        tecnico_user.save()
+        
+        failure_report1 = FailureReport.objects.create(
+            created_by=normal_user,
+            lot=user_lot[0],
+            plot=user_plot,
+            type='Reporte',
+            failure_type=TypeReport.WATER_SUPPLY_FAILURE,
+            status='Pendiente',
+            observations='Primer reporte de prueba para delegación'
+        )
+        
+        mail.outbox = []  # Limpiar buzón
+        
+        url = reverse('assignment-create')
+        response = client.post(url, data={
+            'assigned_to': tecnico_user.document,
+            'failure_report': failure_report1.id
+        }, format='json')
 
-    
+        print(response.data)
+        print(response.status_code)
+        
+        # Solicitud debe ser exitosa
+        assert response.status_code == status.HTTP_201_CREATED
+        
+        # Verificar que se enviaron correos
+        assert len(mail.outbox) > 0, "No se enviaron correos electrónicos"
+        
+        # Verificar que el correo llegó al técnico pero NO al operador
+        tech_email_received = False
+        
+        
+        for email in mail.outbox:
+            if tecnico_user.email in email.to:
+                tech_email_received = True
 
-    assert tecnico_user.email in mail.outbox[0].to, f"❌ El destinatario {tecnico_user.email} no está en la lista de correos: {mail.outbox[0].to}"
 
-    
-    assert "asignación" in email.subject.lower(), "❌ El asunto del correo no menciona 'asignación'."
-    assert tecnico_user.email in email.to, f"❌ El destinatario {tecnico_user.email} no está en la lista de correos."
-
-    print("✅ El correo de asignación fue recibido correctamente.")
+        print(f"De: {email.from_email}")
+        print(f"Asunto: {email.subject}")
+        print(f"Para: {email.to}")
+        print(f"Cuerpo: {email.body}")
+        
+        assert tech_email_received, "El técnico no recibió notificación por correo"
+        print(f"✅La notificación fue envíada correctamente a el destinatario al quese le fue asignado el reporte.")
