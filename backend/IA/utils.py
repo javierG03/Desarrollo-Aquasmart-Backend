@@ -4,7 +4,7 @@ import json
 from dotenv import load_dotenv
 from django.conf import settings
 import os
-import tensorflow as tf
+#import tensorflow as tf
 import joblib
 import pandas as pd
 import numpy as np
