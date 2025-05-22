@@ -28,6 +28,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Security
 SECRET_KEY = os.environ.get('SECRET_KEY', default=os.getenv("SECRET_KEY"))
 DEBUG = 'RENDER' not in os.environ
+
 ALLOWED_HOSTS = []
 
 if RENDER_EXTERNAL_HOSTNAME := os.environ.get('RENDER_EXTERNAL_HOSTNAME'):
@@ -41,24 +42,21 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
-    # Third-party
     'corsheaders',
     'drf_spectacular',
     'storages',
     'rest_framework.authtoken',
     'rest_framework',
-    'auditlog',
-    
-    # Local apps
-    'users',
+    'users.apps.UsersConfig',
+    'auditlog',  
     'iot',
     'plots_lots',
     'AquaSmart',
     'caudal',
     'billing',
-    'communication',
-    'notification',
+    'communication',       
+    #'IA',
+    'audit_log'
 ]
 
 MIDDLEWARE = [
@@ -66,13 +64,15 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'auditlog.middleware.AuditlogMiddleware',
+    'django.middleware.common.CommonMiddleware',    
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'auditlog.middleware.AuditlogMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+AUDITLOG_INCLUDE_ALL_MODELS=True
 
 ROOT_URLCONF = 'API.urls'
 AUTH_USER_MODEL = 'users.CustomUser'
@@ -82,7 +82,10 @@ TEMPLATES = [
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [
             os.path.join(BASE_DIR, 'templates'),  
-            os.path.join(BASE_DIR, 'communication/templates'),  
+            os.path.join(BASE_DIR, 'communication/templates'),
+            os.path.join(BASE_DIR, 'IA/Modelo'),
+            os.path.join(BASE_DIR, 'IA/Scaler'),
+              
         ],
         'APP_DIRS': True,
         'OPTIONS': {
@@ -199,7 +202,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
-    'EXCEPTION_HANDLER': 'notification.exceptions.custom_exception_handler',
+    'EXCEPTION_HANDLER': 'API.exceptions.custom_exception_handler',
     'DEFAULT_THROTTLE_RATES': {
         'anon': '100/day',
         'user': '1000/day',
@@ -307,14 +310,14 @@ SPECTACULAR_SETTINGS = {
     },
 }
 
-# Auditlog Configuration
-AUDITLOG_INCLUDE_TRACKING_MODELS = [
-    'notification.models.Notification',
-    'notification.models.EmailNotification',
-    'reportes.models.Reporte',
-    'reportes.models.AsignacionReporte',
-    'reportes.models.InformeMantenimiento',
-]
+# # Auditlog Configuration
+# AUDITLOG_INCLUDE_TRACKING_MODELS = [
+#     'notification.models.Notification',
+#     'notification.models.EmailNotification',
+#     'reportes.models.Reporte',
+#     'reportes.models.AsignacionReporte',
+#     'reportes.models.InformeMantenimiento',
+# ]
 
 AUDITLOG_CONFIG = {
     'USE_JSONFIELD': True,

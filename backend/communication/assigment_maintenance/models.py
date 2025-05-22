@@ -23,6 +23,13 @@ class Assignment(models.Model):
     class Meta:
         verbose_name = "Asignación de solicitud/reporte"
         verbose_name_plural = "Asignaciones de solicitudes/reportes"
+        permissions = [
+            ("can_be_assigned", "Puede puede ser asignado"),
+            ("can_assign_user", "Puede asignar un usuario"),
+            ('Can_view_assignment', 'Puede ver asignaciones'),
+            ('view_all_assignments', 'Puede ver todas las asignaciones'),
+            
+        ]
 
     def __str__(self):
         if self.flow_request:
