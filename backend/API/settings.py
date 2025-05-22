@@ -41,26 +41,20 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
-    # Third-party
     'corsheaders',
     'drf_spectacular',
     'storages',
     'rest_framework.authtoken',
     'rest_framework',
     'users.apps.UsersConfig',
-    'auditlog',
-    
-    # Local apps
-    
+    'auditlog',  
     'iot',
     'plots_lots',
     'AquaSmart',
     'caudal',
     'billing',
-    'communication',
-    #'notification',    
-    'ia',
+    'communication',     
+    'IA',
     
 ]
 
