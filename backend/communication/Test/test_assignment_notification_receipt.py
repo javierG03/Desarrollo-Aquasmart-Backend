@@ -9,7 +9,7 @@ from communication.reports.models import FailureReport, TypeReport
 
 
 @pytest.mark.django_db
-def test_notification_delivered_to_correct_recipient(api_client, admin_user, tecnico_user, login_and_validate_otp, user_lot, user_plot, normal_user, iot_device, device_type,settings):
+def test_notification_delivered_to_reciever(api_client, admin_user, tecnico_user, login_and_validate_otp, user_lot, user_plot, normal_user, iot_device, device_type,settings):
         """
         Test that ensures notifications are delivered to the correct recipient based on assignment.
         Verifies that the technician, not the operator, receives notification when assigned to technician,
@@ -52,6 +52,7 @@ def test_notification_delivered_to_correct_recipient(api_client, admin_user, tec
         # Assign permissions to users
         admin_user.user_permissions.add(assign_permission)
         tecnico_user.user_permissions.add(can_be_assigned)
+
         
         
         admin_user.save()
@@ -84,7 +85,7 @@ def test_notification_delivered_to_correct_recipient(api_client, admin_user, tec
         # Verificar que se enviaron correos
         assert len(mail.outbox) > 0, "No se enviaron correos electrónicos"
         
-        # Verificar que el correo llegó al técnico pero NO al operador
+        
         tech_email_received = False
         
         
@@ -100,3 +101,48 @@ def test_notification_delivered_to_correct_recipient(api_client, admin_user, tec
         
         assert tech_email_received, "El técnico no recibió notificación por correo"
         print(f"✅La notificación fue envíada correctamente a el destinatario al quese le fue asignado el reporte.")
+        assignment = Assignment.objects.get(id=response.data["id"])
+        print(f"Assignment: {assignment}")
+
+        mail.outbox = []
+
+    # Técnico crea reporte de mantenimiento finalizado
+        client = login_and_validate_otp(api_client, tecnico_user, "UserPass123@")
+        url = reverse('maintenance-report-create')
+        response = client.post(
+            url,
+            {
+                "assignment": assignment.id,
+                "intervention_date": "2025-04-15 06:00:00",
+                "status": "Finalizado",
+                "observations": "Reporte de mantenimiento finalizado",
+                "maintenance_type": "Mantenimiento Preventivo",
+                "is_approved": True,
+                "images": "Image_texto"
+            },
+            format="json",
+        )
+        assert len(mail.outbox) > 0, "No se enviaron correos electrónicos"
+        
+        
+        user_mail_recieved = False
+        
+        
+        for email in mail.outbox:
+            if normal_user.email in email.to:
+                user_mail_recieved = True
+
+
+        print(f"De: {email.from_email}")
+        print(f"Asunto: {email.subject}")
+        print(f"Para: {email.to}")
+        print(f"Cuerpo: {email.body}")        
+        assert response.status_code == status.HTTP_201_CREATED
+
+
+
+
+        assert user_mail_recieved, (f"El técnico no recibió notificación por correo")
+        assert any(admin_user.email in email.to for email in mail.outbox), "El administrador no recibió notificación de reporte de mantenimiento"
+        print("✅ El administrador recibió la notificación de reporte de mantenimiento finalizado.")
+
