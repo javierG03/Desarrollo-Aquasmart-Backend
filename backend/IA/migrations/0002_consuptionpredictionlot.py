@@ -9,7 +9,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('ia', '0001_initial'),
+        ('IA', '0001_initial'),
         ('plots_lots', '0008_croptype_lot_crop_name_alter_lot_crop_type'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
