@@ -55,7 +55,7 @@ INSTALLED_APPS = [
     'caudal',
     'billing',
     'communication',       
-    'IA',
+    #'IA',
     'audit_log'
 ]
 
