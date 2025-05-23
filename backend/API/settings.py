@@ -55,7 +55,8 @@ INSTALLED_APPS = [
     'AquaSmart',
     'caudal',
     'billing',
-    'communication',       
+    'communication', 
+    'mqtt',  
     #'IA',
     'audit_log'
 ]
