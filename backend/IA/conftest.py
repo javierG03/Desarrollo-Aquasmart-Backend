@@ -9,7 +9,8 @@ from rest_framework.test import APIClient
 from rest_framework import status
 from plots_lots.models import Plot, Lot, SoilType, CropType
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
+from django.contrib.auth.models import Group, Permission
+from django.contrib.contenttypes.models import ContentType
 import os
 
 
@@ -130,6 +131,38 @@ def device_type():
     return valvulaPredios, sensorCaudal
 
 @pytest.fixture
+def prediction_permissions(db):
+    """Crea los permisos necesarios para predicciones."""
+    content_type, _ = ContentType.objects.get_or_create(
+        model="aquasmart_permission", 
+        app_label="AquaSmart"
+    )
+    
+    permissions = {}
+    
+    prediction_perms = [
+        ("ver_predicciones_lotes", "permite ver predicciones de consumo de todos los lotes"),
+        ("generar_predicciones_lotes", "permite generar predicciones de consumo de todos los lotes"),
+        ("eliminar_predicciones_lotes", "permite eliminar predicciones de consumo de todos los lotes"),
+        ("ver_prediccion_consumo_mi_lote", "permite ver predicciones de consumo del lote correspondiente al usuario"),
+        ("generar_prediccion_consumo_mi_lote", "permite generar predicciones de consumo del lote correspondiente al usuario"),
+        ("eliminar_prediccion_consumo_mi_lote", "permite eliminar predicciones de consumo del lote correspondiente al usuario"),
+        ("generar_prediccion_distrito", "permite generar predicciones de consumo del distrito"),
+        ("ver_predicciones_distrito", "permite ver las predicciones de consumo del distrito"),
+        ("eliminar_prediccion_distrito", "Permite eliminar las predicciones de consumo del distrito"),
+    ]
+    
+    for codename, name in prediction_perms:
+        perm, created = Permission.objects.get_or_create(
+            codename=codename,
+            name=name,
+            content_type=content_type
+        )
+        permissions[codename] = perm
+    
+    return permissions
+
+@pytest.fixture
 def iot_device(users_Plots,users_Lots,device_type):
     activeUserActiveLot1,activeUserActiveLot2,activeUserInactiveLot = users_Lots
     activeUserActivePlot,_,_,_= users_Plots
@@ -205,6 +238,18 @@ def users (db, person_type):
         is_active=False,
         is_registered=True
     )
+      # Asignar permisos al usuario normal para sus propios lotes
+    user_perms = [
+        "ver_prediccion_consumo_mi_lote",
+        "generar_prediccion_consumo_mi_lote",
+        "eliminar_prediccion_consumo_mi_lote"
+    ]
+    for perm_name in user_perms:
+        if perm_name in prediction_permissions:
+            activeUser.user_permissions.add(prediction_permissions[perm_name])
+            inactiveUser.user_permissions.add(prediction_permissions[perm_name])
+            intrudeActiveUser.user_permissions.add(prediction_permissions[perm_name])
+
     return activeUser,inactiveUser,intrudeActiveUser
 
 @pytest.fixture
