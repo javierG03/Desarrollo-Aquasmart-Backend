@@ -138,8 +138,12 @@ def test_notification_delivered_to_reciever(api_client, admin_user, tecnico_user
         print(f"Para: {email.to}")
         print(f"Cuerpo: {email.body}")        
         assert response.status_code == status.HTTP_201_CREATED
-
-
+        print("Todos los correos enviados son:")
+        for email in mail.outbox:
+            print(f"De: {email.from_email}")
+            print(f"Asunto: {email.subject}")
+            print(f"Para: {email.to}")
+            print(f"Cuerpo: {email.body}")
 
 
         assert user_mail_recieved, (f"El técnico no recibió notificación por correo")

@@ -4,7 +4,7 @@ from django.utils import timezone
 from dateutil import parser
 from django.contrib.auth import get_user_model
 from caudal.models import FlowMeasurementLote
-from plots_lots.models import Plot, Lot, SoilType
+from plots_lots.models import Plot, Lot, SoilType, CropType
 from iot.models import IoTDevice, DeviceType
 from django.urls import reverse
 
@@ -37,6 +37,8 @@ class TestLotConsumptionHistory:
         # Create soil type
         soil_type = SoilType.objects.create(name="Arcilloso")
         print(f"🌱 Soil Type Created: {soil_type.name}")
+
+        crop_type = CropType.objects.create(name="Maíz")
         
         # Create plot
         plot = Plot.objects.create(
@@ -55,7 +57,7 @@ class TestLotConsumptionHistory:
         lot = Lot.objects.create(
             plot=plot, 
             soil_type=soil_type,
-            crop_type="Maíz",
+            crop_type=crop_type,
             crop_variety="Híbrido"
         )
         print(f"🌾 Lot Created:")

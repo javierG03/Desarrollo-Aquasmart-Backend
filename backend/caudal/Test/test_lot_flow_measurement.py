@@ -2,11 +2,12 @@ import pytest
 from rest_framework.test import APIClient
 from django.utils import timezone
 from caudal.models import FlowMeasurementLote  # ✅ Importación corregida
-from plots_lots.models import Plot, Lot, SoilType
+from plots_lots.models import Plot, Lot, SoilType, CropType
 from iot.models import IoTDevice, DeviceType
 from datetime import datetime
 from dateutil import parser  
 from django.contrib.auth import get_user_model
+import datetime
 
 User = get_user_model()
 
@@ -38,6 +39,10 @@ def create_soil_type(db):
     return SoilType.objects.create(name="Arcilloso")
 
 @pytest.fixture
+def create_crop_type(db):
+    return CropType.objects.create(name="Maíz")
+
+@pytest.fixture
 def create_lotes(db, create_predios, create_soil_type):
     """Crea lotes asociados a los predios con un tipo de suelo."""
     predio_admin, predio_user = create_predios
@@ -64,7 +69,7 @@ def create_test_device(db, create_lotes, create_device_type):
 
     return device_admin, device_user
 
-import datetime
+
 
 
 @pytest.fixture

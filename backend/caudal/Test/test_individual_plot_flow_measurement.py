@@ -3,7 +3,7 @@ from rest_framework.test import APIClient
 from django.utils import timezone
 from dateutil import parser
 from caudal.models import FlowMeasurementLote
-from plots_lots.models import Plot, Lot, SoilType
+from plots_lots.models import Plot, Lot, SoilType, CropType
 from iot.models import IoTDevice, DeviceType
 from django.contrib.auth import get_user_model
 
@@ -65,14 +65,18 @@ def create_soil_type(db):
     return SoilType.objects.create(name="Arcilloso")
 
 @pytest.fixture
-def create_lote(db, create_predio, create_soil_type):
+def create_crop_type(db):
+    return CropType.objects.create(name="Maíz")
+
+@pytest.fixture
+def create_lote(db, create_predio, create_soil_type, crop_type):
     """Crea un lote en el predio del usuario regular."""
-    return Lot.objects.create(plot=create_predio, soil_type=create_soil_type)
+    return Lot.objects.create(plot=create_predio, soil_type=create_soil_type, crop_type=create_crop_type)
 
 @pytest.fixture
 def create_other_lote(db, create_other_predio, create_soil_type):
     """Crea un lote en un predio que no pertenece al usuario regular."""
-    return Lot.objects.create(plot=create_other_predio, soil_type=create_soil_type)
+    return Lot.objects.create(plot=create_other_predio, soil_type=create_soil_type, crop_type=create_crop_type)
 
 @pytest.fixture
 def create_device_type(db):
