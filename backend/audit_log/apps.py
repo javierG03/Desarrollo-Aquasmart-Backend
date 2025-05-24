@@ -1,7 +1,7 @@
 from django.apps import AppConfig
 
 
-class IaConfig(AppConfig):
+class AuditLogConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'IA'
-    verbose_name = 'Predicción de consumo'
+    name = 'audit_log'
+    verbose_name = 'Auditorías'

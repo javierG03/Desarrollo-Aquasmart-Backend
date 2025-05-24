@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('ia', '0002_consuptionpredictionlot'),
+        ('IA', '0002_consuptionpredictionlot'),
     ]
 
     operations = [

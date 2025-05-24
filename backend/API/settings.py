@@ -28,6 +28,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Security
 SECRET_KEY = os.environ.get('SECRET_KEY', default=os.getenv("SECRET_KEY"))
 DEBUG = 'RENDER' not in os.environ
+
 ALLOWED_HOSTS = []
 
 if RENDER_EXTERNAL_HOSTNAME := os.environ.get('RENDER_EXTERNAL_HOSTNAME'):
@@ -41,27 +42,23 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
-    # Third-party
+    'django_filters',
     'corsheaders',
     'drf_spectacular',
     'storages',
     'rest_framework.authtoken',
     'rest_framework',
     'users.apps.UsersConfig',
-    'auditlog',
-    
-    # Local apps
-    
+    'auditlog',  
     'iot',
     'plots_lots',
     'AquaSmart',
     'caudal',
     'billing',
-    'communication',
-    #'notification',    
-    'ia',
-    
+    'communication', 
+    'mqtt',  
+    #'IA',
+    'audit_log'
 ]
 
 MIDDLEWARE = [
@@ -77,6 +74,8 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+AUDITLOG_INCLUDE_ALL_MODELS=True
+
 ROOT_URLCONF = 'API.urls'
 AUTH_USER_MODEL = 'users.CustomUser'
 
@@ -85,7 +84,10 @@ TEMPLATES = [
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [
             os.path.join(BASE_DIR, 'templates'),  
-            os.path.join(BASE_DIR, 'communication/templates'),  
+            os.path.join(BASE_DIR, 'communication/templates'),
+            os.path.join(BASE_DIR, 'IA/Modelo'),
+            os.path.join(BASE_DIR, 'IA/Scaler'),
+              
         ],
         'APP_DIRS': True,
         'OPTIONS': {
@@ -207,7 +209,12 @@ REST_FRAMEWORK = {
         'anon': '100/day',
         'user': '1000/day',
         'notification': '50/hour'
-    }
+    },
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ],
 }
 
 # CORS
@@ -310,14 +317,14 @@ SPECTACULAR_SETTINGS = {
     },
 }
 
-# Auditlog Configuration
-AUDITLOG_INCLUDE_TRACKING_MODELS = [
-    'notification.models.Notification',
-    'notification.models.EmailNotification',
-    'reportes.models.Reporte',
-    'reportes.models.AsignacionReporte',
-    'reportes.models.InformeMantenimiento',
-]
+# # Auditlog Configuration
+# AUDITLOG_INCLUDE_TRACKING_MODELS = [
+#     'notification.models.Notification',
+#     'notification.models.EmailNotification',
+#     'reportes.models.Reporte',
+#     'reportes.models.AsignacionReporte',
+#     'reportes.models.InformeMantenimiento',
+# ]
 
 AUDITLOG_CONFIG = {
     'USE_JSONFIELD': True,

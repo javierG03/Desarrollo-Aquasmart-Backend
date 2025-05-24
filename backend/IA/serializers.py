@@ -1,12 +1,13 @@
-
 from rest_framework import serializers
 from .models import ClimateRecord, ConsuptionPredictionLot
+
 
 class ClimateRecordSerializer(serializers.ModelSerializer):
     class Meta:
         model = ClimateRecord
         fields = '__all__'
-        read_only_fields = ['luminiscencia', 'final_date']  # Estos campos se calculan automáticamente
+        read_only_fields = ['luminiscencia', 'final_date']
+
 
 class ConsuptionPredictionLotSerializer(serializers.ModelSerializer):
     owner = serializers.SerializerMethodField()
@@ -25,7 +26,8 @@ class ConsuptionPredictionLotSerializer(serializers.ModelSerializer):
             'created_at',
             'final_date'
         ]
-        read_only_fields = ['created_at', 'final_date','consumption_prediction','code_prediction', 'plot','owner','date_prediction',]
+        read_only_fields = ['created_at', 'final_date', 'consumption_prediction', 'code_prediction', 'plot', 'owner', 'date_prediction']
+
     def get_plot(self, obj):
         # Verifica si obj es una instancia de modelo o un diccionario
         if isinstance(obj, ConsuptionPredictionLot):
@@ -62,11 +64,9 @@ class ConsuptionPredictionLotSerializer(serializers.ModelSerializer):
         request = self.context['request']
         user = request.user
         lot = validated_data['lot']
-        
 
         return ConsuptionPredictionLot.objects.create(
             user=user,
             lot=lot,            
             **validated_data
         )
-        
