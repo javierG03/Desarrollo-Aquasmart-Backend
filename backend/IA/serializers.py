@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import ClimateRecord, ConsuptionPredictionLot
+from .models import ClimateRecord, ConsuptionPredictionLot,ConsuptionPredictionBocatoma
 
 
 class ClimateRecordSerializer(serializers.ModelSerializer):
@@ -74,7 +74,8 @@ class ConsuptionPredictionLotSerializer(serializers.ModelSerializer):
 class ConsuptionPredictionBocatomaSerializer(serializers.ModelSerializer):
     name = serializers.CharField(default='Bocatoma')
     class Meta:
-        model = ConsuptionPredictionLot
+        model = ConsuptionPredictionBocatoma
+
         fields = [
             'id',            
             'period_time',
@@ -95,7 +96,7 @@ class ConsuptionPredictionBocatomaSerializer(serializers.ModelSerializer):
         user = request.user
         
 
-        return ConsuptionPredictionLot.objects.create(
+        return ConsuptionPredictionBocatoma.objects.create(
             user=user,                      
             **validated_data
         )

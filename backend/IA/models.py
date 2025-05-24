@@ -91,8 +91,8 @@ class ConsuptionPredictionBocatoma(models.Model):
     final_date = models.DateTimeField()
 
     class Meta:
-        verbose_name = "Predicción de consumo de lote"
-        verbose_name_plural = "Predicción de consumo de lotes"
+        verbose_name = "Predicción de consumo de bocatoma"
+        verbose_name_plural = "Predicciones de consumo de bocatoma"
 
     def __str__(self):
         return f"{self.code_prediction} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"
