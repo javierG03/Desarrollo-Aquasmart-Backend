@@ -132,33 +132,43 @@ def device_type():
 
 @pytest.fixture
 def prediction_permissions(db):
-    """Crea los permisos necesarios para predicciones."""
-    content_type, _ = ContentType.objects.get_or_create(
-        model="aquasmart_permission", 
-        app_label="AquaSmart"
-    )
+    """Obtiene los permisos existentes para predicciones."""
+    # Los permisos ya fueron creados por las migraciones de AquaSmart
+    # Solo necesitamos obtenerlos
+    
+    try:
+        content_type = ContentType.objects.get(
+            model="aquasmart_permission", 
+            app_label="AquaSmart"
+        )
+    except ContentType.DoesNotExist:
+        pytest.skip("ContentType para AquaSmart no existe. Ejecutar migraciones primero.")
     
     permissions = {}
     
+    # Lista de permisos que deberían existir (desde las migraciones)
     prediction_perms = [
-        ("ver_predicciones_lotes", "permite ver predicciones de consumo de todos los lotes"),
-        ("generar_predicciones_lotes", "permite generar predicciones de consumo de todos los lotes"),
-        ("eliminar_predicciones_lotes", "permite eliminar predicciones de consumo de todos los lotes"),
-        ("ver_prediccion_consumo_mi_lote", "permite ver predicciones de consumo del lote correspondiente al usuario"),
-        ("generar_prediccion_consumo_mi_lote", "permite generar predicciones de consumo del lote correspondiente al usuario"),
-        ("eliminar_prediccion_consumo_mi_lote", "permite eliminar predicciones de consumo del lote correspondiente al usuario"),
-        ("generar_prediccion_distrito", "permite generar predicciones de consumo del distrito"),
-        ("ver_predicciones_distrito", "permite ver las predicciones de consumo del distrito"),
-        ("eliminar_prediccion_distrito", "Permite eliminar las predicciones de consumo del distrito"),
+        "ver_predicciones_lotes",
+        "generar_predicciones_lotes", 
+        "eliminar_predicciones_lotes",
+        "ver_prediccion_consumo_mi_lote",
+        "generar_prediccion_consumo_mi_lote",
+        "eliminar_prediccion_consumo_mi_lote",
+        "generar_prediccion_distrito",
+        "ver_predicciones_distrito",
+        "eliminar_prediccion_distrito",
     ]
     
-    for codename, name in prediction_perms:
-        perm, created = Permission.objects.get_or_create(
-            codename=codename,
-            name=name,
-            content_type=content_type
-        )
-        permissions[codename] = perm
+    # Obtener permisos existentes
+    for codename in prediction_perms:
+        try:
+            perm = Permission.objects.get(
+                codename=codename,
+                content_type=content_type
+            )
+            permissions[codename] = perm
+        except Permission.DoesNotExist:
+            print(f"Warning: Permiso '{codename}' no encontrado. Puede que falten migraciones.")
     
     return permissions
 
@@ -197,7 +207,7 @@ def iot_device(users_Plots,users_Lots,device_type):
     return valvulaActiveUserLot1, valvulaActiveUserLot2, valvulaActiveUserInactiveLot
 
 @pytest.fixture
-def users (db, person_type):
+def users (db, person_type, prediction_permissions):
     personaNatural,_ = person_type
     
     """Crea un usuario para pruebas."""
@@ -244,11 +254,11 @@ def users (db, person_type):
         "generar_prediccion_consumo_mi_lote",
         "eliminar_prediccion_consumo_mi_lote"
     ]
-    for perm_name in user_perms:
-        if perm_name in prediction_permissions:
-            activeUser.user_permissions.add(prediction_permissions[perm_name])
-            inactiveUser.user_permissions.add(prediction_permissions[perm_name])
-            intrudeActiveUser.user_permissions.add(prediction_permissions[perm_name])
+
+    for user in [activeUser, inactiveUser, intrudeActiveUser]:
+        for perm_name in user_perms:
+            if perm_name in prediction_permissions:
+                user.user_permissions.add(prediction_permissions[perm_name])
 
     return activeUser,inactiveUser,intrudeActiveUser
 
