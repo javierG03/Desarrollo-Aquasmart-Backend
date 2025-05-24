@@ -152,6 +152,11 @@ class ConsuptionPredictionLotListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         user = self.request.user
         lot = serializer.validated_data['lot']
+
+        # Validar que el lote esté activo
+        if not lot.is_activate:
+            raise ValidationError({"detail": "No se pueden crear predicciones para un lote inactivo."})
+
         lot_id= lot.id_lot  
         if user.has_perm("AquaSmart.generar_predicciones_lotes"):
             pass  # Admin: puede generar predicciones para cualquier lote
@@ -181,7 +186,7 @@ class ConsuptionPredictionLotListCreateView(generics.ListCreateAPIView):
             })
         datos = ClimateRecord.objects.order_by('id').last()
         if datos is None:
-            raise ValueError("No se pudo obtener los datos necesarios para la predicción. Asegurese que existan datos climaticos.")
+            raise ValidationError({"detail": "No se pudo obtener los datos necesarios para la predicción. Asegúrese que existan datos climáticos."})
         fecha_actual = datos.datetime
         mes = str(fecha_actual.month)
         año = str(fecha_actual.year)      
@@ -268,7 +273,7 @@ class ConsuptionPredictionBocatomaListCreateView(generics.ListCreateAPIView):
             })
         datos = ClimateRecord.objects.order_by('id').last()
         if datos is None:
-            raise ValueError("No se pudo obtener los datos necesarios para la predicción. Asegurese que existan datos climaticos.")
+            raise ValidationError({"detail": "No se pudo obtener los datos necesarios para la predicción. Asegúrese que existan datos climáticos."})
         print(datos)
         fecha_actual = datos.datetime
         mes = str(fecha_actual.month)
@@ -322,4 +327,4 @@ class ConsuptionPredictionBocatomaListCreateView(generics.ListCreateAPIView):
                 consumption_prediction=pred['valor'],
                 code_prediction=code_prediction,
                 final_date=final_date
-            )            
+            )
