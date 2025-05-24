@@ -70,3 +70,32 @@ class ConsuptionPredictionLotSerializer(serializers.ModelSerializer):
             lot=lot,            
             **validated_data
         )
+
+class ConsuptionPredictionBocatomaSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(default='Bocatoma')
+    class Meta:
+        model = ConsuptionPredictionLot
+        fields = [
+            'id',            
+            'period_time',
+            'name',
+            'consumption_prediction',
+            'code_prediction',
+            'created_at',
+            'final_date'
+        ]
+        read_only_fields = ['created_at', 'final_date', 'consumption_prediction', 'code_prediction', 'date_prediction']    
+
+    def validate_period_time(self, value):
+        if value not in ['1', '3', '6']:
+            raise serializers.ValidationError("El tiempo debe ser 1, 3 o 6 meses.")
+        return value
+    def create(self, validated_data):
+        request = self.context['request']
+        user = request.user
+        
+
+        return ConsuptionPredictionLot.objects.create(
+            user=user,                      
+            **validated_data
+        )
