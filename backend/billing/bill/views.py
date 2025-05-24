@@ -12,7 +12,7 @@ from caudal.models import WaterConsumptionRecord
 import io
 import csv
 import openpyxl
-from openpyxl.styles import Font
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
@@ -88,12 +88,19 @@ class BillTotalizationView(APIView):
 class ExportTotalizationPDFView(BillTotalizationView):
     def get(self, request):
         queryset = self.get_filtered_queryset(request)
-        totalizados = queryset.values('status').annotate(
+
+        # Resumen por estado
+        resumen = queryset.values('status').annotate(
             cantidad_facturas=Count('id_bill', distinct=True),
             cantidad_usuarios=Count('client', distinct=True),
             cantidad_predios=Count('plot_name', distinct=True),
             cantidad_lotes=Count('lot', distinct=True),
             monto_total=Sum('total_amount')
+        )
+
+        # Tabla detallada
+        detalles = queryset.values_list(
+            'code', 'status', 'client_name', 'plot_name', 'lot_code', 'creation_date', 'total_amount'
         )
 
         buffer = io.BytesIO()
@@ -101,17 +108,14 @@ class ExportTotalizationPDFView(BillTotalizationView):
         elements = []
         styles = getSampleStyleSheet()
 
-        title = Paragraph("<b>Informe de Facturas</b>", styles['Title'])
-        elements.append(title)
+        # Título
+        elements.append(Paragraph("<b>Informe de Facturas</b>", styles['Title']))
         elements.append(Spacer(1, 12))
 
-        table_data = [[
-            'Estado', 'Cantidad de Facturas', 'Cantidad de Usuarios',
-            'Cantidad de Predios', 'Cantidad de Lotes', 'Monto Total'
-        ]]
-
-        for row in totalizados:
-            table_data.append([
+        # Tabla resumen
+        resumen_data = [['Estado', 'Facturas', 'Usuarios', 'Predios', 'Lotes', 'Monto Total']]
+        for row in resumen:
+            resumen_data.append([
                 row['status'].capitalize(),
                 row['cantidad_facturas'],
                 row['cantidad_usuarios'],
@@ -119,32 +123,51 @@ class ExportTotalizationPDFView(BillTotalizationView):
                 row['cantidad_lotes'],
                 f"${float(row['monto_total'] or 0):,.2f}"
             ])
-
-        table = Table(table_data, hAlign='LEFT', colWidths=[80, 100, 100, 100, 100, 100])
-        table.setStyle(TableStyle([
+        resumen_table = Table(resumen_data, hAlign='LEFT')
+        resumen_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#003366')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
             ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
             ('GRID', (0, 0), (-1, -1), 1, colors.black),
         ]))
+        elements.append(resumen_table)
+        elements.append(Spacer(1, 24))
 
-        elements.append(table)
+        # Tabla de facturas
+        elements.append(Paragraph("<b>Facturas Detalladas</b>", styles['Heading2']))
+        detalle_data = [['Código', 'Estado', 'Cliente', 'Predio', 'Lote', 'Fecha', 'Total']]
+        for d in detalles:
+            detalle_data.append([
+                d[0], d[1].capitalize(), d[2], d[3], d[4],
+                d[5].strftime('%Y-%m-%d'), f"${float(d[6] or 0):,.2f}"
+            ])
+        detalle_table = Table(detalle_data, hAlign='LEFT')
+        detalle_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#444444')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+        ]))
+        elements.append(detalle_table)
+
         doc.build(elements)
         buffer.seek(0)
 
         response = HttpResponse(buffer, content_type='application/pdf')
-        filename = f"reporte_facturas_{now().strftime('%Y%m%d')}.pdf"
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response['Content-Disposition'] = f'attachment; filename="informe_facturas_{now().strftime("%Y%m%d")}.pdf"'
         return response
 
-# Exportar totalización a Excel
+
+
+# Exportar totalización a Excel (estilizado)
 class ExportTotalizationExcelView(BillTotalizationView):
     def get(self, request):
         queryset = self.get_filtered_queryset(request)
-        totalizados = queryset.values('status').annotate(
+
+        resumen = queryset.values('status').annotate(
             cantidad_facturas=Count('id_bill', distinct=True),
             cantidad_usuarios=Count('client', distinct=True),
             cantidad_predios=Count('plot_name', distinct=True),
@@ -152,44 +175,59 @@ class ExportTotalizationExcelView(BillTotalizationView):
             monto_total=Sum('total_amount')
         )
 
-        workbook = openpyxl.Workbook()
-        sheet = workbook.active
-        sheet.title = "Resumen de Facturas"
+        detalles = queryset.values_list(
+            'code', 'status', 'client_name', 'plot_name', 'lot_code', 'creation_date', 'total_amount'
+        )
 
-        headers = [
-            'Estado',
-            'Cantidad de Facturas',
-            'Cantidad de Usuarios',
-            'Cantidad de Predios',
-            'Cantidad de Lotes',
-            'Monto Total'
-        ]
-        sheet.append(headers)
+        wb = openpyxl.Workbook()
+        ws_resumen = wb.active
+        ws_resumen.title = "Resumen de Facturas"
 
-        for col in range(1, len(headers) + 1):
-            sheet.cell(row=1, column=col).font = Font(bold=True)
+        headers = ['Estado', 'Facturas', 'Usuarios', 'Predios', 'Lotes', 'Monto Total']
+        ws_resumen.append(headers)
 
-        for row in totalizados:
-            sheet.append([
-                row['status'].capitalize(),
-                row['cantidad_facturas'],
-                row['cantidad_usuarios'],
-                row['cantidad_predios'],
-                row['cantidad_lotes'],
-                float(row['monto_total'] or 0)
+        for col in ws_resumen[1]:
+            col.font = Font(bold=True, color="FFFFFF")
+            col.fill = PatternFill("solid", fgColor="003366")
+            col.alignment = Alignment(horizontal="center")
+
+        for r in resumen:
+            ws_resumen.append([
+                r['status'].capitalize(),
+                r['cantidad_facturas'],
+                r['cantidad_usuarios'],
+                r['cantidad_predios'],
+                r['cantidad_lotes'],
+                float(r['monto_total'] or 0)
+            ])
+
+        # Segunda hoja: Detalles
+        ws_detalle = wb.create_sheet("Facturas Detalladas")
+        detalle_headers = ['Código', 'Estado', 'Cliente', 'Predio', 'Lote', 'Fecha', 'Total']
+        ws_detalle.append(detalle_headers)
+
+        for col in ws_detalle[1]:
+            col.font = Font(bold=True, color="FFFFFF")
+            col.fill = PatternFill("solid", fgColor="444444")
+            col.alignment = Alignment(horizontal="center")
+
+        for d in detalles:
+            ws_detalle.append([
+                d[0], d[1].capitalize(), d[2], d[3], d[4], d[5].strftime('%Y-%m-%d'), float(d[6] or 0)
             ])
 
         buffer = io.BytesIO()
-        workbook.save(buffer)
+        wb.save(buffer)
         buffer.seek(0)
 
         response = HttpResponse(
             buffer,
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
-        filename = f"reporte_facturas_{now().strftime('%Y%m%d')}.xlsx"
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response['Content-Disposition'] = f'attachment; filename="informe_facturas_{now().strftime("%Y%m%d")}.xlsx"'
         return response
+
+
 
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
