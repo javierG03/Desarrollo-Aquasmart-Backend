@@ -24,5 +24,10 @@ class LogEntryListView(generics.ListAPIView):
     ordering_fields = ['timestamp', 'action']
     ordering = ['-timestamp']
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
     def get_queryset(self):
         return LogEntry.objects.select_related('actor', 'content_type')
