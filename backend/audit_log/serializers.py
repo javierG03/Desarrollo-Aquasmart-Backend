@@ -35,10 +35,8 @@ class LogEntrySerializer(serializers.ModelSerializer):
         return action_map.get(obj.action, 'unknown')
 
     def get_actor(self, obj):
-        """Reemplazar el actor null por el actor Sistema"""
-        if not obj.actor and self.context.get('request'):
-            return str(self.context['request'].user)
-        elif not obj.actor:
+        ''' Reemplazar el actor null por el actor Sistema '''
+        if not obj.actor:
             return 'Sistema'
         return str(obj.actor)
 
