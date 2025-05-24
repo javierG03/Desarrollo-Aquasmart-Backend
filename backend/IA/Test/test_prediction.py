@@ -3,7 +3,7 @@ from django.utils import timezone
 from IA.models import ConsuptionPredictionLot
 
 @pytest.mark.django_db
-def test_create_consumption_prediction_lot(users, users_Lots):
+def test_create_consumption_prediction_lot(api_client,admin_user,users, users_Lots):
     """Verifica que se puede crear una predicción de consumo para un lote."""
     activeUser, _, _ = users
     ActiveUserActiveLot1, _, _ = users_Lots

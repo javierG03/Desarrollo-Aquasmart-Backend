@@ -12,6 +12,15 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 import os
 
+
+
+
+@pytest.fixture
+def api_client():
+    from rest_framework.test import APIClient
+    return APIClient()
+
+
 @pytest.fixture
 def person_type(db):
     personaNatural = PersonType.objects.create(typeName="Natural")
@@ -22,7 +31,7 @@ def person_type(db):
 def soil_type(db):
     Arcilloso = SoilType.objects.create(
         name="Arcilloso"
-        ),
+        )
     Arenoso = SoilType.objects.create(
         name="Arenoso"
         )
@@ -32,16 +41,16 @@ def soil_type(db):
 def crop_type(db):
     Maiz = CropType.objects.create(
         name="Maíz"
-        ),
+        )
     Tomate = CropType.objects.create(
         name="Tomate"
         )
     return Maiz, Tomate
 
 @pytest.fixture
-def users_Plots(users, admin_User):
+def users_Plots(users, admin_user):
     activeUser, _, _ = users
-    adminUser = admin_User
+    adminUser = admin_user
     
     activeUserActivePlot = Plot.objects.create(
     plot_name="Predio activo de Prueba",
@@ -92,7 +101,7 @@ def users_Lots(soil_type, crop_type, users_Plots):
         crop_name="Maíz Híbrido",
         crop_variety="Híbrido 123",
         is_activate=True
-    ),
+    )
 
     ActiveUserActiveLot2 = Lot.objects.create(
         plot=activeUserActivePlot,
@@ -134,7 +143,7 @@ def iot_device(users_Plots,users_Lots,device_type):
         id_lot=activeUserActiveLot1,
         is_active=True,
         actual_flow=4.0
-    ),
+    )
     valvulaActiveUserLot2 = IoTDevice.objects.create(
         device_type=valvulaPredios,
         name="Válvula de 4\"",
@@ -156,20 +165,20 @@ def iot_device(users_Plots,users_Lots,device_type):
 
 @pytest.fixture
 def users (db, person_type):
-
+    personaNatural,_ = person_type
     
     """Crea un usuario para pruebas."""
-    activeUser= CustomUser.objects.create_user(
+    activeUser = CustomUser.objects.create_user(
         document="1234567890",
         first_name="Test",
         last_name="User",
         email="activeUser@example.com",
         phone="1234567890",
         password="UserPass123@",
-        person_type=person_type,
+        person_type=personaNatural,
         is_active=True,
-        is_registered=True,
-    ),
+        is_registered=True
+    )
 
     #Este usuario se utilizará para los test de un usuario inactivo no debería de...
     inactiveUser = CustomUser.objects.create_user(
@@ -179,9 +188,9 @@ def users (db, person_type):
         email="inactiveUser@example.com",
         phone="1234567890",
         password="UserPass123@",
-        person_type=person_type,
+        person_type=personaNatural,
         is_active=False,
-        is_registered=True,
+        is_registered=True
      )
     
     #Este usuario se utilizará para los test de un usuario no deberia poder ver propiedades de otro usuario
@@ -192,14 +201,17 @@ def users (db, person_type):
         email="intrudeActiveUser@example.com",
         phone="1234567890",
         password="UserPass123@",
-        person_type=person_type,
+        person_type=personaNatural,
         is_active=False,
-        is_registered=True,
+        is_registered=True
     )
     return activeUser,inactiveUser,intrudeActiveUser
 
 @pytest.fixture
 def staff_user(db,person_type):
+
+    personaNatural,_ = person_type
+
     #definición de roles/grupos
     tecnico_group, _ = Group.objects.get_or_create(name="Tecnicos")
     operator_group,_=Group.objects.get_or_create(name="Operadores")
@@ -212,7 +224,7 @@ def staff_user(db,person_type):
     email="tecnico@example.com",
     phone="11222333444",
     password="UserPass123@",
-    person_type=person_type,
+    person_type=personaNatural,
     is_registered=True
     )
     operatorUser= CustomUser.objects.create_superuser(
@@ -222,7 +234,7 @@ def staff_user(db,person_type):
         email="operator@example.com",
         phone="111222333444",
         password="UserPass123@",
-        person_type=person_type,
+        person_type=personaNatural,
         is_registered=True
     )
     operatorUser.groups.add(operator_group)
@@ -231,6 +243,7 @@ def staff_user(db,person_type):
 
 @pytest.fixture
 def admin_user(db,person_type):
+    personaNatural,_ = person_type
     admin_group, _ = Group.objects.get_or_create(name="administrador")
     adminUser = CustomUser.objects.create_superuser(
         document="1122334455",
@@ -239,7 +252,7 @@ def admin_user(db,person_type):
         email = os.environ.get('EMAIL_HOST_USER', default=os.getenv("EMAIL_HOST_USER")),
         phone="3210000000",
         password="AdminPass123@",  # <- muy importante
-        person_type=person_type,
+        person_type=personaNatural,
         is_registered=True
     )
     adminUser.groups.add(admin_group)
