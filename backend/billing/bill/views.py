@@ -7,7 +7,7 @@ from django.db.models import Count, Sum
 from django.utils.timezone import now
 from .models import Bill
 from .serializers import BillSerializer
-from .permissions import IsOwnerOrAdmin
+from .permissions import IsOwnerOrAdmin # Asegúrate de importar tu permiso
 from caudal.models import WaterConsumptionRecord
 import io
 import csv
@@ -18,26 +18,30 @@ from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle, Spacer
 
-# Vista para listar facturas (con filtro por usuario o admin)
+
 class BillListView(generics.ListAPIView):
+    """Vista para obtener todas las facturas o solo las de un usuario."""
     serializer_class = BillSerializer
     permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
 
     def get_queryset(self):
+        """Devuelve solo las facturas del usuario si es un usuario normal, o todas las facturas si es un admin."""
         user = self.request.user
         if user.is_staff:
-            return Bill.objects.all()
-        return Bill.objects.filter(client=user)
+            return Bill.objects.all() # Administradores pueden ver todas las facturas
+        return Bill.objects.filter(client=user) # Usuarios solo pueden ver sus propias facturas
+    
 
-# Vista para detalle de factura
+
 class BillDetailView(generics.RetrieveAPIView):
+    """Vista para obtener el detalle de una factura específica."""
     queryset = Bill.objects.all()
     serializer_class = BillSerializer
-    permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
+    permission_classes = [IsAuthenticated, IsOwnerOrAdmin] # Asegúrate de que esté el permiso
 
     def get_object(self):
         obj = super().get_object()
-        self.check_object_permissions(self.request, obj)
+        self.check_object_permissions(self.request, obj) # Verifica permisos
         return obj
 
 # Vista para totalizar facturas con múltiples filtros
@@ -232,6 +236,7 @@ class ExportTotalizationExcelView(BillTotalizationView):
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.conf import settings
+from .models import Bill
 from plots_lots.models import Lot
 from billing.models import Company
 import hmac
@@ -242,14 +247,18 @@ from datetime import datetime, timedelta
 @csrf_exempt
 @require_POST
 def generate_monthly_bills(request):
+    """Endpoint para generar facturas mensuales mediante una solicitud HTTP"""
+    # Verificación de seguridad con token secreto
     provided_token = request.headers.get('X-Api-Token')
 
     if not settings.BILLING_SECRET_TOKEN or not provided_token:
         return JsonResponse({'error': 'Unauthorized'}, status=401)
 
+    # Comparación segura de tokens
     if not hmac.compare_digest(settings.BILLING_SECRET_TOKEN, provided_token):
         return JsonResponse({'error': 'Invalid token'}, status=403)
-
+    
+    # Obtener la empresa que emite las facturas
     company = Company.objects.first()
     if not company:
         return JsonResponse({'error': 'No company found'}, status=404)
@@ -257,6 +266,8 @@ def generate_monthly_bills(request):
     active_lots = Lot.objects.filter(is_activate=True)
     bills_created = 0
     errors = []
+
+    # Fecha actual
     today = datetime.now().date()
     first_day = today.replace(day=1)
     last_day = (first_day + timedelta(days=32)).replace(day=1) - timedelta(days=1)
@@ -265,6 +276,7 @@ def generate_monthly_bills(request):
         try:
             client = lot.plot.owner
 
+            # Verificar si ya existe una factura para este lote en el mes actual
             existing_bill = Bill.objects.filter(
                 lot=lot,
                 creation_date__gte=first_day,
@@ -274,21 +286,25 @@ def generate_monthly_bills(request):
             if existing_bill:
                 continue
 
+            # Verificar si el cliente está inactivo
             is_client_inactive = not getattr(client, 'is_active', True)
 
+            # Buscar la última factura para este cliente
             if is_client_inactive:
                 last_client_bill = Bill.objects.filter(client=client).order_by('-creation_date').first()
                 if last_client_bill and getattr(last_client_bill, 'client_inactive', False):
+                    # Ya se le facturó una vez estando inactivo, no crear nueva factura
                     continue
 
             last_consumption = WaterConsumptionRecord.objects.filter(
                 lot=lot,
                 billed=False,
-                end_date__lt=today
+                end_date__lt=today # Solo consumos con periodos ya cerrados
             ).order_by('-end_date').first()
 
             volumetric_quantity = last_consumption.period_consumption if last_consumption else getattr(lot, 'estimated_consumption', 2)
 
+            # Crear factura
             bill = Bill(
                 company=company,
                 client=client,
@@ -297,6 +313,7 @@ def generate_monthly_bills(request):
                 volumetric_rate_quantity=volumetric_quantity
             )
 
+            # Si el cliente está inactivo, marcar
             if is_client_inactive and hasattr(Bill, 'client_inactive'):
                 bill.client_inactive = True
 
