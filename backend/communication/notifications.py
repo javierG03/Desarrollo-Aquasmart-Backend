@@ -213,7 +213,8 @@ def send_maintenance_report_notification(report):
         # Enviar al técnico y al supervisor
         return all([
             _send_notification_email(subject, context, 'maintenance_report', report.assignment.assigned_to.email),
-            _send_notification_email(subject, context, 'maintenance_report', report.assignment.assigned_by.email)
+            _send_notification_email(subject, context, 'maintenance_report', report.assignment.assigned_by.email),
+            _send_notification_email(subject, context, 'maintenance_report', report.created_by.email)
         ])
     except Exception as e:
         print(f"Error al preparar notificación de informe: {str(e)}")
