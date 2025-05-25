@@ -54,7 +54,7 @@ def crear_validate_invoice(bill_instance):
             "name": bill_instance.fixed_rate_name or "Tarifa Fija de Agua",
             "quantity": float(bill_instance.fixed_rate_quantity),
             "discount_rate": 0,
-            "price": float(bill_instance.fixed_rate_value * 100),  # Convertir a centavos
+            "price": float(bill_instance.fixed_rate_value),  # Convertir a centavos
             "tax_rate": "19.00",
             "unit_measure_id": 94,
             "standard_code_id": 1,
@@ -68,7 +68,7 @@ def crear_validate_invoice(bill_instance):
             "name": bill_instance.volumetric_rate_name or "Tarifa Volumétrica de Agua",
             "quantity": float(bill_instance.volumetric_rate_quantity),
             "discount_rate": 0,
-            "price": float(bill_instance.volumetric_rate_value * 100),  # Convertir a centavos
+            "price": float(bill_instance.volumetric_rate_value),  # Convertir a centavos
             "tax_rate": "19.00",
             "unit_measure_id": 94,
             "standard_code_id": 1,
