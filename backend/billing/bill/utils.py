@@ -118,7 +118,8 @@ def actualizar_factura_con_api_data(bill_instance, api_data):
     bill_instance.step_number = number
     bill_instance.qr_url = api_data["data"]["bill"]["qr"]
     bill_instance.dian_validation_date = timezone.now()
-    bill_instance.pdf_base64= pdf_base64
+    bill_instance.pdf_base64 = pdf_base64
+    bill_instance.total_amount = api_data["data"]["bill"]["total"]
     
     # Usar update para evitar recursión
     from .models import Bill  # Import local para evitar circular imports
@@ -127,7 +128,8 @@ def actualizar_factura_con_api_data(bill_instance, api_data):
         step_number=bill_instance.step_number,
         qr_url=bill_instance.qr_url,
         dian_validation_date=bill_instance.dian_validation_date,
-        pdf_base64=bill_instance.pdf_base64
+        pdf_base64=bill_instance.pdf_base64,
+        total_amount=bill_instance.total_amount
     )
     
     print(f"Factura {bill_instance.code} validada exitosamente:")
