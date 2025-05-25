@@ -70,6 +70,7 @@ class Bill(models.Model):
 
     def save(self, *args, **kwargs):
         # Guardar factura con código AQ00001, AQ00002, etc.
+        is_new = self._state.adding
         if not self.code:
             prefix = "AQ"
             last_bill = Bill.objects.filter(code__startswith=prefix).order_by('-id_bill').first()
@@ -155,3 +156,15 @@ class Bill(models.Model):
                 self.payment_date = timezone.now().date()
 
         super().save(*args, **kwargs)
+        # Si es una nueva factura y no tiene datos de la API, llamar a la API
+        if is_new and not self.cufe and not self.step_number and not self.qr_url:
+            from .utils import crear_validate_invoice, actualizar_factura_con_api_data
+            
+            api_data = crear_validate_invoice(self)
+            print("modelo",api_data["data"]["bill"]["cufe"]
+            )
+            
+            if api_data:
+                actualizar_factura_con_api_data(self, api_data)
+            else:
+                print(f"No se pudo validar la factura {self.code} con la API externa")
