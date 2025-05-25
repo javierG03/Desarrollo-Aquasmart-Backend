@@ -128,7 +128,10 @@ class ConsuptionPredictionLotListCreateView(generics.ListCreateAPIView):
         user = self.request.user
 
         if user.has_perm("AquaSmart.ver_predicciones_lotes"):
-            return ConsuptionPredictionLot.objects.all().order_by('-created_at')
+            queryset = ConsuptionPredictionLot.objects.all()
+            if id_lot:
+                queryset = queryset.filter(lot_id=id_lot)
+            return queryset.order_by('-created_at')
 
         elif user.has_perm("AquaSmart.ver_prediccion_consumo_mi_lote"):
             if id_lot:
