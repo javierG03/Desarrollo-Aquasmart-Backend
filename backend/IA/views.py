@@ -128,7 +128,10 @@ class ConsuptionPredictionLotListCreateView(generics.ListCreateAPIView):
         user = self.request.user
 
         if user.has_perm("AquaSmart.ver_predicciones_lotes"):
-            return ConsuptionPredictionLot.objects.all().order_by('-created_at')
+            queryset = ConsuptionPredictionLot.objects.all()
+            if id_lot:
+                queryset = queryset.filter(lot_id=id_lot)
+            return queryset.order_by('-created_at')
 
         elif user.has_perm("AquaSmart.ver_prediccion_consumo_mi_lote"):
             if id_lot:
@@ -158,6 +161,9 @@ class ConsuptionPredictionLotListCreateView(generics.ListCreateAPIView):
             raise ValidationError({"detail": "No se pueden crear predicciones para un lote inactivo."})
 
         lot_id= lot.id_lot  
+        if not lot.is_activate:
+            raise ValidationError({"detail": "No se pueden crear predicciones para un lote inactivo."})    
+        
         if user.has_perm("AquaSmart.generar_predicciones_lotes"):
             pass  # Admin: puede generar predicciones para cualquier lote
 
@@ -174,7 +180,8 @@ class ConsuptionPredictionLotListCreateView(generics.ListCreateAPIView):
             period_time=period_time,
             final_date__gte=timezone.now()
         ).first()
-
+        
+        
         if pred_existente:
             text_mes =""
             if period_time == 1:
@@ -186,7 +193,7 @@ class ConsuptionPredictionLotListCreateView(generics.ListCreateAPIView):
             })
         datos = ClimateRecord.objects.order_by('id').last()
         if datos is None:
-            raise ValidationError({"detail": "No se pudo obtener los datos necesarios para la predicción. Asegúrese que existan datos climáticos."})
+            raise ValidationError("No se pudo obtener los datos necesarios para la predicción. Asegurese que existan datos climaticos.")
         fecha_actual = datos.datetime
         mes = str(fecha_actual.month)
         año = str(fecha_actual.year)      
@@ -273,7 +280,7 @@ class ConsuptionPredictionBocatomaListCreateView(generics.ListCreateAPIView):
             })
         datos = ClimateRecord.objects.order_by('id').last()
         if datos is None:
-            raise ValidationError({"detail": "No se pudo obtener los datos necesarios para la predicción. Asegúrese que existan datos climáticos."})
+            raise ValidationError("No se pudo obtener los datos necesarios para la predicción. Asegurese que existan datos climaticos.")
         print(datos)
         fecha_actual = datos.datetime
         mes = str(fecha_actual.month)
