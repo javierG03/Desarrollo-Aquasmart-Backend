@@ -105,6 +105,9 @@ def normal_user(db, person_type):
         person_type=person_type,
         is_registered=True
     )
+    group, _ = Group.objects.get_or_create(name="Usuario")
+    user.groups.add(group)
+    user.save()
     return user
 
 

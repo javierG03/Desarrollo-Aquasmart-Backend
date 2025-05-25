@@ -48,15 +48,30 @@ def test_notification_delivered_to_reciever(api_client, admin_user, tecnico_user
                 name='Can be assigned to handle requests/reports',
                 content_type=content_type
             )
+
+
+        try:
+             can_see_report = Permission.objects.get(
+                  codename='ver_informe_mantenimiento',
+                  content_type=content_type
+             )
+        except Permission.DoesNotExist:
+             can_see_report = Permission.objects.create(
+                  codename='ver_informe_mantenimiento',
+                  name='puede ver los reportes de mantenimiento',
+                  content_type=content_type
+             )
         
         # Assign permissions to users
         admin_user.user_permissions.add(assign_permission)
         tecnico_user.user_permissions.add(can_be_assigned)
+        normal_user.user_permissions.add(can_see_report)
 
         
         
         admin_user.save()
         tecnico_user.save()
+        normal_user.save()
         
         failure_report1 = FailureReport.objects.create(
             created_by=normal_user,
@@ -67,6 +82,7 @@ def test_notification_delivered_to_reciever(api_client, admin_user, tecnico_user
             status='Pendiente',
             observations='Primer reporte de prueba para delegación'
         )
+        
         
         mail.outbox = []  # Limpiar buzón
         
@@ -81,30 +97,17 @@ def test_notification_delivered_to_reciever(api_client, admin_user, tecnico_user
         
         # Solicitud debe ser exitosa
         assert response.status_code == status.HTTP_201_CREATED
-        
-        # Verificar que se enviaron correos
-        assert len(mail.outbox) > 0, "No se enviaron correos electrónicos"
-        
-        
-        tech_email_received = False
-        
-        
-        for email in mail.outbox:
-            if tecnico_user.email in email.to:
-                tech_email_received = True
-
-
-        print(f"De: {email.from_email}")
-        print(f"Asunto: {email.subject}")
-        print(f"Para: {email.to}")
-        print(f"Cuerpo: {email.body}")
-        
-        assert tech_email_received, "El técnico no recibió notificación por correo"
-        print(f"✅La notificación fue envíada correctamente a el destinatario al quese le fue asignado el reporte.")
         assignment = Assignment.objects.get(id=response.data["id"])
         print(f"Assignment: {assignment}")
+        
 
-        mail.outbox = []
+    # Verificar correos tras la asignación
+        recipients = [email for m in mail.outbox for email in m.to]
+        print("Correos enviados tras asignación:", recipients)
+        assert tecnico_user.email in recipients, "El técnico no recibió notificación por correo"
+        assert admin_user.email in recipients, "El administrador no recibió notificación por correo"
+
+        mail.outbox = []  # Limpiar antes del reporte de mantenimiento
 
     # Técnico crea reporte de mantenimiento finalizado
         client = login_and_validate_otp(api_client, tecnico_user, "UserPass123@")
@@ -122,31 +125,17 @@ def test_notification_delivered_to_reciever(api_client, admin_user, tecnico_user
             },
             format="json",
         )
-        assert len(mail.outbox) > 0, "No se enviaron correos electrónicos"
-        
-        
-        user_mail_recieved = False
-        
-        
-        for email in mail.outbox:
-            if normal_user.email in email.to:
-                user_mail_recieved = True
-
-
-        print(f"De: {email.from_email}")
-        print(f"Asunto: {email.subject}")
-        print(f"Para: {email.to}")
-        print(f"Cuerpo: {email.body}")        
         assert response.status_code == status.HTTP_201_CREATED
-        print("Todos los correos enviados son:")
-        for email in mail.outbox:
-            print(f"De: {email.from_email}")
-            print(f"Asunto: {email.subject}")
-            print(f"Para: {email.to}")
-            print(f"Cuerpo: {email.body}")
 
 
-        assert user_mail_recieved, (f"El técnico no recibió notificación por correo")
-        assert any(admin_user.email in email.to for email in mail.outbox), "El administrador no recibió notificación de reporte de mantenimiento"
-        print("✅ El administrador recibió la notificación de reporte de mantenimiento finalizado.")
+         # Verificar correos tras el reporte de mantenimiento
+        recipients = [email for m in mail.outbox for email in m.to]
+        print("Correos enviados tras mantenimiento:", recipients)
+        assert normal_user.email in recipients, "El usuario no recibió notificación por correo"
+        assert admin_user.email in recipients, "El administrador no recibió notificación de reporte de mantenimiento"
+        assert tecnico_user.email in recipients, "El técnico no recibió notificación de reporte de mantenimiento"
+
+        print("✅ Todos los destinatarios recibieron las notificaciones correspondientes.")
+
+
 
