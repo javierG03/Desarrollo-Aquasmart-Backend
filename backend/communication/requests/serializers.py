@@ -155,7 +155,7 @@ class FlowRequestSerializer(serializers.ModelSerializer):
                 )
 
     def _validate_observations(self, flow_request_type, observations):
-        if flow_request_type in {FlowRequestType.FLOW_TEMPORARY_CANCEL, FlowRequestType.FLOW_DEFINITIVE_CANCEL, FlowRequestType.FLOW_ACTIVATION}:
+        if flow_request_type in {FlowRequestType.FLOW_TEMPORARY_CANCEL, FlowRequestType.FLOW_DEFINITIVE_CANCEL}:
             if not observations:
                 raise serializers.ValidationError("El campo 'observations' es obligatorio.")
             if flow_request_type in {FlowRequestType.FLOW_TEMPORARY_CANCEL, FlowRequestType.FLOW_DEFINITIVE_CANCEL}:
