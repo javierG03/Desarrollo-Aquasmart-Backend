@@ -6,10 +6,11 @@ from django.http import HttpResponse, JsonResponse
 from django.db.models import Count, Sum
 from django.utils.timezone import now
 from .models import Bill
-from .serializers import BillSerializer
+from .serializers import BillSerializer, BillStatusUpdateSerializer
+import io
 from .permissions import IsOwnerOrAdmin # Asegúrate de importar tu permiso
 from caudal.models import WaterConsumptionRecord
-import io
+from rest_framework import status
 import csv
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -333,4 +334,29 @@ def generate_monthly_bills(request):
         'bills_created': bills_created,
         'date': today.strftime('%Y-%m-%d'),
         'errors': errors
-    })
+    })    
+
+
+class UpdateBillStatusAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = BillStatusUpdateSerializer(data=request.data)
+        if serializer.is_valid():
+            code = serializer.validated_data['code']
+            try:
+                bill = Bill.objects.get(code=code)
+            except Bill.DoesNotExist:
+                return Response({"detail": "Factura no encontrada."}, status=status.HTTP_404_NOT_FOUND)
+
+            if bill.client != request.user:
+                return Response({"detail": "No tienes permiso para modificar esta factura."}, status=status.HTTP_403_FORBIDDEN)
+
+            if bill.status == 'pagada':
+                return Response({"detail": "La factura ya está marcada como pagada."}, status=status.HTTP_400_BAD_REQUEST)
+
+            bill.status = 'pagada'
+            bill.save()
+            return Response({"detail": f" Pago exitoso de la factura {bill.code}."}, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)    

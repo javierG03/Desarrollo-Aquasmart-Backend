@@ -1,12 +1,13 @@
-
 from rest_framework import serializers
-from .models import ClimateRecord, ConsuptionPredictionLot
+from .models import ClimateRecord, ConsuptionPredictionLot,ConsuptionPredictionBocatoma
+
 
 class ClimateRecordSerializer(serializers.ModelSerializer):
     class Meta:
         model = ClimateRecord
         fields = '__all__'
-        read_only_fields = ['luminiscencia', 'final_date']  # Estos campos se calculan automáticamente
+        read_only_fields = ['luminiscencia', 'final_date']
+
 
 class ConsuptionPredictionLotSerializer(serializers.ModelSerializer):
     owner = serializers.SerializerMethodField()
@@ -25,7 +26,8 @@ class ConsuptionPredictionLotSerializer(serializers.ModelSerializer):
             'created_at',
             'final_date'
         ]
-        read_only_fields = ['created_at', 'final_date','consumption_prediction','code_prediction', 'plot','owner','date_prediction',]
+        read_only_fields = ['created_at', 'final_date', 'consumption_prediction', 'code_prediction', 'plot', 'owner', 'date_prediction']
+
     def get_plot(self, obj):
         # Verifica si obj es una instancia de modelo o un diccionario
         if isinstance(obj, ConsuptionPredictionLot):
@@ -62,11 +64,39 @@ class ConsuptionPredictionLotSerializer(serializers.ModelSerializer):
         request = self.context['request']
         user = request.user
         lot = validated_data['lot']
-        
 
         return ConsuptionPredictionLot.objects.create(
             user=user,
             lot=lot,            
             **validated_data
         )
+
+class ConsuptionPredictionBocatomaSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(default='Bocatoma')
+    class Meta:
+        model = ConsuptionPredictionBocatoma
+
+        fields = [
+            'id',            
+            'period_time',
+            'name',
+            'consumption_prediction',
+            'code_prediction',
+            'created_at',
+            'final_date'
+        ]
+        read_only_fields = ['created_at', 'final_date', 'consumption_prediction', 'code_prediction', 'date_prediction']    
+
+    def validate_period_time(self, value):
+        if value not in ['1', '3', '6']:
+            raise serializers.ValidationError("El tiempo debe ser 1, 3 o 6 meses.")
+        return value
+    def create(self, validated_data):
+        request = self.context['request']
+        user = request.user
         
+
+        return ConsuptionPredictionBocatoma.objects.create(
+            user=user,                      
+            **validated_data
+        )

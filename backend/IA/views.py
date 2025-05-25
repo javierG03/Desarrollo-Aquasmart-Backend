@@ -1,23 +1,21 @@
-from rest_framework import viewsets, status
-from rest_framework.decorators import api_view, action
-from rest_framework.response import Response
+from datetime import datetime, timedelta
 from datetime import datetime
+from dateutil.relativedelta import relativedelta
+from django.conf import settings
 from django.utils import timezone
+import joblib
+import os
+import pandas as pd
+from rest_framework import generics, status, viewsets
+from rest_framework.decorators import api_view, action
+from rest_framework.exceptions import ValidationError,PermissionDenied,NotFound
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.response import Response
 from .models import ClimateRecord,Lot
+from .models import ConsuptionPredictionLot,ConsuptionPredictionBocatoma
 from .serializers import ClimateRecordSerializer
 from .utils import api_climate_request, predecir_n_meses,formatear_predicciones, generate_code_prediction
-import time
-import pandas as pd
-from rest_framework import generics
-from .models import ConsuptionPredictionLot
-from .serializers import ConsuptionPredictionLotSerializer
-from rest_framework.permissions import IsAuthenticated
-import joblib
-from django.conf import settings
-import os
-from datetime import datetime, timedelta
-from rest_framework.exceptions import ValidationError,PermissionDenied,NotFound
-from dateutil.relativedelta import relativedelta
+from .serializers import ConsuptionPredictionLotSerializer,ConsuptionPredictionBocatomaSerializer
 
 class ClimateRecordViewSet(viewsets.ModelViewSet):
     queryset = ClimateRecord.objects.all()
@@ -126,13 +124,16 @@ class ConsuptionPredictionLotListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-       id_lot = self.request.query_params.get('lot')
-       user = self.request.user
+        id_lot = self.request.query_params.get('lot')
+        user = self.request.user
 
-       if user.has_perm("AquaSmart.ver_predicciones_lotes"):
-        return ConsuptionPredictionLot.objects.all().order_by('-created_at')
+        if user.has_perm("AquaSmart.ver_predicciones_lotes"):
+            queryset = ConsuptionPredictionLot.objects.all()
+            if id_lot:
+                queryset = queryset.filter(lot_id=id_lot)
+            return queryset.order_by('-created_at')
 
-       elif user.has_perm("AquaSmart.ver_prediccion_consumo_mi_lote"):
+        elif user.has_perm("AquaSmart.ver_prediccion_consumo_mi_lote"):
             if id_lot:
                 try:
                     lot_instan = Lot.objects.get(pk=id_lot)
@@ -149,13 +150,15 @@ class ConsuptionPredictionLotListCreateView(generics.ListCreateAPIView):
                     lot__plot__owner=user
                 ).order_by('-created_at')
 
-       raise PermissionDenied("No tienes permiso para ver las predicciones.")
+        raise PermissionDenied("No tienes permiso para ver las predicciones.")
 
     def perform_create(self, serializer):
         user = self.request.user
         lot = serializer.validated_data['lot']
-              
         lot_id= lot.id_lot  
+        if not lot.is_activate:
+            raise ValidationError({"detail": "No se pueden crear predicciones para un lote inactivo."})    
+        
         if user.has_perm("AquaSmart.generar_predicciones_lotes"):
             pass  # Admin: puede generar predicciones para cualquier lote
 
@@ -172,21 +175,23 @@ class ConsuptionPredictionLotListCreateView(generics.ListCreateAPIView):
             period_time=period_time,
             final_date__gte=timezone.now()
         ).first()
-
+        
+        
         if pred_existente:
             text_mes =""
             if period_time == 1:
                 text_mes = "Mes"
             else:
-                 text_mes = "Meses"   
+                text_mes = "Meses"   
             raise ValidationError({
                 "detail": f"Ya existe una predicción activa para este lote con ese periodo de {period_time} {text_mes }.",                
             })
         datos = ClimateRecord.objects.order_by('id').last()
+        if datos is None:
+            raise ValidationError("No se pudo obtener los datos necesarios para la predicción. Asegurese que existan datos climaticos.")
         fecha_actual = datos.datetime
         mes = str(fecha_actual.month)
         año = str(fecha_actual.year)      
-        
         datos_usuario = {
         'Año': año,
         'Mes_numero': mes,
@@ -217,18 +222,15 @@ class ConsuptionPredictionLotListCreateView(generics.ListCreateAPIView):
 
         # Obtener datos para la predicción
         datos_actuales = datos_usuario_scaled[0]
-        
         historico = None
         timesteps = 3
         # Ejecutar la predicción
         predicciones = predecir_n_meses(datos_actuales, historico, period_time, columnas_scaler, timesteps)
-       
         predicciones_formateadas = formatear_predicciones(predicciones, fecha_inicio=timezone.now())
 
         # Crear un código único para agrupar las predicciones
-        code_prediction = generate_code_prediction(ConsuptionPredictionLot,lot_id,period_time)
+        code_prediction = generate_code_prediction(ConsuptionPredictionLot,period_time,lot=lot_id)
         final_date = timezone.now() + timedelta(days=7)
-        
         for i, pred in enumerate(predicciones_formateadas):            
             date_prediction = final_date.date() + relativedelta(months=i+1)    
             ConsuptionPredictionLot.objects.create(
@@ -236,8 +238,95 @@ class ConsuptionPredictionLotListCreateView(generics.ListCreateAPIView):
                 lot=lot,                
                 period_time=period_time,
                 created_at=timezone.now(),
-                 date_prediction =date_prediction,
+                date_prediction =date_prediction,
                 consumption_prediction=pred['valor'],
                 code_prediction=code_prediction,
                 final_date=final_date
             )
+            
+class ConsuptionPredictionBocatomaListCreateView(generics.ListCreateAPIView):
+    serializer_class = ConsuptionPredictionBocatomaSerializer
+    permission_classes = [IsAuthenticated,IsAdminUser]
+
+    def get_queryset(self):            
+       
+          return ConsuptionPredictionBocatoma.objects.all().order_by('-created_at')
+
+        
+    def perform_create(self, serializer):
+        
+        user = self.request.user        
+        period_time = int(serializer.validated_data['period_time'])
+        # ⚠️ Validación previa: ya existe una predicción activa
+        pred_existente = ConsuptionPredictionBocatoma.objects.filter(
+            
+            period_time=period_time,
+            final_date__gte=timezone.now()
+        ).first()
+
+        if pred_existente:
+            text_mes =""
+            if period_time == 1:
+                text_mes = "Mes"
+            else:
+                text_mes = "Meses"   
+            raise ValidationError({
+                "detail": f"Ya existe una predicción activa para la bocatoma con el periodo de {period_time} {text_mes }.",                
+            })
+        datos = ClimateRecord.objects.order_by('id').last()
+        if datos is None:
+            raise ValidationError("No se pudo obtener los datos necesarios para la predicción. Asegurese que existan datos climaticos.")
+        print(datos)
+        fecha_actual = datos.datetime
+        mes = str(fecha_actual.month)
+        año = str(fecha_actual.year)      
+        datos_usuario = {
+        'Año': año,
+        'Mes_numero': mes,
+        'Consumo Neiva (m3-mes)': 10.00,
+        'Temperatura Minima(°C)':datos.tempmin,
+        'Temperatura Maxima(°C)':datos.tempmax,
+        'Precipitacion(mm)': datos.precip,
+        'Probabilidad de Precipitacion(%)':datos.precipprob,
+        'Cubrimiento de Precipitacion(%)': datos.precipcover,
+        'Presión del nivel del Mar (mbar)': datos.pressure,
+        'Nubosidad (%)': datos.cloudcover,
+        'Radiación Solar (W/m2)': datos.solarradiation,
+        'Velocidad del Viento (km/h)': datos.windspeed,
+        'Luminiscencia': datos.luminiscencia
+        }
+        columnas_scaler = [
+        'Consumo Neiva (m3-mes)', 'Temperatura Minima(°C)', 'Temperatura Maxima(°C)',
+        'Precipitacion(mm)', 'Probabilidad de Precipitacion(%)',
+        'Cubrimiento de Precipitacion(%)', 'Presión del nivel del Mar (mbar)',
+        'Nubosidad (%)', 'Radiación Solar (W/m2)', 'Velocidad del Viento (km/h)',
+        'Luminiscencia'
+        ]
+        scaler_x_path = os.path.join(settings.BASE_DIR, 'IA', 'Scaler', 'scaler_X_transformer.pkl')
+        scaler_X = joblib.load(scaler_x_path)
+        # Convertir y escalar solo columnas compatibles con el scaler
+        df_usuario = pd.DataFrame([datos_usuario])[columnas_scaler]
+        datos_usuario_scaled = scaler_X.transform(df_usuario)
+
+        # Obtener datos para la predicción
+        datos_actuales = datos_usuario_scaled[0]
+        historico = None
+        timesteps = 3
+        # Ejecutar la predicción
+        predicciones = predecir_n_meses(datos_actuales, historico, period_time, columnas_scaler, timesteps)
+        predicciones_formateadas = formatear_predicciones(predicciones, fecha_inicio=timezone.now())
+
+        # Crear un código único para agrupar las predicciones
+        code_prediction = generate_code_prediction(ConsuptionPredictionBocatoma,period_time)
+        final_date = timezone.now() + timedelta(days=7)
+        for i, pred in enumerate(predicciones_formateadas):            
+            date_prediction = final_date.date() + relativedelta(months=i+1)    
+            ConsuptionPredictionBocatoma.objects.create(
+                user=user,             
+                period_time=period_time,
+                created_at=timezone.now(),
+                date_prediction =date_prediction,
+                consumption_prediction=pred['valor'],
+                code_prediction=code_prediction,
+                final_date=final_date
+            )            
