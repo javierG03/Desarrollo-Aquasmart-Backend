@@ -3,7 +3,7 @@ from django.utils import timezone
 from billing.validarfactura.utils import get_valid_access_token
 import requests
 import os
-
+import json
 def crear_validate_invoice(bill_instance):
     """
     Llama a la API externa para validar la factura y obtener datos necesarios.
@@ -54,7 +54,7 @@ def crear_validate_invoice(bill_instance):
             "name": bill_instance.fixed_rate_name or "Tarifa Fija de Agua",
             "quantity": float(bill_instance.fixed_rate_quantity),
             "discount_rate": 0,
-            "price": float(bill_instance.fixed_rate_value * 100),  # Convertir a centavos
+            "price": float(bill_instance.fixed_rate_value),  # Convertir a centavos
             "tax_rate": "19.00",
             "unit_measure_id": 94,
             "standard_code_id": 1,
@@ -68,7 +68,7 @@ def crear_validate_invoice(bill_instance):
             "name": bill_instance.volumetric_rate_name or "Tarifa Volumétrica de Agua",
             "quantity": float(bill_instance.volumetric_rate_quantity),
             "discount_rate": 0,
-            "price": float(bill_instance.volumetric_rate_value * 100),  # Convertir a centavos
+            "price": float(bill_instance.volumetric_rate_value),  # Convertir a centavos
             "tax_rate": "19.00",
             "unit_measure_id": 94,
             "standard_code_id": 1,
@@ -111,12 +111,15 @@ def actualizar_factura_con_api_data(bill_instance, api_data):
     """
     if not api_data:
         return False
-    
+    number = api_data["data"]["bill"]["number"]
+    pdf_base64 = get_invoce_pdf(number)
     # Actualizar los campos con los datos de la API
     bill_instance.cufe = api_data["data"]["bill"]["cufe"]
-    bill_instance.step_number = api_data["data"]["bill"]["number"]
+    bill_instance.step_number = number
     bill_instance.qr_url = api_data["data"]["bill"]["qr"]
     bill_instance.dian_validation_date = timezone.now()
+    bill_instance.pdf_base64 = pdf_base64
+    bill_instance.total_amount = api_data["data"]["bill"]["total"]
     
     # Usar update para evitar recursión
     from .models import Bill  # Import local para evitar circular imports
@@ -124,12 +127,42 @@ def actualizar_factura_con_api_data(bill_instance, api_data):
         cufe=bill_instance.cufe,
         step_number=bill_instance.step_number,
         qr_url=bill_instance.qr_url,
-        dian_validation_date=bill_instance.dian_validation_date
+        dian_validation_date=bill_instance.dian_validation_date,
+        pdf_base64=bill_instance.pdf_base64,
+        total_amount=bill_instance.total_amount
     )
     
     print(f"Factura {bill_instance.code} validada exitosamente:")
     print(f"- CUFE: {bill_instance.cufe}")
     print(f"- Número: {bill_instance.step_number}")
     print(f"- QR: {bill_instance.qr_url}")
+    print(f"PDF-64:{bill_instance.pdf_base64[:20]}",)
     
-    return True    
+    return True 
+
+def get_invoce_pdf(number):
+    
+    token = get_valid_access_token()    
+    if not token:
+        print("no se pudo obtener un token válido")
+        return None   
+    
+    scope ="/v1/bills/download-pdf/"
+    headers = {
+        'Authorization': f'Bearer {token}',
+        'Accept': 'application/json'
+    }
+
+    url_protegido = os.getenv("url_api_f")+scope+number
+    response = requests.get(url_protegido, headers=headers)
+
+    if response.status_code == 200:
+        data = response.json()
+        #print("Datos recibidos desde la API:")
+        #print("nombre factura",data["data"]["file_name"])
+        pdf_base_64 = data["data"]["pdf_base_64_encoded"]
+        #print(json.dumps(data, indent=4))  # Imprime en formato bonito (pretty)
+        return pdf_base_64
+    else:
+        print(f"Error en solicitud protegida: {response.status_code}")
+        return None

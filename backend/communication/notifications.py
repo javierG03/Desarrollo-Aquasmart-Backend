@@ -212,23 +212,12 @@ def send_maintenance_report_notification(report):
             'description': report.description or "No se proporcionó descripción",
         }
 
-        # Obtener administrador(es) - ajusta según tu lógica de administrador
-        admins = User.objects.filter(is_superuser=True)
-        admin_emails = [admin.email for admin in admins if admin.email]
-
-        # Si el informe está finalizado, notificar al creador del reporte/solicitud
-        if report.status == 'finalizado':  # Ajusta el valor 'finalizado' según tu campo
-            return _send_notification_email(subject, context, 'maintenance_report', report_creator_email)
-        
-        # Si no está finalizado, notificar a administrador(s)
-        else:
-            # Además puedes notificar al técnico si quieres
-            emails_to_notify = admin_emails + [report.assignment.assigned_to.email]
-            results = []
-            for email in emails_to_notify:
-                results.append(_send_notification_email(subject, context, 'maintenance_report', email))
-            return all(results)
-
+        # Enviar al técnico y al creador del reporte/solicitud
+        return all([
+            _send_notification_email(subject, context, 'maintenance_report', report.assignment.assigned_to.email),            
+            _send_notification_email(subject, context, 'maintenance_report', report.assignment.assigned_by.email),
+            _send_notification_email(subject, context, 'maintenance_report', report_creator_email),
+        ])
     except Exception as e:
         print(f"Error al preparar notificación de informe: {str(e)}")
         return False

@@ -8,7 +8,6 @@ from billing.rates.models import FixedConsumptionRate, VolumetricConsumptionRate
 
 STATUS_CHOICES = [
     ('pendiente', 'Pendiente'), # Indica si la factura NO ha sido validada por la DIAN
-    ('validada', 'Validada'), # Indica que la factura ha sido validada por la DIAN
     ('pagada', 'Pagada'), # Indica que la factura ha sido pagada por el usuario correspondiente
     ('vencida', 'Vencida'), # Indica que la factura ha expirado sin haberse cancelado
     ]
