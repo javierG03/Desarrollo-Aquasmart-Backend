@@ -20,7 +20,6 @@ class ConsuptionPredictionLotSerializer(serializers.ModelSerializer):
             'plot',            
             'owner',
             'period_time',
-            'date_prediction',
             'consumption_prediction',
             'code_prediction',
             'created_at',
