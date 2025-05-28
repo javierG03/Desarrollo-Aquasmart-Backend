@@ -186,7 +186,7 @@ def send_assignment_notification(assignment):
         return False
 
 def send_maintenance_report_notification(report):
-    """Notificación cuando se crea un informe de mantenimiento"""
+    """Notificación cuando se crea o finaliza un informe de mantenimiento"""
     try:
         subject = f"📄 Informe de Mantenimiento #{report.id} - {report.get_status_display()}"
 
@@ -212,12 +212,22 @@ def send_maintenance_report_notification(report):
             'description': report.description or "No se proporcionó descripción",
         }
 
-        # Enviar al técnico y al creador del reporte/solicitud
-        return all([
-            _send_notification_email(subject, context, 'maintenance_report', report.assignment.assigned_to.email),            
-            _send_notification_email(subject, context, 'maintenance_report', report.assignment.assigned_by.email),
-            _send_notification_email(subject, context, 'maintenance_report', report_creator_email),
-        ])
+        # Ajusta aquí el valor que representa el estado finalizado en tu modelo
+        estado_finalizado = 'finalizado'  # Ejemplo, cambia según tu código
+
+        if report.status == estado_finalizado:
+            # Notificar al creador del reporte/solicitud cuando el informe está finalizado
+            return _send_notification_email(subject, context, 'maintenance_report', report_creator_email)
+        else:
+            # Notificar al administrador y al técnico mientras el informe NO esté finalizado
+            admin_email = report.assignment.assigned_by.email
+            technician_email = report.assignment.assigned_to.email
+            results = []
+            results.append(_send_notification_email(subject, context, 'maintenance_report', admin_email))
+            results.append(_send_notification_email(subject, context, 'maintenance_report', technician_email))
+            return all(results)
+
     except Exception as e:
         print(f"Error al preparar notificación de informe: {str(e)}")
         return False
+
