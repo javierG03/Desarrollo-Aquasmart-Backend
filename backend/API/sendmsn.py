@@ -112,6 +112,8 @@ def send_approval_email(email, name, login_link="https://desarrollo-aqua-smart-f
     mensaje_texto = f"""
     ¡Felicidades! Su pre-registro ha sido aprobado.
     
+    AquaSamart te da la Bienvenida.
+    
     Ahora puede acceder a su cuenta utilizando el siguiente enlace: {login_link}
     
     Si tiene problemas para iniciar sesión, no dude en contactarnos.
@@ -123,6 +125,7 @@ def send_approval_email(email, name, login_link="https://desarrollo-aqua-smart-f
         <h2 style="color: #28A745;">✅ Pre-registro Aprobado</h2>
         <p style="font-size: 18px;">Hola {name},</p>
         <p style="font-size: 16px;">¡Felicidades! Su pre-registro ha sido aprobado.</p>
+        <p style="font-size: 16px;">AquaSamart te da la Bienvenida.</p>
         <p style="font-size: 16px;">Ahora puede acceder a su cuenta utilizando el siguiente enlace:</p>
         <a href="{login_link}" 
            style="display: inline-block; background-color: #28A745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-size: 18px;">
