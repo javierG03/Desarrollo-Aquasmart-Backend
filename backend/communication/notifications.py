@@ -2,6 +2,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
+from .models import StatusRequestReport
 import os
 email_admin = os.environ.get('EMAIL_HOST_USER', default=os.getenv("EMAIL_HOST_USER"))
 def _send_notification_email(subject, context, template_name, recipient_email):
@@ -213,7 +214,7 @@ def send_maintenance_report_notification(report):
         }
 
         # Ajusta aquí el valor que representa el estado finalizado en tu modelo
-        estado_finalizado = 'finalizado'  # Ejemplo, cambia según tu código
+        estado_finalizado = StatusRequestReport.FINISHED 
 
         if report.status == estado_finalizado:
             # Notificar al creador del reporte/solicitud cuando el informe está finalizado
