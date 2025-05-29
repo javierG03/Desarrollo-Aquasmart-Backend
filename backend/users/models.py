@@ -104,6 +104,7 @@ class CustomUser(AbstractUser):
             ("can_toggle_is_active", "Puede cambiar el estado de is_active"),
             ("can_toggle_is_registered", "Puede cambiar el estado de is_registered"),
             ("can_toggle_is_staff", "Puede cambiar el estado de is_staff"),
+            ("can_see_incident_history", "Puede ver el historial de incidencias"),
         ]
 
     def __str__(self):

@@ -139,6 +139,7 @@ class IoTDevice(models.Model):
         permissions = [
             ("change_bocatoma_flow", "Puede cambiar caudal de válvula bocatoma"),
             ("change_all_lots_flow", "Puede cambiar caudal de todas las válvulas de lotes"),
+            ("can_see_iot_totals", "Puede ver los totalizados de IoT")
         ]
 
     def save(self, *args, **kwargs):
