@@ -16,7 +16,7 @@ from .models import ConsuptionPredictionLot,ConsuptionPredictionBocatoma
 from .serializers import ClimateRecordSerializer
 from .utils import api_climate_request, predecir_n_meses,formatear_predicciones, generate_code_prediction
 from .serializers import ConsuptionPredictionLotSerializer,ConsuptionPredictionBocatomaSerializer
-
+from caudal.models import FlowMeasurementLote
 class ClimateRecordViewSet(viewsets.ModelViewSet):
     queryset = ClimateRecord.objects.all()
     serializer_class = ClimateRecordSerializer
@@ -184,18 +184,27 @@ class ConsuptionPredictionLotListCreateView(generics.ListCreateAPIView):
             else:
                 text_mes = "Meses"   
             raise ValidationError({
-                "detail": f"Ya existe una predicción activa para este lote con ese periodo de {period_time} {text_mes }.",                
+                "detail": f"Ya existe una predicción activa para este lote con ese periodo de {period_time} {text_mes }.",
             })
         datos = ClimateRecord.objects.order_by('id').last()
         if datos is None:
             raise ValidationError("No se pudo obtener los datos necesarios para la predicción. Asegurese que existan datos climaticos.")
+      
+        try:
+            istance_consumption = FlowMeasurementLote.objects.filter(lot=lot_id)
+        except FlowMeasurementLote.DoesNotExist:
+            raise ValidationError({"error": "No cuenta con al menos un mes de consumo, no es posible realizar la predicción"})    
+        last_consumption = istance_consumption.last()                     
+
+        # Si todo está bien, sigues
+        consumption = last_consumption.flow_rate
         fecha_actual = datos.datetime
         mes = str(fecha_actual.month)
         año = str(fecha_actual.year)      
         datos_usuario = {
         'Año': año,
         'Mes_numero': mes,
-        'Consumo Neiva (m3-mes)': 10.00,
+        'Consumo Neiva (m3-mes)': consumption,
         'Temperatura Minima(°C)':datos.tempmin,
         'Temperatura Maxima(°C)':datos.tempmax,
         'Precipitacion(mm)': datos.precip,
@@ -246,17 +255,31 @@ class ConsuptionPredictionLotListCreateView(generics.ListCreateAPIView):
             
 class ConsuptionPredictionBocatomaListCreateView(generics.ListCreateAPIView):
     serializer_class = ConsuptionPredictionBocatomaSerializer
-    permission_classes = [IsAuthenticated,IsAdminUser]
+    permission_classes = [IsAuthenticated]
 
-    def get_queryset(self):            
+    def get_queryset(self):
+        user = self.request.user
+        print(user)
+        if user.has_perm("IA.can_see_predictions_boacatoma"):          
        
           return ConsuptionPredictionBocatoma.objects.all().order_by('-created_at')
+        else:
+            raise PermissionDenied("No tienes permiso para ver estas predicciones.")        
 
         
     def perform_create(self, serializer):
         
         user = self.request.user        
         period_time = int(serializer.validated_data['period_time'])
+        
+        if user.has_perm("IA.can_make_predictions_bocatoma"):
+            pass  
+        else:
+            if period_time == 1:
+                message ="No tienes permiso para generar esta prediccion"
+            else: 
+                message = "No tienes permiso para generar estas predicciones."    
+            raise PermissionDenied(message)   
         # ⚠️ Validación previa: ya existe una predicción activa
         pred_existente = ConsuptionPredictionBocatoma.objects.filter(
             

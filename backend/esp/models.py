@@ -1,5 +1,6 @@
 from django.db import models
-from iot.models import IoTDevice  # Ajusta si tu app de dispositivos IoT tiene otro nombre
+from iot.models import IoTDevice 
+from plots_lots.models import Lot
 
 class Consumo(models.Model):
     device = models.ForeignKey(
@@ -17,3 +18,15 @@ class Consumo(models.Model):
 
     def __str__(self):
         return f"{self.device.iot_id} - {self.timestamp}"
+    
+
+
+
+class EnviosContador(models.Model):
+    device = models.OneToOneField(IoTDevice, on_delete=models.CASCADE)
+    lote = models.ForeignKey(Lot, on_delete=models.CASCADE)
+    contador = models.PositiveIntegerField(default=0)
+
+    def __str__(self):
+        return f"{self.device} - Envios: {self.contador}"
+

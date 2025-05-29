@@ -93,6 +93,10 @@ class ConsuptionPredictionBocatoma(models.Model):
     class Meta:
         verbose_name = "Predicción de consumo de bocatoma"
         verbose_name_plural = "Predicciones de consumo de bocatoma"
+        permissions = [
+            ("can_see_predictions_boacatoma", "Puede ver predicciones de la bocatoma"),
+            ("can_make_predictions_bocatoma", "Puede hacer prediciones a la bocatoma")           
+        ]
 
     def __str__(self):
         return f"{self.code_prediction} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"
