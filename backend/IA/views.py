@@ -195,7 +195,8 @@ class ConsuptionPredictionLotListCreateView(generics.ListCreateAPIView):
         except FlowMeasurementLote.DoesNotExist:
             raise ValidationError({"error": "No cuenta con al menos un mes de consumo, no es posible realizar la predicción"})    
         last_consumption = istance_consumption.last()                     
-
+        if last_consumption is None:
+            raise ValidationError({"error": "No cuenta con al menos un mes de consumo, no es posible realizar la predicción"})
         # Si todo está bien, sigues
         consumption = last_consumption.flow_rate
         fecha_actual = datos.datetime
