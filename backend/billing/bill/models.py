@@ -63,6 +63,9 @@ class Bill(models.Model):
     class Meta:
         verbose_name = "Factura"
         verbose_name_plural = "Facturas"
+        permissions = [            
+            ("can_see_invoice_totals", "Puede ver los totalizados de las facturas"),
+        ]
 
     def __str__(self):
         return f"{self.code} - Sr.(a) {self.client_name}"

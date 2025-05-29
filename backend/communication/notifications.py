@@ -213,12 +213,11 @@ def send_maintenance_report_notification(report):
             'description': report.description or "No se proporcionó descripción",
         }
 
-        # Ajusta aquí el valor que representa el estado finalizado en tu modelo
-<<<<<<< HEAD
+
+
+
         estado_finalizado = StatusRequestReport.FINISHED 
-=======
-        estado_finalizado = 'finalizado'  # Ejemplo, cambia según tu código
->>>>>>> 7447ec54aa2b7b7b4039cc01df65776928a6650d
+
 
         if report.status == estado_finalizado:
             # Notificar al creador del reporte/solicitud cuando el informe está finalizado

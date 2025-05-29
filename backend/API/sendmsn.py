@@ -30,13 +30,13 @@ def send_email2(email, otp_generado, purpose, name):
     """
     if purpose == "login":
         asunto = "🔐 OTP para Inicio de Sesión"
-        mensaje_texto = f"Su OTP de inicio de sesión es: {otp_generado}. Úselo para iniciar sesión."
+        mensaje_texto = f"Su OTP de inicio de sesión en AquaSmart es: {otp_generado}. Úselo para iniciar sesión."
         mensaje_html = f"""
         <html>
         <body style="font-family: Arial, sans-serif; text-align: center; padding: 20px;">
             <h2 style="color: #2E86C1;">🔐 OTP para Inicio de Sesión</h2>
             <p style="font-size: 18px;">Hola {name},</p>
-            <p style="font-size: 16px;">Su código OTP para iniciar sesión es:</p>
+            <p style="font-size: 16px;">Su código OTP para iniciar sesión en AquaSmart es:</p>
             <h1 style="color: #E74C3C;">{otp_generado}</h1>
             <p style="font-size: 14px; color: #555;">Este código expirará en 5 minutos.</p>
         </body>
@@ -44,13 +44,13 @@ def send_email2(email, otp_generado, purpose, name):
         """
     elif purpose == "recover":
         asunto = "🔑 Recuperación de Contraseña"
-        mensaje_texto = f"Su OTP de recuperación es: {otp_generado}. Úselo para restablecer su contraseña."
+        mensaje_texto = f"Su OTP de recuperación en AquaSmart es: {otp_generado}. Úselo para restablecer su contraseña."
         mensaje_html = f"""
         <html>
         <body style="font-family: Arial, sans-serif; text-align: center; padding: 20px;">
             <h2 style="color: #D35400;">🔑 Recuperación de Contraseña</h2>
             <p style="font-size: 18px;">Hola {name},</p>
-            <p style="font-size: 16px;">Su código OTP para recuperar su contraseña es:</p>
+            <p style="font-size: 16px;">Su código OTP para recuperar su contraseña en AquaSmart es:</p>
             <h1 style="color: #E74C3C;">{otp_generado}</h1>
             <p style="font-size: 14px; color: #555;">Este código expirará en 5 minutos.</p>
         </body>
@@ -112,6 +112,8 @@ def send_approval_email(email, name, login_link="https://desarrollo-aqua-smart-f
     mensaje_texto = f"""
     ¡Felicidades! Su pre-registro ha sido aprobado.
     
+    AquaSamart te da la Bienvenida.
+    
     Ahora puede acceder a su cuenta utilizando el siguiente enlace: {login_link}
     
     Si tiene problemas para iniciar sesión, no dude en contactarnos.
@@ -123,6 +125,7 @@ def send_approval_email(email, name, login_link="https://desarrollo-aqua-smart-f
         <h2 style="color: #28A745;">✅ Pre-registro Aprobado</h2>
         <p style="font-size: 18px;">Hola {name},</p>
         <p style="font-size: 16px;">¡Felicidades! Su pre-registro ha sido aprobado.</p>
+        <p style="font-size: 16px;">AquaSamart te da la Bienvenida.</p>
         <p style="font-size: 16px;">Ahora puede acceder a su cuenta utilizando el siguiente enlace:</p>
         <a href="{login_link}" 
            style="display: inline-block; background-color: #28A745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-size: 18px;">
