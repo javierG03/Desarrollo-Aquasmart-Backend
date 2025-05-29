@@ -216,7 +216,6 @@ def send_maintenance_report_notification(report):
         # Ajusta aquí el valor que representa el estado finalizado en tu modelo
         estado_finalizado = StatusRequestReport.FINISHED 
 
-
         if report.status == estado_finalizado:
             # Notificar al creador del reporte/solicitud cuando el informe está finalizado
             return _send_notification_email(subject, context, 'maintenance_report', report_creator_email)
