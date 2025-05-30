@@ -275,6 +275,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://desarrollo-aquasmart-frontend2.vercel.app",
     "https://desarrollo-aqua-smart-frontend-six.vercel.app",
     "https://desarrollo-aqua-smart-frontend-psi.vercel.app",
+    "https://desarrollo-aqua-smart-frontend.vercel.app",
 ]
 
 # También puedes permitir todas las solicitudes (NO recomendado en producción)
